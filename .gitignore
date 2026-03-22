@@ -1,0 +1,18 @@
+# Secrets
+.env
+service_account.json
+credentials.json
+token.json
+.garmin_tokens/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Runtime
+logs/
+.last_sync.json
+
+# Claude Code (project-local settings stay local)
+.claude/settings.local.json

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.sneha.oura-sync</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/sneha.rana/fitness-automation/.venv/bin/python3</string>
+        <string>/Users/sneha.rana/fitness-automation/oura_sheets_sync.py</string>
+        <string>--morning</string>
+    </array>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>6</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/sneha.rana/fitness-automation/logs/launchd_stdout.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/sneha.rana/fitness-automation/logs/launchd_stderr.log</string>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/sneha.rana/fitness-automation</string>
+
+    <key>RunAtLoad</key>
+    <false/>
+</dict>
+</plist>
