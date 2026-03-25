@@ -29,6 +29,7 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 
 # ── paths ──────────────────────────────────────────────────────────
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -85,15 +86,25 @@ ROW_NOTES = 2  # "Special Notes / Trips:" row
 # Weekly goals
 WEEKLY_STEPS_GOAL = 48000
 WEEKLY_STRENGTH_GOAL = 3
+WEEKLY_CARDIO_GOAL = 1
 
-# Weekly Challenge
+# ── Scoring system ──
+# Daily stars (max 3/day):
+#   🚶 Steps     → ⭐ if steps >= 8,000
+#   😴 Sleep     → ⭐ if sleep >= 7h (6h during Menstrual/Luteal-PMS)
+#   🍽️ Calories  → ⭐ if calories <= daily goal (from Garmin)
+# Weekly stars:
+#   💪 Strength  → 1⭐ per session (max 3/week)
+#   🚴 Cardio    → 1⭐ per session (max 1/week, run or bike)
+# Max possible: (3/day × 6 days) + 3 strength + 1 cardio = 22/week
+# Tiers: 🥉 Good = 14, 🥈 Great = 18, 🥇 Perfect = 22
 ROW_CHALLENGE_HEADER = 21  # "⭐ WEEKLY CHALLENGE" header
 ROW_CHALLENGE = 22  # Daily star scores
 DAILY_STEPS_GOAL = 8000
 SLEEP_STAR_THRESHOLD_DEFAULT = 7.0
 SLEEP_STAR_THRESHOLD_LOW_ENERGY = 6.0  # Luteal-PMS & Menstrual phases
 LOW_ENERGY_PHASES = {"Menstrual", "Luteal-PMS"}
-TIER_PERFECT, TIER_GREAT, TIER_GOOD = 21, 17, 13
+TIER_PERFECT, TIER_GREAT, TIER_GOOD = 22, 18, 14
 
 # Garmin activity types
 STRENGTH_TYPES = {"strength_training"}
@@ -396,61 +407,15 @@ def fetch_week_calendar_notes(monday: date, saturday: date, creds) -> str | None
 
 
 
-# ── Google Tasks ──────────────────────────────────────────────
-def fetch_today_tasks(creds) -> list[str]:
-    """Fetch unchecked items from the default Google Tasks list.
-
-    Returns a list of task title strings, or empty list on failure.
-    """
-    try:
-        tasks_service = build("tasks", "v1", credentials=creds, cache_discovery=False)
-
-        # Get all task lists, prefer "Today Task" list
-        task_lists = tasks_service.tasklists().list(maxResults=10).execute()
-        items = task_lists.get("items", [])
-        if not items:
-            log.info("No Google Tasks lists found")
-            return []
-
-        # Find "Today Task" list, fall back to first list
-        tasklist_id = items[0]["id"]
-        tasklist_name = items[0].get("title", "unknown")
-        for tl in items:
-            if tl.get("title", "").strip().lower() == "today task":
-                tasklist_id = tl["id"]
-                tasklist_name = tl["title"]
-                break
-        log.info("Reading tasks from list: %s", tasklist_name)
-
-        # Get incomplete tasks only (not completed)
-        result = tasks_service.tasks().list(
-            tasklist=tasklist_id,
-            showCompleted=False,
-            showHidden=False,
-            maxResults=20,
-        ).execute()
-
-        tasks = []
-        for t in result.get("items", []):
-            title = (t.get("title") or "").strip()
-            if title and t.get("status") != "completed":
-                tasks.append(title)
-
-        log.info("Found %d unchecked tasks in Google Tasks", len(tasks))
-        return tasks
-
-    except Exception as exc:
-        log.warning("Google Tasks fetch failed: %s", exc)
-        return []
-
-
 # ── Garmin nutrition (calories via MFP sync) ────────────────────
-def _get_garmin_client():
-    """Return an authenticated Garmin Connect client.
+_garmin_client_cache = None
 
-    Caches session tokens in GARMIN_TOKEN_DIR so login doesn't repeat
-    on every run.
-    """
+def _get_garmin_client():
+    """Return an authenticated Garmin Connect client (cached per run)."""
+    global _garmin_client_cache
+    if _garmin_client_cache is not None:
+        return _garmin_client_cache
+
     from garminconnect import Garmin
 
     if not GARMIN_EMAIL or not GARMIN_PASSWORD:
@@ -465,6 +430,7 @@ def _get_garmin_client():
         try:
             garmin.login(token_dir)
             log.info("Garmin: resumed saved session")
+            _garmin_client_cache = garmin
             return garmin
         except Exception:
             pass  # token expired — fall through to fresh login
@@ -473,6 +439,7 @@ def _get_garmin_client():
     GARMIN_TOKEN_DIR.mkdir(parents=True, exist_ok=True)
     garmin.garth.dump(token_dir)
     log.info("Garmin: fresh login, tokens saved")
+    _garmin_client_cache = garmin
     return garmin
 
 
@@ -556,6 +523,21 @@ def fetch_weekly_strength_count(monday: date) -> int:
                    if a.get("activityType", {}).get("typeKey", "") in STRENGTH_TYPES)
     except Exception as exc:
         log.warning("Weekly strength count failed: %s", exc)
+        return 0
+
+
+def fetch_weekly_cardio_count(monday: date) -> int:
+    """Count cardio sessions (run/bike) Mon–Sat for the given week."""
+    try:
+        garmin = _get_garmin_client()
+        if garmin is None:
+            return 0
+        saturday = monday + timedelta(days=5)
+        activities = garmin.get_activities_by_date(monday.isoformat(), saturday.isoformat())
+        return sum(1 for a in activities
+                   if a.get("activityType", {}).get("typeKey", "") in CARDIO_TYPES)
+    except Exception as exc:
+        log.warning("Weekly cardio count failed: %s", exc)
         return 0
 
 
@@ -706,7 +688,6 @@ SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive",
     "https://www.googleapis.com/auth/calendar",
-    "https://www.googleapis.com/auth/tasks.readonly",
 ]
 
 # Cycle config
@@ -725,9 +706,13 @@ def get_google_creds() -> Credentials:
     # Refresh or re-authenticate
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
-            log.info("Refreshing OAuth2 token...")
-            creds.refresh(Request())
-        else:
+            try:
+                log.info("Refreshing OAuth2 token...")
+                creds.refresh(Request())
+            except Exception as exc:
+                log.warning("Token refresh failed (%s) — re-authenticating...", exc)
+                creds = None  # fall through to browser login
+        if not creds or not creds.valid:
             if not OAUTH_CREDENTIALS_FILE.exists():
                 log.error("OAuth credentials file not found: %s", OAUTH_CREDENTIALS_FILE)
                 log.error("Download it from GCP Console → APIs → Credentials → OAuth 2.0 Client IDs")
@@ -1002,14 +987,26 @@ def read_cell(service, spreadsheet_id: str, tab_name: str, cell: str) -> str | N
 
 
 def write_cell(service, spreadsheet_id: str, tab_name: str, cell: str, value) -> None:
-    """Write a single cell value to a specific tab."""
-    service.spreadsheets().values().update(
-        spreadsheetId=spreadsheet_id,
-        range=f"'{tab_name}'!{cell}",
-        valueInputOption="USER_ENTERED",
-        body={"values": [[value]]},
-    ).execute()
-    log.info("Wrote %s → %s!%s", value, tab_name, cell)
+    """Write a single cell value to a specific tab, with retry on rate limits."""
+    max_retries = 3
+    for attempt in range(max_retries + 1):
+        try:
+            service.spreadsheets().values().update(
+                spreadsheetId=spreadsheet_id,
+                range=f"'{tab_name}'!{cell}",
+                valueInputOption="USER_ENTERED",
+                body={"values": [[value]]},
+            ).execute()
+            log.info("Wrote %s → %s!%s", value, tab_name, cell)
+            return
+        except HttpError as e:
+            if e.resp.status == 429 and attempt < max_retries:
+                wait = 30 * (attempt + 1)
+                log.warning("Rate limited writing %s!%s — waiting %ds (attempt %d/%d)",
+                            tab_name, cell, wait, attempt + 1, max_retries)
+                time.sleep(wait)
+            else:
+                raise
 
 
 def ensure_nutrition_row_label(service, spreadsheet_id: str, tab_name: str) -> None:
@@ -1017,7 +1014,7 @@ def ensure_nutrition_row_label(service, spreadsheet_id: str, tab_name: str) -> N
     current = read_cell(service, spreadsheet_id, tab_name, f"B{ROW_NUTRITION}")
     if not current or "MyFitnessPal" in current or "P/C/F" in current or current.strip() == "":
         write_cell(service, spreadsheet_id, tab_name, f"B{ROW_NUTRITION}",
-                   "🍗 Calories (MFP)")
+                   "🍽️ Calories (MFP)")
 
 
 def ensure_cycle_row_label(service, spreadsheet_id: str, tab_name: str) -> None:
@@ -1036,10 +1033,7 @@ def ensure_challenge_scoreboard(service, spreadsheet_id: str, tab_name: str) -> 
       Row 21: ⭐ WEEKLY CHALLENGE  (merged A-H, gold header)
       Row 22: Score | daily ⭐ stars in C-H
     """
-    header_check = read_cell(service, spreadsheet_id, tab_name,
-                             f"A{ROW_CHALLENGE_HEADER}")
-    if header_check and ("CHALLENGE" in header_check or "SCOREBOARD" in header_check):
-        return  # already set up
+    # Always rewrite scoring guide + scoreboard to keep it in sync with code
 
     # Colors
     GOLD_BG = {"red": 0.95, "green": 0.82, "blue": 0.45}
@@ -1120,43 +1114,41 @@ def ensure_challenge_scoreboard(service, spreadsheet_id: str, tab_name: str) -> 
 
     # Write scoreboard content
     write_cell(service, spreadsheet_id, tab_name,
-               f"A{ROW_CHALLENGE_HEADER}", "⭐ WEEKLY CHALLENGE")
+               f"A{ROW_CHALLENGE_HEADER}", "⭐ WEEKLY CHALLENGE  (🥉14  🥈18  🥇22)")
     # A22 will be written by generate_morning_report() with score + tier text
 
     # Write scoring guide in rows 15-20 A-C (next to PMS Guide in D-H)
     guide = {
         15: ("⭐ SCORING GUIDE", "Earn", "Max"),
-        16: ("👟 Steps", "1⭐/day", "6⭐"),
+        16: ("🚶 Steps", "1⭐/day", "6⭐"),
         17: ("💪 Strength", "1⭐/session", "3⭐"),
-        18: ("🍗 Calories", "1⭐/day", "6⭐"),
-        19: ("😴 Sleep", "1⭐/night", "6⭐"),
+        18: ("🚴 Cardio", "1⭐/session", "1⭐"),
+        19: ("🍽️ Calories", "1⭐/day", "6⭐"),
+        20: ("😴 Sleep", "1⭐/night", "6⭐"),
     }
     for row, (a, b, c) in guide.items():
         write_cell(service, spreadsheet_id, tab_name, f"A{row}", a)
         write_cell(service, spreadsheet_id, tab_name, f"B{row}", b)
         write_cell(service, spreadsheet_id, tab_name, f"C{row}", c)
 
-    # Row 20: Tiers (merged A20:C20 for space)
-    write_cell(service, spreadsheet_id, tab_name, "A20",
-               "🏆 🥉Good 13  🥈Great 17  🥇Perfect 21")
-    # Merge A20:C20 and set wrap
+    # Update cardio row label in data area (A6) to reflect 1x goal
+    write_cell(service, spreadsheet_id, tab_name, "A6", "🚴 Cardio (1x)")
+
+    # Row 20 is now Sleep, so tiers move to A21 area — but A21 is ROW_CHALLENGE_HEADER
+    # Write tiers inline after the guide in a compact way
+    # Overwrite the old row 20 tier text (now occupied by Sleep)
+    # Instead, append tier info to the challenge header row
+    write_cell(service, spreadsheet_id, tab_name,
+               f"A{ROW_CHALLENGE_HEADER}",
+               "⭐ WEEKLY CHALLENGE  (🥉14  🥈18  🥇22)")
+    # Unmerge row 20 (was previously merged for tier text, now it's a guide row)
     requests_r20 = [
-        {"mergeCells": {
+        {"unmergeCells": {
             "range": {
                 "sheetId": sheet_id,
                 "startRowIndex": 19, "endRowIndex": 20,
                 "startColumnIndex": 0, "endColumnIndex": 3,
             },
-            "mergeType": "MERGE_ALL",
-        }},
-        {"repeatCell": {
-            "range": {
-                "sheetId": sheet_id,
-                "startRowIndex": 19, "endRowIndex": 20,
-                "startColumnIndex": 0, "endColumnIndex": 3,
-            },
-            "cell": {"userEnteredFormat": {"wrapStrategy": "WRAP"}},
-            "fields": "userEnteredFormat.wrapStrategy",
         }},
     ]
     # Row 22: Merge A22:B22 so score + tier text fits in one wide cell
@@ -1224,7 +1216,7 @@ def _get_dominant_cycle_day(service, spreadsheet_id: str, tab_name: str) -> int 
 
 
 # ── sync_single_day ───────────────────────────────────────────────
-def sync_single_day(target: date, service, creds) -> bool:
+def sync_single_day(target: date, service, creds, skip_scoreboard: bool = False) -> bool:
     """Sync one day's Oura data to the sheet. Returns True if data was written."""
     day_str = target.isoformat()
     weekday = target.weekday()
@@ -1268,17 +1260,23 @@ def sync_single_day(target: date, service, creds) -> bool:
     else:
         log.info("No step data — skipping row %d", ROW_STEPS)
 
-    # Write strength & cardio activities (Garmin)
+    # Write strength & cardio activities (Garmin) — clear cell if deleted from Garmin
     activities = fetch_garmin_activities(target)
-    for s in activities["strength"]:
-        text = f"💪 {s['duration_min']}m"
-        write_cell(service, spreadsheet_id, tab_name, f"{col}{ROW_STRENGTH}", text)
-    for c in activities["cardio"]:
-        type_key = c.get("name", "").lower()
-        icon = "🚴" if any(k in type_key for k in ["cycling", "biking", "bike"]) else "🏃"
-        mi = c["distance_mi"]
-        text = f"{icon} {mi}mi" if mi else f"{icon} {c['duration_min']}m"
-        write_cell(service, spreadsheet_id, tab_name, f"{col}{ROW_CARDIO}", text)
+    if activities["strength"]:
+        for s in activities["strength"]:
+            text = f"💪 {s['duration_min']}m"
+            write_cell(service, spreadsheet_id, tab_name, f"{col}{ROW_STRENGTH}", text)
+    else:
+        write_cell(service, spreadsheet_id, tab_name, f"{col}{ROW_STRENGTH}", "")
+    if activities["cardio"]:
+        for c in activities["cardio"]:
+            type_key = c.get("name", "").lower()
+            icon = "🚴" if any(k in type_key for k in ["cycling", "biking", "bike"]) else "🏃‍♀️"
+            mi = c["distance_mi"]
+            text = f"{icon} {mi}mi" if mi else f"{icon} {c['duration_min']}m"
+            write_cell(service, spreadsheet_id, tab_name, f"{col}{ROW_CARDIO}", text)
+    else:
+        write_cell(service, spreadsheet_id, tab_name, f"{col}{ROW_CARDIO}", "")
 
     # Write nutrition (Garmin/MFP) — calories
     nutrition = fetch_nutrition(target)
@@ -1319,7 +1317,8 @@ def sync_single_day(target: date, service, creds) -> bool:
     # Calories star
     if nutrition and nutrition.get("goal") and nutrition["calories"] <= nutrition["goal"]:
         daily_stars += 1
-    ensure_challenge_scoreboard(service, spreadsheet_id, tab_name)
+    if not skip_scoreboard:
+        ensure_challenge_scoreboard(service, spreadsheet_id, tab_name)
     star_text = "⭐" * daily_stars if daily_stars > 0 else "☆"
     write_cell(service, spreadsheet_id, tab_name, f"{col}{ROW_CHALLENGE}", star_text)
 
@@ -1454,6 +1453,7 @@ def calculate_challenge_score(
     nutrition_row: list,
     cycle_row: list,
     strength_count: int,
+    cardio_count: int,
     cal_goal: int,
     show_days: list[int],
 ) -> dict:
@@ -1464,12 +1464,16 @@ def calculate_challenge_score(
     steps_possible = len(show_days)
     sleep_possible = len(show_days)
     cal_possible = 0  # only count days with calorie data
+    daily = {}  # per-day breakdown: {day_index: {"steps": bool, "sleep": bool, "cal": bool}}
 
     for i in show_days:
+        day_stars = {"steps": False, "sleep": False, "cal": False}
+
         # Steps star
         raw_s = str(steps_row[i]).replace(",", "").strip() if i < len(steps_row) else ""
         if raw_s.isdigit() and int(raw_s) >= DAILY_STEPS_GOAL:
             steps_stars += 1
+            day_stars["steps"] = True
 
         # Sleep star (cycle-aware)
         raw_sl = str(sleep_row[i]).strip() if i < len(sleep_row) else ""
@@ -1491,6 +1495,7 @@ def calculate_challenge_score(
                          else SLEEP_STAR_THRESHOLD_DEFAULT)
             if sl >= threshold:
                 sleep_stars += 1
+                day_stars["sleep"] = True
 
         # Calories star
         raw_c = str(nutrition_row[i]).strip() if i < len(nutrition_row) else ""
@@ -1499,13 +1504,20 @@ def calculate_challenge_score(
             cal_possible += 1
             if int(num_c) <= cal_goal:
                 cal_stars += 1
+                day_stars["cal"] = True
+
+        daily[i] = day_stars
 
     # Strength stars (weekly, capped at goal)
     strength_stars = min(strength_count, WEEKLY_STRENGTH_GOAL)
     strength_possible = WEEKLY_STRENGTH_GOAL
 
-    total = steps_stars + sleep_stars + cal_stars + strength_stars
-    max_score = 21  # always out of 21 for consistent tier evaluation
+    # Cardio stars (weekly, capped at goal)
+    cardio_stars = min(cardio_count, WEEKLY_CARDIO_GOAL)
+    cardio_possible = WEEKLY_CARDIO_GOAL
+
+    total = steps_stars + sleep_stars + cal_stars + strength_stars + cardio_stars
+    max_score = 22  # (3/day × 6 days) + 3 strength + 1 cardio
 
     # Tier
     if total >= TIER_PERFECT:
@@ -1522,7 +1534,9 @@ def calculate_challenge_score(
         "sleep_stars": sleep_stars, "sleep_possible": sleep_possible,
         "cal_stars": cal_stars, "cal_possible": cal_possible,
         "strength_stars": strength_stars, "strength_possible": strength_possible,
+        "cardio_stars": cardio_stars, "cardio_possible": cardio_possible,
         "total": total, "max": max_score, "tier": tier,
+        "daily": daily,
     }
 
 
@@ -1550,7 +1564,7 @@ def generate_morning_report(service, spreadsheet_id: str, creds) -> str:
         ).execute()
     except Exception as exc:
         log.warning("Could not read tab for report: %s", exc)
-        return ""
+        return None
 
     ranges = batch.get("valueRanges", [])
     notes_row = ranges[0].get("values", [[]])[0] if len(ranges) > 0 and ranges[0].get("values") else []
@@ -1568,31 +1582,286 @@ def generate_morning_report(service, spreadsheet_id: str, creds) -> str:
     day_names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
     lines = []
 
-    lines.append("## Good Morning, Sneha!")
-    lines.append("")
+    # Pre-compute values needed for report
+    strength_count = fetch_weekly_strength_count(monday)
+    cardio_count = fetch_weekly_cardio_count(monday)
+    cal_goal = 0
+    try:
+        garmin = _get_garmin_client()
+        if garmin:
+            nutr_data = garmin.get_nutrition_daily_food_log(today.isoformat())
+            cal_goal = nutr_data.get("dailyNutritionGoals", {}).get("calories", 0)
+    except Exception:
+        pass
 
     # Only show days up to today
     show_days = [i for i in range(6) if (monday + timedelta(days=i)) <= today]
 
-    if show_days:
-        # Markdown table header
+    # ── Compute all values first ──
+
+    # Steps
+    total_steps = 0
+    for i in range(6):
+        if i < len(steps_row) and str(steps_row[i]).strip():
+            try:
+                total_steps += int(str(steps_row[i]).replace(",", ""))
+            except ValueError:
+                pass
+    today_steps = 0
+    if weekday <= 5:
+        live_steps = fetch_steps(today.isoformat())
+        if live_steps is not None:
+            today_steps = live_steps
+            sheet_today = 0
+            if weekday < len(steps_row) and str(steps_row[weekday]).strip():
+                try:
+                    sheet_today = int(str(steps_row[weekday]).replace(",", ""))
+                except ValueError:
+                    pass
+            if live_steps > sheet_today:
+                total_steps = total_steps - sheet_today + live_steps
+
+    remaining_steps = max(0, WEEKLY_STEPS_GOAL - total_steps)
+    pct_steps = min(100, int(total_steps / WEEKLY_STEPS_GOAL * 100)) if WEEKLY_STEPS_GOAL else 0
+
+    # Sleep
+    sleep_values = []
+    for i in range(min(len(sleep_row), 6)):
+        raw = str(sleep_row[i]).strip() if i < len(sleep_row) else ""
+        if raw:
+            try:
+                sleep_values.append(float(raw))
+            except ValueError:
+                pass
+    last_sleep = sleep_values[-1] if sleep_values else None
+    avg_sleep = sum(sleep_values) / len(sleep_values) if sleep_values else None
+
+    # Calories — preserve positional indexing (None for missing days)
+    cal_values = []
+    for i in range(min(len(nutrition_row), 6)):
+        raw = str(nutrition_row[i]).strip() if i < len(nutrition_row) else ""
+        num = raw.split(" ")[0].split("/")[0].strip() if raw else ""
+        if num.isdigit():
+            cal_values.append(int(num))
+        else:
+            cal_values.append(None)
+
+    # Cycle
+    latest_cycle_str = ""
+    for i in range(min(len(cycle_row), 6) - 1, -1, -1):
+        if str(cycle_row[i]).strip():
+            latest_cycle_str = str(cycle_row[i]).strip()
+            break
+    phase_name = ""
+    if latest_cycle_str:
+        phase_name = latest_cycle_str.split(" D")[0].strip() if " D" in latest_cycle_str else latest_cycle_str
+
+    # Score
+    score = calculate_challenge_score(
+        steps_row, sleep_row, nutrition_row, cycle_row,
+        strength_count, cardio_count, cal_goal, show_days,
+    )
+    total = score["total"]
+    mx = score["max"]
+
+    # ════════════════════════════════════════════════════
+    # 1. GREETING + SCORE
+    # ════════════════════════════════════════════════════
+    tier_label = f"⭐ {total}/{mx} — 🥉{TIER_GOOD}  🥈{TIER_GREAT}  🥇{TIER_PERFECT}"
+
+    lines.append(f"## Good Morning, Sneha!  {tier_label}")
+    lines.append("🚶6  😴6  🍽️6  💪3  🚴1 = 22⭐")
+    if notes_text:
+        lines.append(f"_{notes_text}_")
+    lines.append("")
+
+    # ── Stars breakdown (day as hero) ──
+    yesterday_wd = weekday - 1
+    yesterday_daily = score.get("daily", {}).get(yesterday_wd, {}) if yesterday_wd >= 0 else None
+    today_daily = score.get("daily", {}).get(weekday, {})
+
+    def _day_icons(daily, day_idx):
+        """Build sorted icon string: ✅ first, ❌ last. Includes strength/cardio."""
+        has_str = bool(str(strength_row[day_idx]).strip()) if day_idx < len(strength_row) else False
+        has_crd = bool(str(cardio_row[day_idx]).strip()) if day_idx < len(cardio_row) else False
+        icons = [
+            ("🚶", daily.get("steps", False)),
+            ("😴", daily.get("sleep", False)),
+            ("🍽️", daily.get("cal", False)),
+            ("💪", has_str),
+            ("🚴", has_crd),
+        ]
+        earned = sum(1 for _, v in icons if v)
+        # Sort: ✅ first, ❌ last
+        icons.sort(key=lambda x: (not x[1],))
+        icon_str = "  ".join(f"{ic}{'✅' if v else '❌'}" for ic, v in icons)
+        return earned, icon_str
+
+    if yesterday_daily is not None:
+        yd_earned, yd_icons = _day_icons(yesterday_daily, yesterday_wd)
+        lines.append(f"**Yesterday** {'⭐' * yd_earned if yd_earned else '☆'} {yd_earned}/5  {yd_icons}")
+        lines.append("")
+
+    td_earned, td_icons = _day_icons(today_daily, weekday)
+    lines.append(f"**Today** {'⭐' * td_earned if td_earned else '☆'} {td_earned}/5 so far  {td_icons}")
+    lines.append("")
+
+    # ════════════════════════════════════════════════════
+    # 2. LAST NIGHT + BODY
+    # ════════════════════════════════════════════════════
+    if last_sleep is not None or phase_name:
+        lines.append("| Last Night | |")
+        lines.append("|---|---|")
+        if last_sleep is not None:
+            if last_sleep >= 7:
+                sleep_note = "good"
+            elif last_sleep >= 6:
+                sleep_note = "a little short"
+            else:
+                sleep_note = "rough night"
+            lines.append(f"| **Sleep** | **{last_sleep}h** — {sleep_note} |")
+        if phase_name:
+            energy_map = {"Menstrual": "low energy", "Follicular": "energy rising",
+                          "Ovulation": "peak energy", "Luteal-EM": "steady energy",
+                          "Luteal-PMS": "energy winding down"}
+            energy = energy_map.get(phase_name, "")
+            tip = PMS_GUIDE_TIPS.get(phase_name, "")
+            cycle_detail = f"**{latest_cycle_str}**"
+            if energy:
+                cycle_detail += f" — {energy}"
+            lines.append(f"| **Cycle** | {cycle_detail} |")
+            if tip:
+                lines.append("")
+                lines.append(f"> {tip}")
+        lines.append("")
+
+    # ════════════════════════════════════════════════════
+    # 3. TODAY'S ACTIONS (the only thing you need to act on)
+    # ════════════════════════════════════════════════════
+    today_actions = []
+    if weekday <= 5 and remaining_steps > 0:
+        days_left = max(1, 5 - weekday + 1)
+        today_steps = 0
+        if weekday < len(steps_row) and str(steps_row[weekday]).strip():
+            try:
+                today_steps = int(str(steps_row[weekday]).replace(",", ""))
+            except ValueError:
+                pass
+        live = fetch_steps(today.isoformat())
+        if live is not None and live > today_steps:
+            today_steps = live
+        daily_target = (WEEKLY_STEPS_GOAL - total_steps + today_steps) // days_left
+        steps_left_today = max(0, daily_target - today_steps)
+        if steps_left_today > 0:
+            today_actions.append(("Walk", f"**{steps_left_today:,}** steps (target ~{daily_target:,})"))
+
+    cal_actual = [c for c in cal_values if c is not None]
+    if cal_actual and cal_goal:
+        today_cal = 0
+        if weekday < len(nutrition_row):
+            raw_today = str(nutrition_row[weekday]).strip()
+            num_today = raw_today.split(" ")[0].split("/")[0].strip() if raw_today else ""
+            if num_today.isdigit():
+                today_cal = int(num_today)
+        if today_cal > 0:
+            left = cal_goal - today_cal
+            if left > 0:
+                today_actions.append(("Eat", f"**{left:,}** cal left ({today_cal}/{cal_goal})"))
+            else:
+                today_actions.append(("Cals", f"over by **{abs(left)}** ({today_cal}/{cal_goal})"))
+
+    s_remaining = max(0, WEEKLY_STRENGTH_GOAL - strength_count)
+    if s_remaining > 0:
+        today_actions.append(("Strength", f"**{s_remaining}** sessions left this week"))
+
+    c_remaining = max(0, WEEKLY_CARDIO_GOAL - cardio_count)
+    if c_remaining > 0:
+        today_actions.append(("Cardio", f"**{c_remaining}** run/bike left this week"))
+
+    if today_actions:
+        lines.append("**Today's targets:**")
+        lines.append("")
+        for label, detail in today_actions:
+            lines.append(f"- {label}: {detail}")
+    else:
+        lines.append("All targets hit — enjoy the day!")
+    lines.append("")
+
+    # ════════════════════════════════════════════════════
+    # 4. WEEKLY PROGRESS (single table, easy to scan)
+    # ════════════════════════════════════════════════════
+    lines.append("### Week at a Glance")
+    lines.append("")
+    lines.append("| | Progress | Status |")
+    lines.append("|---|---|---|")
+
+    # Steps
+    if remaining_steps == 0:
+        lines.append(f"| **Steps** | **{total_steps:,}** / {WEEKLY_STEPS_GOAL:,} | Done! |")
+    else:
+        days_left = max(1, 5 - weekday + 1) if weekday <= 5 else 1
+        per_day = remaining_steps // days_left
+        lines.append(f"| **Steps** | **{total_steps:,}** / {WEEKLY_STEPS_GOAL:,} ({pct_steps}%) | ~{per_day:,}/day left |")
+
+    # Strength
+    s_dots = "●" * strength_count + "○" * s_remaining
+    if strength_count >= WEEKLY_STRENGTH_GOAL:
+        lines.append(f"| **Strength** | {s_dots} {strength_count}/{WEEKLY_STRENGTH_GOAL} | Done! |")
+    else:
+        lines.append(f"| **Strength** | {s_dots} {strength_count}/{WEEKLY_STRENGTH_GOAL} | {s_remaining} left |")
+
+    # Cardio
+    c_dots = "●" * cardio_count + "○" * c_remaining
+    if cardio_count >= WEEKLY_CARDIO_GOAL:
+        lines.append(f"| **Cardio** | {c_dots} {cardio_count}/{WEEKLY_CARDIO_GOAL} | Done! |")
+    else:
+        lines.append(f"| **Cardio** | {c_dots} {cardio_count}/{WEEKLY_CARDIO_GOAL} | {c_remaining} left |")
+
+    # Calories
+    if cal_actual and cal_goal:
+        avg_cal = sum(cal_actual) // len(cal_actual)
+        on_target = sum(1 for c in cal_actual if c <= cal_goal)
+        diff = avg_cal - cal_goal
+        if diff < 0:
+            cal_status = f"under by {abs(diff)}"
+        elif diff > 0:
+            cal_status = f"over by {diff}"
+        else:
+            cal_status = "on target"
+        lines.append(f"| **Calories** | avg **{avg_cal}** / {cal_goal} | {cal_status} ({on_target}/{len(cal_actual)} on target) |")
+    elif cal_actual:
+        avg_cal = sum(cal_actual) // len(cal_actual)
+        lines.append(f"| **Calories** | avg **{avg_cal}** | {len(cal_actual)} days logged |")
+
+    # Sleep
+    if sleep_values:
+        low_nights = sum(1 for s in sleep_values if s < 7)
+        if low_nights > 0:
+            lines.append(f"| **Sleep** | avg **{avg_sleep:.1f}h** | {low_nights}/{len(sleep_values)} nights under 7h |")
+        else:
+            lines.append(f"| **Sleep** | avg **{avg_sleep:.1f}h** | All nights 7h+ |")
+
+    # ════════════════════════════════════════════════════
+    # 5. DAILY BREAKDOWN (only when 2+ days of data)
+    # ════════════════════════════════════════════════════
+    if len(show_days) > 1:
+        lines.append("")
+        lines.append("**Daily breakdown:**")
+        lines.append("")
+
         hdr_cells = [f"**{day_names[i]} {(monday + timedelta(days=i)).day}**" for i in show_days]
-        lines.append(f"#### This Week ({tab_name})")
         lines.append("| | " + " | ".join(hdr_cells) + " |")
         lines.append("|---|" + "|".join(["---"] * len(show_days)) + "|")
 
-        # Helper to get cell value
         def _cell(row, i, suffix=""):
             val = row[i] if i < len(row) and str(row[i]).strip() else "–"
             if val != "–" and suffix:
                 val = f"{val}{suffix}"
             return str(val)
 
-        # Sleep row
         sleep_cells = [_cell(sleep_row, i, "h") for i in show_days]
         lines.append("| Sleep | " + " | ".join(sleep_cells) + " |")
 
-        # Steps row
         steps_cells = []
         for i in show_days:
             val = steps_row[i] if i < len(steps_row) and str(steps_row[i]).strip() else "–"
@@ -1604,19 +1873,15 @@ def generate_morning_report(service, spreadsheet_id: str, creds) -> str:
             steps_cells.append(str(val))
         lines.append("| Steps | " + " | ".join(steps_cells) + " |")
 
-        # Strength row
         str_cells = [_cell(strength_row, i) for i in show_days]
         lines.append("| Strength | " + " | ".join(str_cells) + " |")
 
-        # Cardio row
         cardio_cells = [_cell(cardio_row, i) for i in show_days]
         lines.append("| Cardio | " + " | ".join(cardio_cells) + " |")
 
-        # Nutrition row
         nutr_cells = [_cell(nutrition_row, i) for i in show_days]
         lines.append("| Cals | " + " | ".join(nutr_cells) + " |")
 
-        # Cycle row
         cycle_cells = []
         for i in show_days:
             val = cycle_row[i] if i < len(cycle_row) and str(cycle_row[i]).strip() else "–"
@@ -1626,172 +1891,13 @@ def generate_morning_report(service, spreadsheet_id: str, creds) -> str:
             cycle_cells.append(val)
         lines.append("| Cycle | " + " | ".join(cycle_cells) + " |")
 
-    # ── Steps progress ──
-    total_steps = 0
-    for i in range(6):
-        if i < len(steps_row) and str(steps_row[i]).strip():
-            try:
-                total_steps += int(str(steps_row[i]).replace(",", ""))
-            except ValueError:
-                pass
-
-    # Get today's live steps from Oura (may be fresher than sheet)
-    if weekday <= 5:
-        live_steps = fetch_steps(today.isoformat())
-        if live_steps is not None:
-            sheet_today = 0
-            if weekday < len(steps_row) and str(steps_row[weekday]).strip():
-                try:
-                    sheet_today = int(str(steps_row[weekday]).replace(",", ""))
-                except ValueError:
-                    pass
-            if live_steps > sheet_today:
-                total_steps = total_steps - sheet_today + live_steps
-
-    remaining = max(0, WEEKLY_STEPS_GOAL - total_steps)
-    pct = min(100, int(total_steps / WEEKLY_STEPS_GOAL * 100)) if WEEKLY_STEPS_GOAL else 0
-    bar_filled = pct // 5
-    bar = "▓" * bar_filled + "░" * (20 - bar_filled)
-
-    # ── Sleep insights ──
-    sleep_values = []
-    for i in range(min(len(sleep_row), 6)):
-        raw = str(sleep_row[i]).strip() if i < len(sleep_row) else ""
-        if raw:
-            try:
-                sleep_values.append(float(raw))
-            except ValueError:
-                pass
-
-    lines.append("")
-    if sleep_values:
-        avg_sleep = sum(sleep_values) / len(sleep_values)
-        last_sleep = sleep_values[-1]
-        if len(sleep_values) >= 2:
-            diff_s = sleep_values[-1] - sleep_values[-2]
-            trend_s = "↑" if diff_s > 0.3 else "↓" if diff_s < -0.3 else "→"
-        else:
-            trend_s = ""
-        sleep_icon = "😴" if last_sleep >= 7 else "⚠️" if last_sleep >= 6 else "🚨"
-        lines.append(f"{sleep_icon} **Sleep:** {last_sleep}h last night (avg {avg_sleep:.1f}h) {trend_s}")
-        low_nights = sum(1 for s in sleep_values if s < 7)
-        if low_nights > 0:
-            lines.append(f"  {low_nights}/{len(sleep_values)} nights under 7h this week")
-
-    # ── Cycle + today's energy ──
-    latest_cycle_str = ""
-    for i in range(min(len(cycle_row), 6) - 1, -1, -1):
-        if str(cycle_row[i]).strip():
-            latest_cycle_str = str(cycle_row[i]).strip()
-            break
-
-    phase_name = ""
-    if latest_cycle_str:
-        phase_name = latest_cycle_str.split(" D")[0].strip() if " D" in latest_cycle_str else latest_cycle_str
-        tip = PMS_GUIDE_TIPS.get(phase_name, "")
-        energy = {"Menstrual": "🔋Low", "Follicular": "⚡Rising",
-                  "Ovulation": "💥Peak", "Luteal-EM": "⚡Steady",
-                  "Luteal-PMS": "🔋Winding down"}.get(phase_name, "")
-        lines.append(f"🔄 **Cycle:** {latest_cycle_str}  {energy}")
-        if tip:
-            lines.append(f"  → {tip}")
-
-    # ── Goals ──
-    lines.append("")
-    lines.append("### Weekly Goals")
-    lines.append("")
-    if remaining == 0:
-        lines.append(f"👟 **Steps:** {total_steps:,} / {WEEKLY_STEPS_GOAL:,}  🎉 Goal reached!")
-        lines.append(f"  {bar}")
-    else:
-        days_left = 5 - weekday if weekday <= 5 else 0
-        per_day = remaining // days_left if days_left > 0 else remaining
-        lines.append(f"👟 **Steps:** {total_steps:,} / {WEEKLY_STEPS_GOAL:,}  ({pct}%)")
-        lines.append(f"  {bar}  ~{per_day:,}/day left")
-
-    # Strength
-    strength_count = fetch_weekly_strength_count(monday)
-    lines.append("")
-    s_remaining = max(0, WEEKLY_STRENGTH_GOAL - strength_count)
-    s_dots = "●" * strength_count + "○" * s_remaining
-    if strength_count >= WEEKLY_STRENGTH_GOAL:
-        lines.append(f"💪 **Strength:** {s_dots}  {strength_count}/{WEEKLY_STRENGTH_GOAL} 🎉 Done!")
-    else:
-        lines.append(f"💪 **Strength:** {s_dots}  {strength_count}/{WEEKLY_STRENGTH_GOAL} — {s_remaining} left")
-
-    # Calories
-    cal_goal = 0
-    try:
-        garmin = _get_garmin_client()
-        if garmin:
-            nutr_data = garmin.get_nutrition_daily_food_log(today.isoformat())
-            cal_goal = nutr_data.get("dailyNutritionGoals", {}).get("calories", 0)
-    except Exception:
-        pass
-
-    cal_values = []
-    for i in range(min(len(nutrition_row), 6)):
-        raw = str(nutrition_row[i]).strip() if i < len(nutrition_row) else ""
-        num = raw.split(" ")[0].split("/")[0].strip() if raw else ""
-        if num.isdigit():
-            cal_values.append(int(num))
-
-    if cal_values and cal_goal:
-        avg_cal = sum(cal_values) // len(cal_values)
-        on_target = sum(1 for c in cal_values if c <= cal_goal)
-        over = sum(1 for c in cal_values if c > cal_goal)
-        diff = avg_cal - cal_goal
-        trend_c = "🔥 under" if diff < 0 else "⚠️ over" if diff > 0 else "✅ on target"
-
-        lines.append("")
-        lines.append(f"🍗 **Calories:** avg {avg_cal} / {cal_goal} goal  ({trend_c} by {abs(diff)})")
-        sparks = []
-        for i in range(min(len(nutrition_row), 6)):
-            raw = str(nutrition_row[i]).strip() if i < len(nutrition_row) else ""
-            num = raw.split(" ")[0].split("/")[0].strip() if raw else ""
-            if num.isdigit():
-                c = int(num)
-                icon = "✅" if c <= cal_goal else "⚠️"
-                sparks.append(f"{day_names[i]}:{c}{icon}")
-            elif (monday + timedelta(days=i)) <= today:
-                sparks.append(f"{day_names[i]}:–")
-        lines.append(f"  {' | '.join(sparks)}")
-        lines.append(f"  {on_target}/{len(cal_values)} on target"
-                      + (f" · {over} over" if over else " · 💪 perfect week!"))
-    elif cal_values:
-        avg_cal = sum(cal_values) // len(cal_values)
-        lines.append("")
-        lines.append(f"🍗 **Calories:** avg {avg_cal} ({len(cal_values)} days logged)")
-
-    # ── Weekly Challenge ──
-    score = calculate_challenge_score(
-        steps_row, sleep_row, nutrition_row, cycle_row,
-        strength_count, cal_goal, show_days,
-    )
-    lines.append("")
-    lines.append("### ⭐ Weekly Challenge")
-    lines.append("")
-    for cat, emoji, stars, possible in [
-        ("Steps", "👟", score["steps_stars"], score["steps_possible"]),
-        ("Strength", "💪", score["strength_stars"], score["strength_possible"]),
-        ("Calories", "🍗", score["cal_stars"], score["cal_possible"]),
-        ("Sleep", "😴", score["sleep_stars"], score["sleep_possible"]),
-    ]:
-        filled = "⭐" * stars
-        empty = "☆" * (possible - stars)
-        lines.append(f"{emoji} {cat:10s} {filled}{empty}  {stars}/{possible}")
-    lines.append("")
-    total = score["total"]
-    mx = score["max"]
-    if total >= TIER_PERFECT:
-        report_tier = f"🥇 **{total}/{mx} Perfect!**"
-    elif total >= TIER_GREAT:
-        report_tier = f"🥈 **{total}/{mx} Great!**  Next: 🥇 at {TIER_PERFECT}"
-    elif total >= TIER_GOOD:
-        report_tier = f"🥉 **{total}/{mx} Good!**  Next: 🥈 at {TIER_GREAT}"
-    else:
-        report_tier = f"⭐ **{total}/{mx}**  Next: 🥉 at {TIER_GOOD}"
-    lines.append(report_tier)
+        _daily = score["daily"]
+        star_cells = []
+        for i in show_days:
+            d = _daily.get(i, {})
+            n = sum(1 for k in ("steps", "sleep", "cal") if d.get(k))
+            star_cells.append("⭐" * n if n > 0 else "–")
+        lines.append("| Stars | " + " | ".join(star_cells) + " |")
 
     # Write weekly score + tier to sheet scoreboard (A22 = medal, B22 = score)
     try:
@@ -1806,85 +1912,345 @@ def generate_morning_report(service, spreadsheet_id: str, creds) -> str:
             cell_text = f"🥉 {total}/{mx} Good!  Next: 🥈 at {TIER_GREAT}"
         else:
             cell_text = f"⭐ {total}/{mx}  Next: 🥉 at {TIER_GOOD}"
-        # Use RAW to prevent "+" being interpreted as a formula
-        service.spreadsheets().values().update(
-            spreadsheetId=spreadsheet_id,
-            range=f"'{tab_name}'!A{ROW_CHALLENGE}",
-            valueInputOption="RAW",
-            body={"values": [[cell_text]]},
-        ).execute()
-        log.info("Wrote %s → %s!A%s", cell_text, tab_name, ROW_CHALLENGE)
+        # Use write_cell for retry support (RAW input via direct call)
+        write_cell(service, spreadsheet_id, tab_name, f"A{ROW_CHALLENGE}", cell_text)
     except Exception:
         pass
 
-    # ── Today's game plan ──
-    lines.append("")
-    lines.append("### Today")
-    lines.append("")
-
-    # Special notes
-    if notes_text:
-        lines.append(f"📝 {notes_text}")
-
-    # Workout suggestion based on cycle phase
-    workout_recs = {
-        "Menstrual": "🧘 yoga / gentle stretching",
-        "Follicular": "🏋️ strength training / heavier lifts",
-        "Ovulation": "💪 go hard — PRs, HIIT, heavy compound lifts",
-        "Luteal-EM": "🏃 normal workout — strength or cardio",
-        "Luteal-PMS": "🧘 lighter weights / walking / recovery",
-    }
-    rec = workout_recs.get(phase_name, "")
-    if rec:
-        lines.append(f"🏋️ **Workout:** {rec}")
-
-    # Calorie budget remaining today
-    if cal_values and cal_goal:
-        today_cal = 0
-        if weekday < len(nutrition_row):
-            raw_today = str(nutrition_row[weekday]).strip()
-            num_today = raw_today.split(" ")[0].split("/")[0].strip() if raw_today else ""
-            if num_today.isdigit():
-                today_cal = int(num_today)
-        if today_cal > 0:
-            left = cal_goal - today_cal
-            if left > 0:
-                lines.append(f"🍽️ {left} cal left today ({today_cal} eaten / {cal_goal})")
-            else:
-                lines.append(f"🍽️ Over by {abs(left)} cal today ({today_cal} / {cal_goal})")
-
-    # Steps today
-    if weekday <= 5:
-        today_steps = 0
-        if weekday < len(steps_row) and str(steps_row[weekday]).strip():
-            try:
-                today_steps = int(str(steps_row[weekday]).replace(",", ""))
-            except ValueError:
-                pass
-        live = fetch_steps(today.isoformat())
-        if live is not None and live > today_steps:
-            today_steps = live
-        if total_steps < WEEKLY_STEPS_GOAL:
-            days_left = max(1, 5 - weekday + 1)
-            daily_target = (WEEKLY_STEPS_GOAL - total_steps + today_steps) // days_left
-            steps_left_today = max(0, daily_target - today_steps)
-            if steps_left_today > 0:
-                lines.append(f"👟 {steps_left_today:,} steps left today (target ~{daily_target:,})")
-
-    # Tasks
-    tasks = fetch_today_tasks(creds)
-    if tasks:
-        lines.append("")
-        lines.append(f"**Tasks ({len(tasks)}):**")
-        for task in tasks:
-            lines.append(f"- [ ] {task}")
 
     lines.append("")
     lines.append("---")
     lines.append("*Sheet updated* ✓")
     lines.append("")
 
-    return "\n".join(lines)
+    # Build data dict for HTML report
+    report_data = {
+        "today": today,
+        "tab_name": tab_name,
+        "notes_text": notes_text,
+        "last_sleep": last_sleep,
+        "avg_sleep": avg_sleep,
+        "sleep_values": sleep_values,
+        "phase_name": phase_name,
+        "latest_cycle_str": latest_cycle_str,
+        "total_steps": total_steps,
+        "today_steps": today_steps,
+        "remaining_steps": remaining_steps,
+        "pct_steps": pct_steps,
+        "strength_count": strength_count,
+        "cardio_count": cardio_count,
+        "cal_values": cal_values,
+        "cal_goal": cal_goal,
+        "score": score,
+        "strength_row": strength_row,
+        "cardio_row": cardio_row,
+    }
+
+    return "\n".join(lines), report_data
+
+
+def generate_html_report(data: dict) -> None:
+    """Generate a self-contained HTML morning report and open in browser."""
+    today = data["today"]
+    notes_text = data["notes_text"]
+    last_sleep = data["last_sleep"]
+    avg_sleep = data["avg_sleep"]
+    sleep_values = data["sleep_values"]
+    phase_name = data["phase_name"]
+    latest_cycle_str = data["latest_cycle_str"]
+    total_steps = data["total_steps"]
+    today_steps = data.get("today_steps", 0)
+    remaining_steps = data["remaining_steps"]
+    pct_steps = data["pct_steps"]
+    strength_count = data["strength_count"]
+    cardio_count = data["cardio_count"]
+    cal_values = data["cal_values"]
+    cal_goal = data["cal_goal"]
+    score = data["score"]
+
+    total_score = score["total"]
+    max_score = score["max"]
+
+    # Sleep
+    if last_sleep is not None:
+        sleep_color = "#22c55e" if last_sleep >= 7 else "#ef4444"
+        sleep_label = f"{last_sleep}h"
+    else:
+        sleep_color = "#9ca3af"
+        sleep_label = "–"
+
+    # Cycle
+    energy_map = {"Menstrual": "Low energy", "Follicular": "Energy rising",
+                  "Ovulation": "Peak energy", "Luteal-EM": "Steady energy",
+                  "Luteal-PMS": "Energy winding down"}
+    cycle_energy = energy_map.get(phase_name, "")
+    cycle_tip = PMS_GUIDE_TIPS.get(phase_name, "")
+    cycle_color = {"Menstrual": "#f87171", "Follicular": "#34d399",
+                   "Ovulation": "#fbbf24", "Luteal-EM": "#60a5fa",
+                   "Luteal-PMS": "#c084fc"}.get(phase_name, "#9ca3af")
+
+    # Today's cards
+    # Steps today
+    weekday = today.weekday()
+    days_left = max(1, 5 - weekday + 1) if weekday <= 5 else 1
+    daily_step_target = remaining_steps // days_left if remaining_steps > 0 and days_left > 0 else 0
+
+    # Calories — only use today's value, not yesterday's fallback
+    cal_actual = [c for c in cal_values if c is not None]
+    today_cal = 0
+    if weekday < len(cal_values) and cal_values[weekday] is not None:
+        today_cal = cal_values[weekday]
+    cal_left = max(0, cal_goal - today_cal) if cal_goal else 0
+
+    s_remaining = max(0, WEEKLY_STRENGTH_GOAL - strength_count)
+    c_remaining = max(0, WEEKLY_CARDIO_GOAL - cardio_count)
+
+    # Yesterday/today stars with strength/cardio from sheet rows
+    today_daily = score.get("daily", {}).get(today.weekday(), {})
+    yesterday_wd = today.weekday() - 1
+    yesterday_daily = score.get("daily", {}).get(yesterday_wd, {}) if yesterday_wd >= 0 else {}
+
+    # Read strength/cardio rows from report_data
+    _str_row = data.get("strength_row", [])
+    _crd_row = data.get("cardio_row", [])
+
+    def _html_day_icons(daily, day_idx):
+        """Build sorted icon spans: ✅ first, ❌ last. Includes strength/cardio."""
+        has_str = bool(str(_str_row[day_idx]).strip()) if day_idx < len(_str_row) else False
+        has_crd = bool(str(_crd_row[day_idx]).strip()) if day_idx < len(_crd_row) else False
+        icons = [
+            ("🚶", daily.get("steps", False)),
+            ("😴", daily.get("sleep", False)),
+            ("🍽️", daily.get("cal", False)),
+            ("💪", has_str),
+            ("🚴", has_crd),
+        ]
+        earned = sum(1 for _, v in icons if v)
+        icons.sort(key=lambda x: (not x[1],))
+        icon_html = "".join(f'<span style="margin-right:8px;">{ic}{"✅" if v else "❌"}</span>' for ic, v in icons)
+        return earned, icon_html
+
+    today_stars_earned, today_icons_html = _html_day_icons(today_daily, today.weekday())
+    if yesterday_wd >= 0:
+        yesterday_stars_earned, yesterday_icons_html = _html_day_icons(yesterday_daily, yesterday_wd)
+    else:
+        yesterday_stars_earned, yesterday_icons_html = 0, ""
+
+    # Tier
+    tier_emoji = "⭐"
+
+    # Week metrics for dot display
+    def dots_html(filled, total_dots, color="#22c55e"):
+        html = ""
+        for i in range(total_dots):
+            c = color if i < filled else "#e5e7eb"
+            html += f'<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:{c};margin-right:3px;"></span>'
+        return html
+
+    def status_color(done, goal):
+        if done >= goal:
+            return "#22c55e"
+        elif done >= goal * 0.5:
+            return "#eab308"
+        return "#ef4444"
+
+    def progress_bar_html(pct, color="#3b82f6"):
+        return f'''<div style="background:#f3f4f6;border-radius:6px;height:8px;width:100%;overflow:hidden;">
+            <div style="background:{color};height:100%;width:{min(pct, 100)}%;border-radius:6px;transition:width 0.3s;"></div>
+        </div>'''
+
+    day_name = today.strftime("%A, %B %d")
+
+    # Avg calories
+    avg_cal = sum(cal_actual) // len(cal_actual) if cal_actual else 0
+
+    # Sleep week stats
+    low_nights = sum(1 for s in sleep_values if s < 7) if sleep_values else 0
+
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Morning Report — {day_name}</title>
+<style>
+  * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+  body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+         background: #f8fafc; color: #1e293b; padding: 24px; max-width: 520px; margin: 0 auto; }}
+  .header {{ margin-bottom: 20px; }}
+  .header h1 {{ font-size: 22px; font-weight: 700; margin-bottom: 4px; }}
+  .header .date {{ font-size: 14px; color: #64748b; }}
+  .header .notes {{ font-size: 13px; color: #94a3b8; margin-top: 6px; font-style: italic; }}
+  .pills {{ display: flex; gap: 10px; margin-bottom: 20px; }}
+  .pill {{ display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px;
+           border-radius: 20px; font-size: 13px; font-weight: 600; color: white; }}
+  .score-badge {{ background: #fef3c7; color: #92400e; padding: 8px 16px; border-radius: 12px;
+                  font-size: 14px; font-weight: 600; margin-bottom: 20px; display: inline-block; }}
+  .cards {{ display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }}
+  .card {{ background: white; border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }}
+  .card .label {{ font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;
+                  margin-bottom: 8px; }}
+  .card .value {{ font-size: 24px; font-weight: 700; margin-bottom: 8px; }}
+  .card .sub {{ font-size: 12px; color: #94a3b8; }}
+  h2 {{ font-size: 15px; font-weight: 600; color: #475569; margin-bottom: 12px; }}
+  .week-table {{ background: white; border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+                 margin-bottom: 24px; }}
+  .week-row {{ display: flex; align-items: center; padding: 10px 0;
+               border-bottom: 1px solid #f1f5f9; }}
+  .week-row:last-child {{ border-bottom: none; }}
+  .week-row .metric {{ width: 80px; font-size: 13px; font-weight: 600; }}
+  .week-row .dots {{ flex: 1; }}
+  .week-row .status {{ font-size: 12px; font-weight: 600; text-align: right; min-width: 90px; }}
+  .insight {{ background: white; border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+              font-size: 13px; color: #475569; line-height: 1.5; }}
+  .insight strong {{ color: #1e293b; }}
+  .footer {{ text-align: center; margin-top: 20px; font-size: 11px; color: #cbd5e1; }}
+  .share-btn {{ display: block; width: 100%; padding: 14px; margin-top: 20px; border: none;
+                background: #3b82f6; color: white; font-size: 15px; font-weight: 600;
+                border-radius: 12px; cursor: pointer; text-align: center; }}
+  .share-btn:active {{ background: #2563eb; }}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body>
+
+<div id="dashboard">
+<div class="header">
+  <h1>Good Morning, Sneha!</h1>
+  <div class="date">{day_name}</div>
+  {"<div class='notes'>" + notes_text.replace("<", "&lt;").replace(">", "&gt;") + "</div>" if notes_text else ""}
+</div>
+
+<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
+  <div class="score-badge" style="margin:0;">{tier_emoji} {total_score}/{max_score} — 🥉{TIER_GOOD}  🥈{TIER_GREAT}  🥇{TIER_PERFECT}</div>
+  <span class="pill" style="background:{sleep_color};">😴 {sleep_label} sleep</span>
+  <span class="pill" style="background:{cycle_color};">🔄 {latest_cycle_str or '–'}</span>
+</div>
+<div style="display:flex;gap:10px;margin-bottom:16px;">
+  <span style="background:#f1f5f9;padding:3px 8px;border-radius:8px;font-size:12px;">🚶6</span>
+  <span style="background:#f1f5f9;padding:3px 8px;border-radius:8px;font-size:12px;">😴6</span>
+  <span style="background:#f1f5f9;padding:3px 8px;border-radius:8px;font-size:12px;">🍽️6</span>
+  <span style="background:#f1f5f9;padding:3px 8px;border-radius:8px;font-size:12px;">💪3</span>
+  <span style="background:#f1f5f9;padding:3px 8px;border-radius:8px;font-size:12px;">🚴1</span>
+  <span style="font-size:12px;color:#94a3b8;align-self:center;">= 22⭐</span>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+{"<div style='background:white;border-radius:12px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,0.06);'><div style=display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;><div style=font-size:13px;font-weight:700;color:#475569;>Yesterday</div><div style=font-size:15px;font-weight:700;>" + ('⭐' * yesterday_stars_earned if yesterday_stars_earned else '☆') + " " + str(yesterday_stars_earned) + "/5</div></div><div style=display:flex;gap:6px;font-size:13px;flex-wrap:wrap;>" + yesterday_icons_html + "</div></div>" if yesterday_wd >= 0 else ""}
+  <div style="background:white;border-radius:12px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <div style="font-size:13px;font-weight:700;color:#475569;">Today</div>
+      <div style="font-size:15px;font-weight:700;">{"⭐" * today_stars_earned if today_stars_earned else "☆"} {today_stars_earned}/5</div>
+    </div>
+    <div style="display:flex;gap:6px;font-size:13px;flex-wrap:wrap;">
+      {today_icons_html}
+    </div>
+  </div>
+</div>
+<div class="cards">
+  <div class="card">
+    <div class="label">Steps</div>
+    <div class="value">{daily_step_target:,}</div>
+    {progress_bar_html(min(100, int(today_steps / daily_step_target * 100)) if daily_step_target else 0)}
+    <div class="sub">target for today</div>
+  </div>
+  <div class="card">
+    <div class="label">Calories left</div>
+    <div class="value">{cal_left:,}</div>
+    {progress_bar_html(int(today_cal / cal_goal * 100) if cal_goal else 0, "#22c55e")}
+    <div class="sub">{today_cal} / {cal_goal} eaten</div>
+  </div>
+  <div class="card">
+    <div class="label">Strength</div>
+    <div class="value">{s_remaining}</div>
+    {progress_bar_html(int(strength_count / WEEKLY_STRENGTH_GOAL * 100) if WEEKLY_STRENGTH_GOAL else 0, "#8b5cf6")}
+    <div class="sub">{strength_count}/{WEEKLY_STRENGTH_GOAL} done this week</div>
+  </div>
+  <div class="card">
+    <div class="label">Cardio</div>
+    <div class="value">{c_remaining}</div>
+    {progress_bar_html(int(cardio_count / WEEKLY_CARDIO_GOAL * 100) if WEEKLY_CARDIO_GOAL else 0, "#f97316")}
+    <div class="sub">{cardio_count}/{WEEKLY_CARDIO_GOAL} run/bike this week</div>
+  </div>
+</div>
+
+<h2>Week at a Glance</h2>
+<div class="week-table">
+  <div class="week-row">
+    <div class="metric">Steps</div>
+    <div class="dots">{progress_bar_html(pct_steps)}</div>
+    <div class="status" style="color:{status_color(total_steps, WEEKLY_STEPS_GOAL)};">{total_steps:,} / {WEEKLY_STEPS_GOAL:,}</div>
+  </div>
+  <div class="week-row">
+    <div class="metric">Strength</div>
+    <div class="dots">{dots_html(strength_count, WEEKLY_STRENGTH_GOAL, "#8b5cf6")}</div>
+    <div class="status" style="color:{status_color(strength_count, WEEKLY_STRENGTH_GOAL)};">{strength_count}/{WEEKLY_STRENGTH_GOAL} {"Done!" if strength_count >= WEEKLY_STRENGTH_GOAL else f"({s_remaining} left)"}</div>
+  </div>
+  <div class="week-row">
+    <div class="metric">Cardio</div>
+    <div class="dots">{dots_html(cardio_count, WEEKLY_CARDIO_GOAL, "#f97316")}</div>
+    <div class="status" style="color:{status_color(cardio_count, WEEKLY_CARDIO_GOAL)};">{cardio_count}/{WEEKLY_CARDIO_GOAL} {"Done!" if cardio_count >= WEEKLY_CARDIO_GOAL else f"({c_remaining} left)"}</div>
+  </div>
+  <div class="week-row">
+    <div class="metric">Calories</div>
+    <div class="dots">{progress_bar_html(int(avg_cal / cal_goal * 100) if cal_goal and avg_cal else 0, "#22c55e")}</div>
+    <div class="status" style="color:{status_color(1, 1) if cal_actual and cal_goal and avg_cal <= cal_goal else '#ef4444' if cal_actual and cal_goal else '#9ca3af'};">avg {avg_cal} / {cal_goal}</div>
+  </div>
+  <div class="week-row">
+    <div class="metric">Sleep</div>
+    <div class="dots">{dots_html(len(sleep_values) - low_nights, len(sleep_values) if sleep_values else 1, "#22c55e")}</div>
+    <div class="status" style="color:{'#22c55e' if low_nights == 0 else '#ef4444'};">{"avg " + f"{avg_sleep:.1f}h" if avg_sleep is not None else "–"}{f' ({low_nights} night{"s" if low_nights != 1 else ""} < 7h)' if low_nights > 0 else ''}</div>
+  </div>
+</div>
+
+{"<div class='insight'><strong>🔄 " + phase_name + ":</strong> " + cycle_tip + "</div>" if cycle_tip else ""}
+
+<div class="footer">Sheet updated ✓ · {data['tab_name']}</div>
+</div>
+
+<button class="share-btn" id="shareBtn" onclick="shareReport()">📤 Share</button>
+
+<script>
+async function shareReport() {{
+  const btn = document.getElementById('shareBtn');
+  btn.textContent = '⏳ Preparing...';
+  btn.disabled = true;
+  try {{
+    const canvas = await html2canvas(document.getElementById('dashboard'), {{
+      backgroundColor: '#f8fafc',
+      scale: 2,
+      useCORS: true,
+    }});
+    const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+    const file = new File([blob], 'morning-report.png', {{ type: 'image/png' }});
+
+    if (navigator.canShare && navigator.canShare({{ files: [file] }})) {{
+      await navigator.share({{ files: [file] }});
+    }} else {{
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'morning-report.png';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }}
+  }} catch (e) {{
+    if (e.name !== 'AbortError') console.error('Share failed:', e);
+  }}
+  btn.textContent = '📤 Share';
+  btn.disabled = false;
+}}
+</script>
+
+</body>
+</html>"""
+
+    html_path = Path.home() / "morning_report.html"
+    html_path.write_text(html)
+    log.info("HTML report written to %s", html_path)
+
+    # Auto-open in browser
+    import subprocess
+    subprocess.Popen(["open", str(html_path)])
 
 
 # ── main ───────────────────────────────────────────────────────────
@@ -1945,7 +2311,8 @@ def main():
 
         while current <= today:
             if current.weekday() != 6:  # skip Sundays
-                sync_single_day(current, service, creds)
+                sync_single_day(current, service, creds,
+                                skip_scoreboard=(current < today))
                 days_synced += 1
                 if current < today:
                     time.sleep(0.5)  # be kind to APIs
@@ -1956,9 +2323,11 @@ def main():
 
         # Generate the pretty morning report
         spreadsheet_id = resolve_spreadsheet_id(today, creds)
-        report = generate_morning_report(service, spreadsheet_id, creds)
-        if report:
+        result = generate_morning_report(service, spreadsheet_id, creds)
+        if result:
+            report, report_data = result
             print(report)
+            generate_html_report(report_data)
         else:
             print(f"\n  ☀️  Good morning! Synced {days_synced} day(s) "
                   f"({start_date} → {today})\n")
