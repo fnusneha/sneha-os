@@ -168,7 +168,7 @@ body {
 }
 .hero-status.compiled .compile-dots::after { animation: none; content: ''; }
 
-/* Sleep + cycle pills (legacy — kept for back-compat, not rendered) */
+/* Sleep + cycle pills — utility classes available for inline status badges. */
 .pills, .intel-pills { display:flex; gap:8px; flex-wrap:wrap; }
 .intel-pills { margin-bottom: 12px; }
 .pill {
@@ -552,9 +552,8 @@ body {
 .quest-section { padding: 0 16px; margin-bottom: 12px; }
 .quest-section .card-title { padding: 0 4px; margin-bottom: 10px; }
 
-/* Compact context strip that replaces the Daily Intelligence card.
-   Shows cycle phase (the ONLY non-redundant bit from the old card) plus
-   the coach line, which is useful but short. */
+/* Compact context strip — one line with today's cycle phase + a
+   short coaching note. Sits above the Daily Quest stages. */
 .today-context {
   display: flex;
   align-items: center;
@@ -1549,8 +1548,8 @@ body {
   const ROUTINE_KEY = 'routines_' + TODAY_KEY;
   const ACCORDION_KEY = 'accordion_state';
 
-  // Visible error toast — replaces silent .catch(()=>{}) so Collects that
-  // fail to persist are loud instead of invisible.
+  // Visible error toast — surfaces save failures so a collect that
+  // fails to persist is loud instead of invisible.
   function showError(msg) {
     let el = document.getElementById('err-toast');
     if (!el) {

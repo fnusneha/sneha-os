@@ -1,10 +1,9 @@
 """
-db.py — Postgres access layer for Sneha.OS v2.
+Postgres access layer.
 
-Replaces sheets.py from v1. All reads/writes go through functions here so
-no other module knows or cares about the SQL schema.
-
-Usage:
+Typed read/write methods for the `daily_entries`, `rides`, `season_pass`
+and `sync_state` tables. Every other module talks to the database through
+this wrapper — no raw SQL leaks elsewhere.
 
     from db import Db
 
@@ -13,11 +12,10 @@ Usage:
     db.upsert_entry(date(2026, 4, 20), steps=8200, sleep_hours=7.3)
     db.set_star(date.today(), "morning", True)
 
-Connection pooling:
-    Neon's free tier serves us through PgBouncer (the "pooled" URL), so a
-    single new connection per request is fast enough for a personal
-    dashboard (one user, few reqs/min). No need for an in-process pool.
-    If this ever becomes a hot path, swap in psycopg_pool.ConnectionPool.
+The app opens short-lived connections per call via PgBouncer (Neon's
+pooled endpoint). One user + low QPS means an in-process pool isn't
+worth the complexity; swap in psycopg_pool.ConnectionPool if that ever
+changes.
 """
 
 from __future__ import annotations
@@ -100,8 +98,9 @@ class Db:
         """Insert or update fields for date `d`.
 
         Only columns you explicitly name are touched — existing values
-        for other columns are preserved. This mirrors the "never
-        overwrite existing data with nothing" rule from v1.
+        for other columns are preserved. This enforces a "never overwrite
+        existing data with nothing" rule so a failed API fetch can't wipe
+        a previously-good value.
 
         Example:
             db.upsert_entry(date(2026, 4, 20), steps=8200, sleep_hours=7.3)

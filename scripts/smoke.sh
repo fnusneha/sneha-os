@@ -1,17 +1,21 @@
 #!/usr/bin/env bash
-# verify_render.sh — End-to-end smoke test against the live Render URL.
 #
-# Usage:  scripts/verify_render.sh https://sneha-os.onrender.com
+# End-to-end smoke test for a running Sneha.OS instance.
 #
-# Checks:
+# Usage:
+#     scripts/smoke.sh https://your-deployment.example.com
+#     scripts/smoke.sh http://localhost:8000
+#
+# Checks (12 total):
 #   1. /healthz returns 200 "ok"
 #   2. /api/health returns JSON with row counts + last_sync_date
-#   3. /dashboard renders HTML with key markers
-#   4. /rides renders HTML with key markers
-#   5. /api/manual round-trip toggles sauna through Neon
-#   6. /api/season GET returns current month's done indices
+#   3. /dashboard renders HTML with the Quest Hub markers
+#   4. /rides renders HTML with the Ride Atlas markers
+#   5. /api/season GET returns the current month's done indices
+#   6. /api/manual sauna toggle round-trips through the DB (flips
+#      twice so it ends where it started).
 #
-# Exits non-zero if anything fails.
+# Exits non-zero on any failure.
 
 set -u
 URL="${1:-https://sneha-os.onrender.com}"

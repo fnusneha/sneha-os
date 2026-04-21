@@ -1,15 +1,20 @@
-requests>=2.31
-python-dotenv>=1.0
+# --- Web service (Flask on Gunicorn) ---
+flask>=3.0
+gunicorn>=22.0
+
+# --- Data layer ---
+psycopg[binary]>=3.1     # Postgres driver (Neon)
+
+# --- External integrations ---
+requests>=2.31           # Oura, Strava
+garminconnect>=0.2.17    # Garmin Connect
 google-api-python-client>=2.100
 google-auth>=2.23
 google-auth-oauthlib>=1.0
-polyline>=2.0
 
-# Added for cloud migration (Sneha.OS v2)
-psycopg[binary]>=3.1
-flask>=3.0
-garminconnect>=0.2.17
-gunicorn>=22.0
-# Ensures zoneinfo works in minimal container images (no /usr/share/zoneinfo
-# baked in). tz.py depends on this to get Pacific time right on Render.
-tzdata>=2024.1
+# --- Route geometry ---
+polyline>=2.0            # decode Strava map polylines
+
+# --- Config + time ---
+python-dotenv>=1.0
+tzdata>=2024.1           # zoneinfo data for minimal Linux images

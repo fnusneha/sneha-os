@@ -1132,7 +1132,9 @@ body {
 }
 .rp-medal.dim .rp-medal-lbl { color: var(--muted); }
 .rp-medal.lit .rp-medal-lbl { color: var(--gold); }
-/* Legacy — old bare-span fallback so we don't break anything else */
+/* Fallback styling for bare <span> children of .rp-medal so newer
+   markup (with explicit .rp-medal-ico / .rp-medal-lbl children) keeps
+   rendering correctly if a tick is ever authored without those classes. */
 .rp-medal > span:not([class]) {
   display: block;
   font-family: 'DM Mono', monospace;
@@ -1193,7 +1195,7 @@ body {
 .rp-day.is-today .rp-day-num { color: var(--mint); }
 .rp-day.is-today .rp-mi { color: rgba(110,231,183,0.5); }
 
-/* Month grid (Year at a Glance) — 6 columns × 2 rows (legacy full-year mode) */
+/* Month grid (Year at a Glance) — 6 columns × 2 rows, full-year variant. */
 .rp-months {
   display: grid;
   grid-template-columns: repeat(6, 1fr);

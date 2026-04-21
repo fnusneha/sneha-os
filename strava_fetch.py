@@ -304,11 +304,12 @@ def _transform(a: dict) -> dict:
 # ── Main ────────────────────────────────────────────────────────────
 
 def fetch_all_rides(force: bool = False) -> list[dict]:
-    """Public entrypoint: return every ride (newest first) after token refresh.
+    """Fetch every ride from Strava (newest first) after refreshing the
+    access token.
 
-    Used by sync.py (writes to Neon) and the legacy main() (writes to
-    rides_cache.json). Keeping the disk cache for back-compat during the
-    migration window; once Render is cutover we'll drop the file write.
+    Used by `sync.py` which writes to Postgres. Running this file as a
+    script (`python strava_fetch.py`) additionally dumps the result to
+    `rides_cache.json` for local inspection.
     """
     if not all([CLIENT_ID, CLIENT_SECRET, REFRESH_TOKEN]):
         raise RuntimeError(

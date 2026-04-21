@@ -1,21 +1,19 @@
 #!/usr/bin/env python3
 """
-sync.py — Pull Oura/Garmin/Strava/GCal data → Neon Postgres.
+Daily data-sync orchestrator.
 
-Replaces oura_sheets_sync.py from v1. Same CLI flags so launchd
-replacements, local testing, and the new GitHub Actions cron all work
-the same way.
+Pulls fitness and calendar data from the external sources (Oura, Garmin
+Connect, Strava, Google Calendar, Google Docs) and writes it into
+Postgres. Scheduled 4 times a day by GitHub Actions; also runnable by
+hand for backfills and one-off refreshes.
 
-    python sync.py                        # sync yesterday
-    python sync.py --date 2026-04-20      # sync specific date
-    python sync.py --morning              # backfill since last sync
-    python sync.py --morning --force      # force re-sync today
-    python sync.py --last-sync            # print last sync timestamp
-    python sync.py --rides                # also fetch Strava rides
-
-Writes everything to daily_entries / rides / sync_state in Neon.
-Nothing touches Google Sheets (other than the read-only Travel Planner
-and Habit Doc, which are external data sources, not storage).
+    python sync.py                    # sync yesterday
+    python sync.py --date 2026-04-20  # sync a specific date
+    python sync.py --morning          # backfill every day since last sync
+    python sync.py --morning --force  # re-sync today even if up-to-date
+    python sync.py --rides            # also refresh the Strava rides table
+    python sync.py --last-sync        # print the stored last-sync date
+    python sync.py --health           # print DB row counts
 """
 
 from __future__ import annotations
@@ -150,7 +148,7 @@ def sync_single_day(db: Db, target: date, creds) -> bool:
             entry["calorie_goal"] = nutrition["goal"]
 
     # Notes — only updated on the FIRST day of the week so we don't
-    # rewrite the same text 7 times. Matches v1's column-B write.
+    # rewrite the same text 7 times.
     if target.weekday() == 0 and creds:
         monday = target
         sunday = target + timedelta(days=6)

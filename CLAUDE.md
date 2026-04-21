@@ -1,34 +1,43 @@
-# Fitness Automation
+# Sneha.OS — contributor notes
 
-Personal project that syncs Oura Ring data to a weekly Google Sheets accountability spreadsheet.
+Personal fitness dashboard. Flask web app + GitHub Actions cron, backed
+by Postgres. See [README.md](README.md) for the full architecture.
 
-## What this does
+## Quick orientation
 
-- Pulls sleep hours, step count, and cycle phase from Oura Ring API v2
-- Writes to the correct weekly tab and day column in Google Sheets
-- Runs automatically at 6 AM daily via macOS launchd
-- Supports backfill mode (`--morning --force`) and single-date mode (`--date YYYY-MM-DD`)
+- **`app.py`** — Flask entrypoint. Routes: `/dashboard`, `/rides`,
+  `/api/*`, `/healthz`. Runs on Gunicorn in production.
+- **`sync.py`** — cron entrypoint. Pulls external APIs → writes
+  Postgres rows. Runs 4×/day via `.github/workflows/sync.yml`.
+- **`db.py`** — the only module that knows SQL. Everything else
+  gets typed dicts back from it.
+- **`data_gather.py`** — shapes DB rows into the dict the HTML
+  templates expect.
+- **`html_report.py` + `rides_report.py`** — HTML renderers; string
+  templates in `templates/*.html`.
+- **`tz.py`** — `local_today()`, `local_now()`. Always use these
+  instead of `date.today()`; cron runs in UTC but the app is
+  pinned to America/Los_Angeles.
 
-## Key files
-
-- `oura_sheets_sync.py` — the entire sync logic (single file)
-- `.env` — Oura token + Google Sheet ID (never commit)
-- `service_account.json` — Google Cloud service account key (never commit)
-- `com.sneha.oura-sync.plist` — launchd config for scheduled runs
-
-## Running
+## Running locally
 
 ```bash
-# Activate venv and run
 source .venv/bin/activate
-python3 oura_sheets_sync.py --morning --force   # backfill missed days
-python3 oura_sheets_sync.py --date 2026-03-10   # specific date
-python3 oura_sheets_sync.py --steps-left         # weekly steps report
+python sync.py --morning --force   # pull today's data
+python app.py                      # http://localhost:8000/dashboard
 ```
 
-## Notes
+## Testing a deploy
 
-- This is a **personal** project, separate from work (WeatherBug)
-- Sundays are skipped (no column in the sheet)
-- The script never overwrites existing data if Oura returns nothing
-- Cycle phase endpoint (`/v2/usercollection/daily_cycle`) may return 404 depending on firmware/subscription — handled gracefully
+```bash
+scripts/smoke.sh https://sneha-os.onrender.com   # 12-check smoke
+```
+
+## Conventions
+
+- Never commit secrets — `.env` is gitignored. Production secrets
+  live in Render env + GitHub Actions secrets.
+- Idempotent writes: `sync.py` can re-run the same day without
+  clobbering a collected star or a manual sauna tick.
+- Graceful degradation: if Garmin or Oura flakes, the dashboard
+  still renders — stale fields stay stale rather than blank.

@@ -1,14 +1,15 @@
 """
-data_gather.py — Build the `report_data` dict that html_report.py and
-rides_report.py expect, but source from Neon instead of Google Sheets.
+Assemble the `report_data` dict that `html_report.generate_html_report`
+consumes, sourced from the Postgres row store.
 
-This is the v2 replacement for report.py:generate_morning_report(). The
-output dict shape is identical to v1 so html_report.py needs NO changes.
+Keeps the renderer ignorant of SQL: this module does the Postgres reads,
+the Oura live-steps call, the Google reads (travel pins + habits), and
+returns a plain dict keyed by the names the template renderer expects.
 
 Usage:
     from data_gather import gather_dashboard_data
-    data = gather_dashboard_data()          # for today
-    data = gather_dashboard_data(date(...)) # for any date (testing)
+    data = gather_dashboard_data()               # today
+    data = gather_dashboard_data(date(2026,4,1)) # any date (useful in tests)
 """
 
 from __future__ import annotations
@@ -89,8 +90,9 @@ def gather_dashboard_data(
 
     Args:
         today: The day to build the dashboard FOR. Defaults to real today.
-        live_steps: If True, fetch today's steps live from Oura (v1 did
-            this to avoid stale overnight values). Set False in tests.
+        live_steps: If True, call the Oura live-steps endpoint to top
+            up today's count so the "X steps left" hint stays current
+            between syncs. Set False in tests to avoid the network hit.
     """
     db = Db()
     if today is None:
@@ -102,7 +104,7 @@ def gather_dashboard_data(
     # Pull the whole week in one query (7 rows or fewer).
     week = db.get_week_entries(today)
 
-    # Days with any data, by index — matches v1's `show_days`.
+    # Days with any data, by index — the list of weekday indices that actually have data.
     show_days = [i for i, r in enumerate(week) if r is not None]
 
     # Per-weekday lists in the format html_report.py expects (strings).
@@ -122,8 +124,8 @@ def gather_dashboard_data(
     today_steps_db = (today_row or {}).get("steps") or 0
     today_cal_goal = (today_row or {}).get("calorie_goal") or 0
 
-    # v1 fetches today's steps fresh from Oura so the "X steps left"
-    # hint is always current even between syncs.
+    # Fetch today's steps fresh from Oura so the "X steps left" hint
+    # always reflects current activity, even between scheduled syncs.
     today_steps = today_steps_db
     if live_steps:
         fresh = _cached_fetch_steps(today.isoformat())
@@ -148,7 +150,7 @@ def gather_dashboard_data(
     avg_sleep = sum(sleep_vals) / len(sleep_vals) if sleep_vals else None
     last_sleep = float(today_row["sleep_hours"]) if today_row and today_row.get("sleep_hours") is not None else None
 
-    # Calorie values (7-length, None where missing — matches v1 cal_values).
+    # Calorie values (7-length, None where missing).
     cal_values = [(int(r["calories"]) if (r and r.get("calories") is not None) else None) for r in week]
     # Cal goal: use today's goal, falling back to any day in the week that has one.
     cal_goal = today_cal_goal
@@ -221,7 +223,7 @@ def gather_dashboard_data(
         # Core
         "today": today,
         "tab_name": tab_name,
-        # Per-weekday lists (strings; v1-shape)
+        # Per-weekday lists (strings; 7 entries indexed 0=Mon..6=Sun)
         "steps_row": steps_row,
         "sleep_row": sleep_row,
         "nutrition_row": nutrition_row,

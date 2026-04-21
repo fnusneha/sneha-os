@@ -1,8 +1,16 @@
 """
-Generate the Ride Atlas HTML page from rides_cache.json.
+Ride Atlas renderer.
 
-Reads the cached Strava data, computes stats, and renders
-templates/rides.html → ~/rides_report.html.
+Computes lifetime / yearly / monthly ride stats, the California
+coverage map, the year-over-year comparison, and upcoming-trip pins,
+then fills `templates/rides.html` and writes the result to
+`~/rides_report.html`.
+
+Source of ride data:
+    - When USE_DB_RIDES=1 (set in production): reads from the Postgres
+      `rides` table. Data is refreshed twice daily by `sync.py --rides`.
+    - Otherwise: reads the local `rides_cache.json` produced by
+      `python strava_fetch.py`.
 
 Usage:
     python rides_report.py
@@ -86,12 +94,11 @@ MAX_PER_GROUP = 6
 
 
 def _load_rides() -> list[dict]:
-    """Return all rides in the same shape the renderer expects.
+    """Return all rides in the shape the renderer expects.
 
-    Prefers the DB (`USE_DB_RIDES=1`) so Render/Flask reads live data
-    instead of the stale rides_cache.json on disk. Legacy local CLI
-    (`python rides_report.py`) falls back to the JSON cache so existing
-    Mac workflows keep working during the migration window.
+    When `USE_DB_RIDES=1` (default in production), reads from Postgres.
+    Otherwise falls back to a local `rides_cache.json` produced by
+    running `python strava_fetch.py` directly.
     """
     import os
     if os.getenv("USE_DB_RIDES") == "1":
@@ -1644,8 +1651,8 @@ def generate():
     mp = _monthly_pulse(rides)
     ym = _yearly_miles(rides, now.year)
     yoy = _year_over_year(rides, now.year)
-    # Feed the YoY card the best-ride-per-year map so bar rows can show
-    # "Best: X" inline (replaces the separate Yearly Breakdown table).
+    # Feed the YoY card a best-ride-per-year map so its bar rows can
+    # show "Best: X" inline.
     yoy["best_by_year"] = {b["year"]: b["best"] for b in breakdown if b.get("best")}
 
     replacements = {

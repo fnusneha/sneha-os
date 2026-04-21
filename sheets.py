@@ -254,9 +254,9 @@ def resolve_spreadsheet_id(target: date, creds) -> str:
     Creates a new spreadsheet from the template for new months.
 
     Safety: refuses to create a new spreadsheet when DRIVE_PARENT_FOLDER_ID
-    is not set. Historically this caused silent duplicate spreadsheets to
-    be dropped in My Drive root whenever a script imported sheets.py before
-    loading the .env file.
+    is not set. Without this guard, a script that imports sheets.py before
+    loading the .env file would silently drop duplicate spreadsheets into
+    Drive root.
 
     Args:
         target: The date whose month determines which spreadsheet to use.

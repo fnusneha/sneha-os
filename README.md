@@ -1,130 +1,180 @@
 # Sneha.OS
 
-A single-user personal fitness operating system. Pulls data from Oura, Garmin, Strava, and Google Calendar; surfaces it on a mobile-friendly web UI (Quest Hub + Ride Atlas). Mac-independent, zero-cost hosting.
+A personal fitness operating system. Pulls health + training data from
+Oura, Garmin, Strava, and Google Calendar; surfaces it on a mobile-first
+web dashboard with two tabs — **Quest Hub** (daily rituals, weekly
+progress, habit pillars) and **Ride Atlas** (every cycling ride I've
+ever logged, mapped + scored against past years).
 
-**Repo:** `sneha-os` · **Live URL:** `https://sneha-os.onrender.com` *(coming up)*
+Single-user. Zero-cost hosting. Runs independently of any laptop.
 
-## Current stack (target state — migration in progress)
+**Live:** https://sneha-os.onrender.com/dashboard
+
+---
+
+## Screenshots
+
+| Quest Hub | Ride Atlas |
+| :--: | :--: |
+| Weekly star pulse, morning/core/night rituals, manual sauna log, season-pass habits, cycle-aware coaching. | Monthly & yearly medal tiers, year-over-year sparkline, CA coverage map, upcoming-trip pins. |
+
+---
+
+## Architecture
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│                     GitHub Actions (cron)                    │
-│   6am · 12pm · 6pm · 10pm daily                              │
-│   sync.py → Oura/Garmin/Strava/GCal → Postgres               │
-└──────────────────────────┬───────────────────────────────────┘
-                           │
+┌────────────────────────────────────────────────────────────┐
+│                   GitHub Actions (cron)                    │
+│   6am · 12pm · 6pm · 10pm Pacific — 4 slots/day            │
+│   sync.py → Oura / Garmin / Strava / GCal → Postgres       │
+└──────────────────────────┬─────────────────────────────────┘
+                           │ writes
                            ▼
-                ┌──────────────────────┐
-                │  Neon Postgres       │       ┌─────────────────┐
-                │  daily_entries       │◄──────┤  Phone browser  │
-                │  rides               │       │  (HTTPS)        │
-                │  season_pass         │       └────────▲────────┘
-                └──────────┬───────────┘                │
-                           │                            │
-                           ▼                            │
-                ┌──────────────────────┐                │
-                │  Render web service  │────────────────┘
-                │  Flask (app.py)      │
-                │  /dashboard /rides   │
-                │  /api/collect        │
-                │  /api/manual         │
-                └──────────────────────┘
+              ┌─────────────────────────┐
+              │  Neon Postgres          │      ┌──────────────┐
+              │  daily_entries · rides  │ ◄────┤  Phone / web │
+              │  season_pass · state    │      │  (HTTPS)     │
+              └──────────┬──────────────┘      └──────▲───────┘
+                         │ reads                      │
+                         ▼                            │
+              ┌─────────────────────────┐             │
+              │  Render (Flask app)     │ ────────────┘
+              │  / · /dashboard · /rides│
+              │  /api/collect · manual  │
+              └─────────────────────────┘
 ```
 
-No laptop. No Tailscale. No Google Sheets as a data store. Entirely free tier.
+## Tech stack
 
-## Data sources
+| Layer        | Tool                                                |
+|--------------|-----------------------------------------------------|
+| Web          | Flask · Gunicorn · Jinja-free string-template HTML  |
+| Data         | Postgres (Neon) via `psycopg[binary]` 3.x           |
+| Cron         | GitHub Actions (4 schedules/day + manual dispatch)  |
+| Hosting      | Render (free tier)                                  |
+| Integrations | Oura v2 · Garmin Connect · Strava v3 · Google APIs  |
+| Frontend     | Vanilla HTML/CSS/JS — no framework, no build step   |
+| Observability| Render logs + `/healthz` + `/api/health`            |
 
-| Data               | Source                       | Frequency |
-|--------------------|------------------------------|-----------|
-| Sleep              | Oura `/sleep`                | Every sync |
-| Steps              | Oura `/daily_activity`       | Every sync |
-| Cycle phase        | Oura + Google Calendar       | Every sync |
-| Calories           | Garmin Connect (MFP mirror)  | Every sync |
-| Strength / Cardio  | Garmin activities            | Every sync |
-| Rides              | Strava API                   | 2x daily   |
-| Notes / Trips      | Google Calendar              | Every sync |
-| Habits (annual)    | Google Docs (habit tracker)  | Daily      |
-| Travel pins        | Google Sheets (read-only)    | 6h cache   |
-| **Sauna**          | **Manual toggle in mobile UI** | On tap   |
-| **Morning/Night**  | **Manual collect in mobile UI** | On tap  |
+The dashboard is deliberately **framework-free**: one `<style>` block,
+one `<script>` block, zero npm. The whole site is ~100 KB of HTML/CSS/JS
+per page, rendered server-side from Postgres rows.
+
+## Features
+
+**Quest Hub**
+- Weekly pulse: live star tally, 3-circle today slots (morning/core/night), day bubbles with per-day detail modal
+- Daily Quest: 4-item morning ritual, 7-item core missions with live progress ("need 2 more to earn ⭐"), 4-item night ritual, explicit threshold hints
+- Manual toggles (sauna / steam) — tap to save
+- Season Pass: monthly habit checklist backed by DB
+- Pillar Health accordion: annual anchors from a Google Docs habit tracker
+- Cycle-phase aware coaching line (Follicular / Ovulation / Luteal)
+
+**Ride Atlas**
+- Monthly pulse with Bronze / Silver / Gold tiers, weekly breakdown
+- Year-at-a-glance with compact past-months-only layout
+- Year-over-year sparkline across up to 5 years
+- California coverage map — every ridden location clustered + geocoded
+- Upcoming rides from a Google-Sheets Travel Planner
+- Region cards grouped by area, linking to Strava
+
+**Operational**
+- Stars / sauna / rituals saved **optimistically** — UI flips immediately, server confirms in the background
+- Sync is idempotent: safe to re-run the same day without overwriting collected stars
+- Timezone-pinned (America/Los_Angeles) so "today" always matches the user's local wall clock, not whatever the runner's timezone happens to be
+- Graceful degradation if Oura / Garmin / Strava / Google temporarily fails — the dashboard still renders, stale fields just stay stale
 
 ## Repo layout
 
 ```
-fitness-automation/
-├── app.py                 # Flask entrypoint (Render web service)
+.
+├── app.py                 # Flask entrypoint
 ├── sync.py                # Daily sync orchestrator (GitHub Actions cron)
-├── db.py                  # psycopg3 connection + row mappers
-├── migrate.py             # One-shot: Google Sheets → Postgres backfill
-├── api_clients.py         # Oura + Garmin wrappers (preserved from v1)
+├── db.py                  # Postgres access layer
+├── data_gather.py         # Builds the dict the templates render
+├── api_clients.py         # Oura + Garmin wrappers
 ├── strava_fetch.py        # Strava OAuth + ride fetch
-├── cycle.py               # Cycle-phase calc (preserved)
-├── constants.py           # Goals, thresholds, phase definitions
-├── scoring.py             # Daily-star logic
-├── html_report.py         # Quest Hub HTML renderer
-├── rides_report.py        # Ride Atlas HTML renderer
-├── tz.py                  # Pacific-time helpers (local_today, local_now)
+├── cycle.py               # Menstrual-cycle phase calc
+├── scoring.py             # Daily star logic
+├── constants.py           # Goals, thresholds, row layouts
+├── sheets.py              # Google Sheets + Drive + Calendar + Docs
 ├── travel_source.py       # Travel Master Planner reader
 ├── habit_source.py        # Habit tracker doc reader
+├── html_report.py         # Quest Hub HTML renderer
+├── rides_report.py        # Ride Atlas HTML renderer
+├── tz.py                  # Pacific-time helpers
 ├── templates/
 │   ├── morning_report.html  # Quest Hub template
 │   └── rides.html           # Ride Atlas template
-├── render.yaml            # Render deploy blueprint
+├── migrations/
+│   └── 001_initial_schema.sql
+├── scripts/
+│   └── smoke.sh           # End-to-end smoke test
 ├── .github/workflows/
-│   └── sync.yml           # Cron: run sync.py on schedule
-├── requirements.txt
-├── .gitignore
-└── README.md              # You are here
+│   └── sync.yml           # Cron workflow
+├── render.yaml            # Render blueprint
+├── Procfile
+└── requirements.txt
 ```
-
-## Branch workflow
-
-- `main` is protected. All changes go through a PR.
-- Conventional commits: `feat:`, `fix:`, `chore:`, `refactor:`, `docs:`.
-- Render auto-deploys `main` on merge; preview environments on PRs.
 
 ## Local development
 
 ```bash
-# First time
+# Python 3.12
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 
-# Set DATABASE_URL in .env (Neon connection string)
-# Set OURA_TOKEN, GARMIN_EMAIL/PASSWORD, STRAVA_* tokens
+# .env expected keys:
+#   DATABASE_URL     - postgres://... (local docker or Neon)
+#   OURA_TOKEN
+#   GARMIN_EMAIL / GARMIN_PASSWORD
+#   STRAVA_CLIENT_ID / STRAVA_CLIENT_SECRET / STRAVA_REFRESH_TOKEN
+#   GOOGLE_TOKEN_JSON  - OAuth token JSON (single line)
 
-# Manual sync (same data flow as the cron)
+# Apply schema
+psql "$DATABASE_URL" -f migrations/001_initial_schema.sql
+
+# Manual sync (same code as the GitHub Actions cron runs)
 python sync.py --morning --force
-python sync.py --date 2026-04-20
 
 # Run the web app locally
-python app.py  # serves http://localhost:8000/dashboard
-
-# One-shot migration from old Sheets
-python migrate.py --source-spreadsheet <id> --month 2026-04
+python app.py          # http://localhost:8000/dashboard
 ```
 
-## Secrets
+## Deployment
 
-Never committed. Stored in:
-- `.env` (local dev only — gitignored)
-- Render env vars (production runtime)
-- GitHub Actions repo secrets (cron runtime)
+- **Web app** deploys to Render from `main` via `render.yaml`. Secrets
+  (DATABASE_URL, OURA_TOKEN, etc.) are set in the Render dashboard and
+  never live in the repo.
+- **Cron** runs in GitHub Actions via `.github/workflows/sync.yml`;
+  the same secrets live in repo Actions secrets. Manual dispatch is
+  always available from the Actions tab.
+- **Database** is a single free-tier Neon Postgres project in
+  `us-west-2` (matches Render's Oregon region so p50 query latency
+  is a couple ms).
 
-Required: `OURA_TOKEN`, `GARMIN_EMAIL`, `GARMIN_PASSWORD`, `STRAVA_CLIENT_ID`, `STRAVA_CLIENT_SECRET`, `STRAVA_REFRESH_TOKEN`, `DATABASE_URL`, `GOOGLE_CREDS_JSON`, `GARMIN_TOKENS_TARBALL_B64`.
+`scripts/smoke.sh <base-url>` exercises every route end-to-end and
+exits non-zero on failure; run it after a deploy.
 
-## Why this rewrite
+## Design notes
 
-The v1 used Google Sheets as a write-heavy data store, ran Python scripts via macOS launchd, and exposed a Node MCP server via Tailscale funnel. It worked, but:
+- **`sync` is the source of truth.** External APIs are pulled into
+  Postgres on a schedule; every rendered page is a snapshot of
+  `daily_entries` + `rides`. That clean boundary makes failures easy to
+  reason about: if the dashboard is wrong, check the DB; if the DB is
+  wrong, check the last sync log.
+- **Optimistic UI everywhere.** Tapping a star flips the UI
+  immediately and fires an `/api/collect` POST in the background; if
+  the POST fails the UI reverts and a red toast explains why.
+- **No stale HTML.** Every `/dashboard` hit re-renders from fresh
+  rows. Neon is fast enough (<100 ms typical) that a cache isn't
+  worth the complexity.
+- **One timezone.** `tz.local_today()` pins everything to Pacific so
+  a cron run at 02:00 UTC on Tuesday still writes to Monday's row
+  because it's still Monday evening in Pacific.
 
-- The laptop had to be on + awake + MCP server healthy for the mobile URL to load.
-- Google Sheets hit write rate limits, silently dropped writes into merged cells, and (bug) accidentally created 50 orphan spreadsheets in Drive root.
-- ~6,700 lines of Python + ~1,000 lines of Node was mostly plumbing around Sheets quirks.
+## License
 
-The new stack is ~1/3 the code, has zero laptop dependency, and costs $0.
-
-## Migration plan
-
-See `.claude/plans/playful-sniffing-tiger.md` for the full migration plan and current step.
+Personal project. No license — code is public for portfolio
+purposes but not licensed for reuse.

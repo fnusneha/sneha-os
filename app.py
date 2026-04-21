@@ -1,27 +1,23 @@
 """
-app.py — Flask web service for Sneha.OS v2.
-
-Deployed to Render (free tier). Reads/writes Neon. No Google Sheets,
-no Tailscale, no Mac dependency.
+Flask web service — Quest Hub + Ride Atlas.
 
 Routes:
     GET  /                 → redirect to /dashboard
     GET  /dashboard        → Quest Hub HTML (rendered live from DB)
     GET  /rides            → Ride Atlas HTML
-    POST /api/collect      → {action: morning|night|core, date} → set star in DB
-    POST /api/manual       → {field: sauna, value: bool, date}   → toggle any manual field
-    POST /api/season       → {index, done}  → toggle season-pass item for current month
-    GET  /api/season       → return current month's done_indices (for frontend)
+    POST /api/collect      → {action: morning|night|core, date} — set daily star
+    POST /api/manual       → {field: sauna, value: bool, date}  — toggle manual field
+    POST /api/season       → {index, done}  — toggle season-pass item for current month
+    GET  /api/season       → current month's done_indices
     GET  /api/health       → JSON: DB row counts + last-sync date
     GET  /healthz          → liveness probe (200 "ok")
 
-Design notes:
-    * Every render pulls fresh from Neon (no stale-HTML cache). Rows
-      are small and Neon is fast.
-    * We never touch the `~/morning_report.html` file — the v1 MCP
-      server wrote to it, but here the Flask route generates and
-      returns HTML directly.
-    * All mutations return JSON so the frontend can show errors.
+Design:
+    - Every render pulls fresh rows from Postgres. Rows are small
+      (~10 per week) and Neon is fast, so there's no HTML cache.
+    - Mutations return JSON so the browser can surface errors.
+    - Responses set Cache-Control: no-store so mobile always sees
+      fresh data on refresh.
 """
 
 from __future__ import annotations
@@ -105,12 +101,11 @@ def dashboard():
 
 @app.get("/rides")
 def rides():
-    """Re-renders the ride atlas HTML from Neon on every hit.
+    """Re-render the Ride Atlas HTML from the DB on every hit.
 
-    In v1 the ride atlas had a 6-hour disk cache. Here the render takes
-    ~200ms because it's just an in-memory template fill + Neon query —
-    no Strava API call. A separate GitHub Actions cron fetches fresh
-    ride data 2× daily and writes it to the rides table.
+    Render takes ~200 ms — it's just an in-memory template fill against
+    rows already in Postgres. No Strava API call in the request path;
+    a separate cron job refreshes the `rides` table twice a day.
     """
     try:
         # Import lazily so a broken rides_report.py never breaks /dashboard.

@@ -30,6 +30,7 @@ rides_cache.json
 *.bak
 *.backup_*
 
-# Claude Code (project-local settings + session data stay local)
-.claude/settings.local.json
-.claude/projects/
+# Editor / assistant local state (stays on your machine)
+.claude/
+.vscode/
+.idea/
