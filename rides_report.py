@@ -232,8 +232,15 @@ def _yearly_miles(rides: list[dict], year: int) -> dict:
 
 
 def _monthly_pulse_html(mp: dict) -> str:
-    """Build the Monthly Pulse card — mirrors Quest Hub's Weekly Pulse."""
-    # Week cells (like Mon-Sun day bubbles in Quest Hub)
+    """Build the Monthly Pulse card — compact 3-zone design.
+
+    Zone 1 (header):   month label + big miles number + count/best inline
+    Zone 2 (progress): bar with tier ticks + single status line
+    Zone 3 (grid):     5 weekly cells
+
+    Shares .summary-card / .sum-head / .sum-progress / .sum-grid classes
+    with the yearly widget for visual consistency.
+    """
     week_labels = ["WK 1", "WK 2", "WK 3", "WK 4", "WK 5"]
     week_cells = []
     for i in range(5):
@@ -241,106 +248,29 @@ def _monthly_pulse_html(mp: dict) -> str:
         has = val > 0
         is_now = i == mp["current_week"]
         if is_now:
-            cls = "rp-day is-today"
+            cls = "sum-cell is-current"
         elif has:
-            cls = "rp-day has-miles"
+            cls = "sum-cell has-data"
         else:
-            cls = "rp-day empty"
-        display = f'{val}<span class="rp-mi">mi</span>' if has else "&mdash;"
+            cls = "sum-cell empty"
+        display = f'{val}<span class="sum-cell-unit">mi</span>' if has else "&mdash;"
         week_cells.append(
-            f'<div class="{cls}"><div class="rp-day-num">{display}</div>'
-            f'<div class="rp-day-lbl">{week_labels[i]}</div></div>'
+            f'<div class="{cls}"><div class="sum-cell-val">{display}</div>'
+            f'<div class="sum-cell-lbl">{week_labels[i]}</div></div>'
         )
 
-    # ── Monthly milestone tiers ──
-    # Calibrated from user's ride history:
-    #   Bronze 50  — consistency floor (hit every active month)
-    #   Silver 100 — solid month (matches 2024 avg 128 / 2025 avg 96)
-    #   Gold   150 — peak month (9 historical months have hit this)
+    # Medal tiers (calibrated from history, see git log)
     TIERS = [
-        ("Bronze", 50,  "\U0001F949"),  # 🥉
-        ("Silver", 100, "\U0001F948"),  # 🥈
-        ("Gold",   150, "\U0001F947"),  # 🥇
+        ("Bronze", 50,  "\U0001F949"),
+        ("Silver", 100, "\U0001F948"),
+        ("Gold",   150, "\U0001F947"),
     ]
     total = mp["total"]
     earned = [t for t in TIERS if total >= t[1]]
     nxt = next((t for t in TIERS if total < t[1]), None)
-
-    # Map bar fill to the highest visible tier so the bar is always meaningful
-    max_scale = TIERS[-1][1] if total >= TIERS[-2][1] else TIERS[-1][1]
+    max_scale = TIERS[-1][1]
     bar_pct = min(round((total / max_scale) * 100), 100)
 
-    # ── Trophy chip: earned + next ──
-    # Chip layout is optimized for a SINGLE-ROW display beside the miles
-    # hero number. Less-essential text is wrapped in `.rp-desc-extra` so
-    # narrow screens can hide it without losing the core info (icon +
-    # "earned" or "X mi to go").
-    if earned and nxt:
-        latest = earned[-1]
-        to_go = nxt[1] - total
-        hero_right = (
-            f'<div class="rp-trophy-block">'
-            f'  <div class="rp-medal-chip rp-medal-earned">'
-            f'    <div class="rp-medal-icon-lg">{latest[2]}</div>'
-            f'    <div class="rp-medal-info">'
-            f'      <div class="rp-medal-name">{latest[0]}</div>'
-            f'      <div class="rp-medal-desc"><span class="rp-desc-extra">{latest[1]}mi &middot; </span><span class="rp-earned-tag">earned</span></div>'
-            f'    </div>'
-            f'  </div>'
-            f'  <div class="rp-medal-chip rp-medal-next">'
-            f'    <div class="rp-medal-icon-lg rp-dim">{nxt[2]}</div>'
-            f'    <div class="rp-medal-info">'
-            f'      <div class="rp-medal-name">{nxt[0]}</div>'
-            f'      <div class="rp-medal-desc"><span class="rp-togo-num">{to_go}</span>mi<span class="rp-desc-extra"> to go</span></div>'
-            f'    </div>'
-            f'  </div>'
-            f'</div>'
-        )
-    elif earned and not nxt:  # all tiers earned
-        hero_right = (
-            f'<div class="rp-trophy-block rp-trophy-complete">'
-            f'  <div class="rp-trophy-full">\U0001F3C6</div>'
-            f'  <div class="rp-medal-info">'
-            f'    <div class="rp-medal-name">Month Crushed</div>'
-            f'    <div class="rp-medal-desc">All 3 medals &middot; {total} mi</div>'
-            f'  </div>'
-            f'</div>'
-        )
-    else:  # no tier earned yet
-        to_go = nxt[1] - total if nxt else 0
-        hero_right = (
-            f'<div class="rp-trophy-block">'
-            f'  <div class="rp-medal-chip rp-medal-next">'
-            f'    <div class="rp-medal-icon-lg rp-dim">{nxt[2]}</div>'
-            f'    <div class="rp-medal-info">'
-            f'      <div class="rp-medal-name">{nxt[0]}</div>'
-            f'      <div class="rp-medal-desc"><span class="rp-togo-num">{to_go}</span>mi<span class="rp-desc-extra"> to first medal</span></div>'
-            f'    </div>'
-            f'  </div>'
-            f'</div>'
-        )
-
-    # ── Milestone markers on the bar (bronze, silver, gold) ──
-    medal_html = []
-    for tier_name, threshold, emoji in TIERS:
-        pct = round((threshold / max_scale) * 100)
-        cls = "lit" if total >= threshold else "dim"
-        medal_html.append(
-            f'<div class="rp-medal {cls}" style="left:{pct}%;" title="{tier_name} &mdash; {threshold}mi">'
-            f'<span class="rp-medal-ico">{emoji}</span>'
-            f'<span class="rp-medal-lbl">{threshold}</span></div>'
-        )
-
-    # ── Contextual stat footer (the data from the old 3 circles, but now in context) ──
-    stat_footer = (
-        f'<div class="rp-stats-row">'
-        f'<span class="rp-stat"><strong>{mp["count"]}</strong> ride{"s" if mp["count"] != 1 else ""}</span>'
-        f'<span class="rp-stat-sep">&middot;</span>'
-        f'<span class="rp-stat"><strong>{mp["best"]}</strong> mi longest</span>'
-        f'</div>'
-    )
-
-    # Month name full (Apr → April) so the label is explicit
     month_full_names = {
         "Jan": "January", "Feb": "February", "Mar": "March", "Apr": "April",
         "May": "May", "Jun": "June", "Jul": "July", "Aug": "August",
@@ -348,27 +278,76 @@ def _monthly_pulse_html(mp: dict) -> str:
     }
     month_full = month_full_names.get(mp["month_name"], mp["month_name"])
     current_year = datetime.now().year
+    ride_word = "ride" if mp["count"] == 1 else "rides"
 
-    return f'''<div class="card rp-pulse">
-  <div class="rp-section-caption">This Month &middot; {month_full} {current_year}</div>
-  <div class="rp-hero-row">
-    <div class="rp-num-block">
-      <div class="rp-big-num">{mp["total"]}</div>
-      <div class="rp-big-sub">miles<br>{mp["month_name"]}</div>
+    return f'''<div class="card summary-card">
+  <div class="sum-head">
+    <div class="sum-title-block">
+      <div class="sum-eyebrow">This Month</div>
+      <div class="sum-title">{month_full} {current_year}</div>
     </div>
-    {hero_right}
-  </div>
-  <div class="rp-bar-row">
-    <div class="rp-track">
-      <div class="rp-fill" style="width:{bar_pct}%;"></div>
-      {"".join(medal_html)}
+    <div class="sum-hero-block">
+      <div class="sum-hero-num">{total}</div>
+      <div class="sum-hero-unit">mi</div>
     </div>
   </div>
-  {stat_footer}
-  <div class="rp-days">
+  <div class="sum-stats">
+    {mp["count"]} {ride_word}  &middot;  longest <strong>{mp["best"]}</strong> mi
+  </div>
+  {_progress_zone_html(total, earned, nxt, TIERS, bar_pct, "mi")}
+  <div class="sum-grid sum-grid-weeks">
     {"".join(week_cells)}
   </div>
 </div>'''
+
+
+def _progress_zone_html(total, earned, nxt, tiers, bar_pct, unit):
+    """Shared progress zone for both monthly and yearly cards.
+
+    Renders a single horizontal bar with 3 tier ticks (medal icon above,
+    threshold label below) plus ONE single-line status telling you
+    either what you've earned or how far to the next medal.
+    """
+    # Tier ticks on the bar
+    max_scale = tiers[-1][1]
+    ticks = []
+    for name, threshold, emoji in tiers:
+        pct = round((threshold / max_scale) * 100)
+        lit = "lit" if total >= threshold else "dim"
+        disp = f"{threshold // 1000}k" if threshold >= 1000 else str(threshold)
+        ticks.append(
+            f'<div class="sum-tick {lit}" style="left:{pct}%;" title="{name} — {threshold}{unit}">'
+            f'<span class="sum-tick-ico">{emoji}</span>'
+            f'<span class="sum-tick-lbl">{disp}</span></div>'
+        )
+
+    # Status line: one sentence covering both earned + next
+    if earned and nxt:
+        latest_emoji = earned[-1][2]
+        latest_name = earned[-1][0]
+        to_go = nxt[1] - total
+        status = (
+            f'<span class="sum-status-earned">{latest_emoji} {latest_name} earned</span>'
+            f'<span class="sum-status-sep"> &middot; </span>'
+            f'<span class="sum-status-next"><strong>{to_go}</strong> {unit} to {nxt[2]} {nxt[0]}</span>'
+        )
+    elif earned and not nxt:
+        status = f'<span class="sum-status-done">\U0001F3C6 All 3 medals earned &middot; {total:,} {unit}</span>'
+    else:
+        to_go = nxt[1] - total if nxt else 0
+        status = (
+            f'<span class="sum-status-next"><strong>{to_go}</strong> {unit} to first medal '
+            f'{nxt[2]} {nxt[0]}</span>' if nxt else
+            f'<span class="sum-status-done">{total:,} {unit}</span>'
+        )
+
+    return f'''<div class="sum-progress">
+    <div class="sum-bar">
+      <div class="sum-bar-fill" style="width:{bar_pct}%"></div>
+      {"".join(ticks)}
+    </div>
+    <div class="sum-status">{status}</div>
+  </div>'''
 
 
 def _year_over_year(rides: list[dict], current_year: int) -> dict:
@@ -656,136 +635,87 @@ def _year_over_year_html(yoy: dict) -> str:
     else:
         one_liner = f"{cur_total:,} miles this year so far."
 
-    return f'''<div class="card yoy-card">
-  <div class="yoy-head">
-    <div class="yoy-title">How {cy} compares</div>
-    <div class="yoy-sub">{one_liner}</div>
+    return f'''<div class="card yoy-card summary-card">
+  <div class="sum-head">
+    <div class="sum-title-block">
+      <div class="sum-eyebrow">vs. past years</div>
+      <div class="sum-title">How {cy} compares</div>
+    </div>
   </div>
+  <div class="sum-stats">{one_liner}</div>
   <div class="yoy-chips">{chips_html}</div>
   <div class="yoy-spark-wrap">{sparkline}</div>
   <div class="yoy-legend">{"".join(legend_items)}</div>
   <div class="yoy-divider"></div>
-  <div class="yoy-bars-label">Year-by-year totals</div>
+  <div class="sum-eyebrow" style="margin-top:6px">Year-by-year totals</div>
   <div class="yoy-bars">{"".join(bars_html)}</div>
 </div>'''
 
 
 def _yearly_widget_html(ym: dict) -> str:
-    """Build the Year at a Glance card — compact: past+current months only."""
+    """Build the Year at a Glance card — compact 3-zone design that
+    visually matches the monthly pulse card."""
     month_names = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN",
                    "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
 
-    # ── Yearly medal tiers (consistent naming with monthly) ──
     TIERS = [
-        ("Bronze", 250,  "\U0001F949"),  # 🥉
-        ("Silver", 500,  "\U0001F948"),  # 🥈
-        ("Gold",   1000, "\U0001F947"),  # 🥇
+        ("Bronze", 250,  "\U0001F949"),
+        ("Silver", 500,  "\U0001F948"),
+        ("Gold",   1000, "\U0001F947"),
     ]
     total = ym["total"]
     earned = [t for t in TIERS if total >= t[1]]
     nxt = next((t for t in TIERS if total < t[1]), None)
+    bar_pct = min(round((total / TIERS[-1][1]) * 100), 100)
 
-    # ── Trophy chips (mirrors monthly pulse, single-row compact) ──
-    if earned and nxt:
-        latest = earned[-1]
-        to_go = nxt[1] - total
-        hero_right = (
-            f'<div class="rp-trophy-block">'
-            f'  <div class="rp-medal-chip rp-medal-earned">'
-            f'    <div class="rp-medal-icon-lg">{latest[2]}</div>'
-            f'    <div class="rp-medal-info">'
-            f'      <div class="rp-medal-name">{latest[0]}</div>'
-            f'      <div class="rp-medal-desc"><span class="rp-desc-extra">{latest[1]}mi &middot; </span><span class="rp-earned-tag">earned</span></div>'
-            f'    </div>'
-            f'  </div>'
-            f'  <div class="rp-medal-chip rp-medal-next">'
-            f'    <div class="rp-medal-icon-lg rp-dim">{nxt[2]}</div>'
-            f'    <div class="rp-medal-info">'
-            f'      <div class="rp-medal-name">{nxt[0]}</div>'
-            f'      <div class="rp-medal-desc"><span class="rp-togo-num">{to_go}</span>mi<span class="rp-desc-extra"> to go</span></div>'
-            f'    </div>'
-            f'  </div>'
-            f'</div>'
-        )
-    elif earned and not nxt:
-        hero_right = (
-            f'<div class="rp-trophy-block rp-trophy-complete">'
-            f'  <div class="rp-trophy-full">\U0001F3C6</div>'
-            f'  <div class="rp-medal-info">'
-            f'    <div class="rp-medal-name">Year Crushed</div>'
-            f'    <div class="rp-medal-desc">All 3 medals &middot; {total:,} mi</div>'
-            f'  </div>'
-            f'</div>'
-        )
-    else:
-        to_go = nxt[1] - total if nxt else 0
-        hero_right = (
-            f'<div class="rp-trophy-block">'
-            f'  <div class="rp-medal-chip rp-medal-next">'
-            f'    <div class="rp-medal-icon-lg rp-dim">{nxt[2]}</div>'
-            f'    <div class="rp-medal-info">'
-            f'      <div class="rp-medal-name">{nxt[0]}</div>'
-            f'      <div class="rp-medal-desc"><span class="rp-togo-num">{to_go}</span>mi<span class="rp-desc-extra"> to first medal</span></div>'
-            f'    </div>'
-            f'  </div>'
-            f'</div>'
-        )
-
-    # ── Medals on progress bar (lit/dim states) ──
-    medal_html = []
-    for tier_name, threshold, emoji in TIERS:
-        pct = round((threshold / TIERS[-1][1]) * 100)
-        cls = "lit" if total >= threshold else "dim"
-        display = f"{threshold // 1000}k" if threshold >= 1000 else str(threshold)
-        medal_html.append(
-            f'<div class="rp-medal {cls}" style="left:{pct}%;" title="{tier_name} &mdash; {threshold}mi">'
-            f'<span class="rp-medal-ico">{emoji}</span>'
-            f'<span class="rp-medal-lbl">{display}</span></div>'
-        )
-
-    # ── Compact month strip: only show Jan..current month + "X more" chip ──
-    current_m = ym["current_month"]  # 1..12
+    # Compact month strip: past + current months only, +N TO GO chip
+    current_m = ym["current_month"]
     cells = []
-    for i in range(current_m):  # indices 0..current_m-1
+    for i in range(current_m):
         val = ym["months"][i]
         is_current = (i + 1) == current_m
         has = val > 0
         if is_current:
-            cls = "rp-day is-today"
+            cls = "sum-cell is-current"
         elif has:
-            cls = "rp-day has-miles"
+            cls = "sum-cell has-data"
         else:
-            cls = "rp-day empty"
-        display = f'{val}<span class="rp-mi">mi</span>' if has else "&mdash;"
+            cls = "sum-cell empty"
+        display = f'{val}<span class="sum-cell-unit">mi</span>' if has else "&mdash;"
         cells.append(
-            f'<div class="{cls}"><div class="rp-day-num">{display}</div>'
-            f'<div class="rp-day-lbl">{month_names[i]}</div></div>'
+            f'<div class="{cls}"><div class="sum-cell-val">{display}</div>'
+            f'<div class="sum-cell-lbl">{month_names[i]}</div></div>'
         )
-
     months_remaining = 12 - current_m
     if months_remaining > 0:
         cells.append(
-            f'<div class="rp-day rp-more-chip" title="months remaining in {ym["year"]}">'
-            f'<div class="rp-day-num">+{months_remaining}</div>'
-            f'<div class="rp-day-lbl">TO GO</div></div>'
+            f'<div class="sum-cell sum-cell-more" title="months remaining in {ym["year"]}">'
+            f'<div class="sum-cell-val">+{months_remaining}</div>'
+            f'<div class="sum-cell-lbl">TO GO</div></div>'
         )
 
-    return f'''<div class="card rp-year">
-  <div class="rp-section-caption">This Year &middot; {ym["year"]} Total</div>
-  <div class="rp-hero-row">
-    <div class="rp-num-block">
-      <div class="rp-big-num">{ym["total"]}</div>
-      <div class="rp-big-sub">miles<br>{ym["year"]}</div>
+    # Quick stats: active months so far + avg/active-month
+    active_months = sum(1 for v in ym["months"][:current_m] if v > 0)
+    avg_per_active = round(total / active_months) if active_months else 0
+    stats_text = (
+        f'{active_months} active month{"s" if active_months != 1 else ""}'
+        f'  &middot;  avg <strong>{avg_per_active}</strong> mi/month'
+    )
+
+    return f'''<div class="card summary-card">
+  <div class="sum-head">
+    <div class="sum-title-block">
+      <div class="sum-eyebrow">This Year</div>
+      <div class="sum-title">{ym["year"]}</div>
     </div>
-    {hero_right}
-  </div>
-  <div class="rp-bar-row">
-    <div class="rp-track">
-      <div class="rp-fill rp-fill-year" style="width:{ym["pct"]}%;"></div>
-      {"".join(medal_html)}
+    <div class="sum-hero-block">
+      <div class="sum-hero-num">{ym["total"]}</div>
+      <div class="sum-hero-unit">mi</div>
     </div>
   </div>
-  <div class="rp-months rp-months-compact">
+  <div class="sum-stats">{stats_text}</div>
+  {_progress_zone_html(total, earned, nxt, TIERS, bar_pct, "mi")}
+  <div class="sum-grid sum-grid-months">
     {"".join(cells)}
   </div>
 </div>'''
@@ -1431,9 +1361,8 @@ def _ca_coverage_html(rides: list[dict]) -> str:
     return f'''<div class="section-label">California &middot; Ride Coverage</div>
 <div class="card ca-coverage">
   <div class="ca-header">
-    <div>
-      <div class="ca-title">Where you've ridden</div>
-      <div class="ca-sub">California &middot; ridden · booked · wishlist</div>
+    <div class="ca-header-text">
+      <div class="ca-sub">ridden &middot; booked &middot; wishlist</div>
     </div>
     <div class="ca-count">
       <div class="ca-count-num">{len(ca_rides)}</div>

@@ -110,6 +110,218 @@ body {
   margin: 24px 0 10px;
 }
 
+/* ═══════════════════════════════════════════════════════════════════
+   SUMMARY CARDS (Monthly Pulse + Yearly Widget share this template)
+   Three zones, same visual rhythm on both cards.
+   ═══════════════════════════════════════════════════════════════════ */
+
+.summary-card {
+  padding: 18px 18px 16px;
+}
+
+/* Zone 1 — header: eyebrow + title left, big miles number right */
+.sum-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  margin-bottom: 4px;
+}
+.sum-title-block { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sum-eyebrow {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--dim);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.sum-title {
+  font-family: 'Fraunces', serif;
+  font-size: 24px;
+  font-weight: 500;
+  color: var(--text);
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+.sum-hero-block {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.sum-hero-num {
+  font-family: 'Fraunces', serif;
+  font-size: 44px;
+  font-weight: 500;
+  color: var(--gold);
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+.sum-hero-unit {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+}
+
+/* Inline stats line right below header — "2 rides · longest 51.9 mi" */
+.sum-stats {
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 18px;
+  font-family: 'DM Mono', monospace;
+  letter-spacing: 0.02em;
+}
+.sum-stats strong {
+  color: var(--text);
+  font-family: 'Fraunces', serif;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Zone 2 — progress: bar with 3 tier ticks + single status line */
+.sum-progress { margin: 6px 0 16px; }
+.sum-bar {
+  position: relative;
+  height: 4px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 3px;
+  margin: 16px 0 30px;  /* room for tick icons above + labels below */
+  overflow: visible;
+}
+.sum-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--sky), var(--mint));
+  box-shadow: 0 0 6px rgba(110,231,183,0.2);
+  transition: width 0.6s ease;
+}
+.sum-tick {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+}
+.sum-tick-ico {
+  font-size: 15px;
+  margin-bottom: 14px; /* sits above the bar line */
+  transition: filter 0.3s;
+}
+.sum-tick.dim  .sum-tick-ico { filter: grayscale(0.9) opacity(0.55); }
+.sum-tick.lit  .sum-tick-ico { filter: drop-shadow(0 0 5px rgba(245,200,66,0.6)); }
+.sum-tick-lbl {
+  position: absolute;
+  top: 14px; /* below bar line */
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.sum-tick.lit .sum-tick-lbl { color: var(--gold); }
+
+/* Status line — earned + next in a single sentence */
+.sum-status {
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+  margin-top: 8px;
+  line-height: 1.5;
+}
+.sum-status-earned {
+  color: var(--gold);
+  font-weight: 600;
+  font-family: 'Fraunces', serif;
+  font-size: 13px;
+}
+.sum-status-sep { color: var(--dim); margin: 0 2px; }
+.sum-status-next strong {
+  color: var(--text);
+  font-family: 'Fraunces', serif;
+  font-size: 14px;
+  font-weight: 600;
+}
+.sum-status-done {
+  color: var(--mint);
+  font-weight: 600;
+  font-family: 'Fraunces', serif;
+  font-size: 13px;
+}
+
+/* Zone 3 — week / month grid. Shared cell styling. */
+.sum-grid {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.sum-grid-weeks .sum-cell { flex: 1 1 0; min-width: 52px; }
+.sum-grid-months .sum-cell { flex: 1 1 0; min-width: 48px; }
+.sum-cell {
+  padding: 10px 4px 8px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 8px;
+  text-align: center;
+  transition: border-color 0.2s, background 0.2s;
+}
+.sum-cell.empty { opacity: 0.45; }
+.sum-cell.has-data {
+  background: rgba(125,211,252,0.06);
+  border-color: rgba(125,211,252,0.15);
+}
+.sum-cell.is-current {
+  background: rgba(110,231,183,0.1);
+  border-color: rgba(110,231,183,0.35);
+  box-shadow: 0 0 10px rgba(110,231,183,0.12);
+}
+.sum-cell-val {
+  font-family: 'Fraunces', serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1;
+}
+.sum-cell.is-current .sum-cell-val { color: var(--mint); }
+.sum-cell.empty .sum-cell-val { color: var(--dim); }
+.sum-cell-unit {
+  font-family: 'DM Mono', monospace;
+  font-size: 8px;
+  color: var(--muted);
+  margin-left: 1px;
+  font-weight: 400;
+}
+.sum-cell-lbl {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  color: var(--dim);
+  letter-spacing: 0.08em;
+  margin-top: 4px;
+}
+.sum-cell-more {
+  background: transparent;
+  border: 1px dashed rgba(125,154,184,0.25);
+}
+.sum-cell-more .sum-cell-val { color: var(--muted); }
+
+/* Mobile refinements — keep hero row on one line, shrink grid gaps */
+@media (max-width: 420px) {
+  .summary-card { padding: 14px 14px 12px; }
+  .sum-title { font-size: 19px; }
+  .sum-hero-num { font-size: 34px; }
+  .sum-grid { gap: 4px; }
+  .sum-grid-weeks .sum-cell,
+  .sum-grid-months .sum-cell { min-width: 42px; padding: 8px 2px 6px; }
+  .sum-cell-val { font-size: 13px; }
+  .sum-cell-lbl { font-size: 8px; }
+  .sum-tick-ico { font-size: 13px; }
+  .sum-tick-lbl { font-size: 9px; }
+}
+
 /* ── LIFETIME STATS ── */
 .stats-row {
   display: flex;
@@ -1240,8 +1452,8 @@ body {
 {{CA_COVERAGE_HTML}}
 
 <!-- UPCOMING RIDES (from Travel Master Planner sheet) — flows naturally after the map since both are about planned/upcoming trips -->
+<div class="section-label">Upcoming Rides</div>
 <div class="card">
-  <div class="card-title">Upcoming Rides</div>
   {{UPCOMING_RIDES_HTML}}
 </div>
 
