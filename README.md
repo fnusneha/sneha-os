@@ -1,6 +1,8 @@
-# Sneha.OS — Personal Fitness Dashboard
+# Sneha.OS
 
-A single-user, Mac-independent fitness dashboard. Pulls data from Oura, Garmin, Strava, and Google Calendar; surfaces it on a mobile-friendly web UI. No spreadsheet, no laptop dependency.
+A single-user personal fitness operating system. Pulls data from Oura, Garmin, Strava, and Google Calendar; surfaces it on a mobile-friendly web UI (Quest Hub + Ride Atlas). Mac-independent, zero-cost hosting.
+
+**Repo:** `sneha-os` · **Live URL:** `https://sneha-os.onrender.com` *(coming up)*
 
 ## Current stack (target state — migration in progress)
 
