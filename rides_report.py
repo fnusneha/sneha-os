@@ -1128,7 +1128,7 @@ def _ca_coverage_html(rides: list[dict]) -> str:
     booked_points = []
     try:
         from travel_source import fetch_travel_pins
-        from sheets import get_google_creds
+        from google_auth import get_google_creds
         creds = get_google_creds()
         pins = fetch_travel_pins(creds)
         booked_cycling = [p for p in pins if not p["pinned"] and p["icon"] == "\U0001f6b4"]
@@ -1173,7 +1173,7 @@ def _ca_coverage_html(rides: list[dict]) -> str:
     wishlist_points = []
     try:
         from travel_source import fetch_library_cycling
-        from sheets import get_google_creds
+        from google_auth import get_google_creds
         creds = get_google_creds()
         wish = fetch_library_cycling(creds)
 
@@ -1546,7 +1546,7 @@ def _upcoming_rides_html() -> str:
     """Fetch cycling trips from the Travel Master Planner sheet."""
     try:
         from travel_source import fetch_travel_pins
-        from sheets import get_google_creds
+        from google_auth import get_google_creds
         creds = get_google_creds()
         pins = fetch_travel_pins(creds)
     except Exception as e:
@@ -1609,7 +1609,7 @@ def _insight_text(rides: list[dict], breakdown: list[dict]) -> str:
     next_up = None
     try:
         from travel_source import fetch_travel_pins
-        from sheets import get_google_creds
+        from google_auth import get_google_creds
         creds = get_google_creds()
         pins = fetch_travel_pins(creds)
         cycling = [p for p in pins if not p["pinned"] and p["icon"] == "\U0001f6b4"]

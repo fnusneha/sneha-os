@@ -201,7 +201,7 @@ def gather_dashboard_data(
     travel_pins = []
     monthly_habits = quarterly_habits = annual_habits = []
     try:
-        from sheets import get_google_creds
+        from google_auth import get_google_creds
         from travel_source import fetch_travel_pins
         from habit_source import fetch_habits_from_doc
         creds = get_google_creds()

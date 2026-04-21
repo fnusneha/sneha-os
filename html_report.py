@@ -1,19 +1,21 @@
 """
-Quest Hub v3 — HTML report generator.
+Quest Hub — HTML report generator.
 
-Reads the template from templates/morning_report.html, fills dynamic
-placeholders with fitness data from the Oura/Garmin/Sheets pipeline,
-writes ~/morning_report.html, and optionally opens it in the browser.
+Reads the template from templates/morning_report.html and fills
+dynamic placeholders with the `report_data` dict that `data_gather.py`
+shapes from Postgres rows.
 
 Architecture
 ────────────
-  oura_sheets_sync.py          ← syncs APIs → Google Sheet
-      ↓ builds report_data dict
-  html_report.py  (this file)  ← builds HTML sections from data
-      ↓ fills template
-  templates/morning_report.html ← pure HTML/CSS/JS with {{PLACEHOLDERS}}
-      ↓ output
-  ~/morning_report.html         ← served at /dashboard by MCP server
+  sync.py                        ← cron: Oura/Garmin/Strava/GCal → Postgres
+      ↓
+  data_gather.build_report_data  ← Postgres rows → report_data dict
+      ↓
+  html_report.generate_html_report (this file) → section builders
+      ↓
+  templates/morning_report.html  ← pure HTML/CSS/JS with {{PLACEHOLDERS}}
+      ↓
+  Flask `/dashboard` response
 """
 
 import json
@@ -455,6 +457,51 @@ def _build_night_ritual(data: dict) -> str:
 
 
 # ── Coach Line ───────────────────────────────────────────────────
+
+def _build_week_agenda(data: dict) -> str:
+    """Build the Week Agenda card from calendar notes.
+
+    `notes_row` contains at most one string, written by sync.py from
+    Google Calendar events for Monday–Sunday of the current week (see
+    api_clients.fetch_week_calendar_notes). The raw string uses ``+`` as
+    a separator and may contain duplicates/empties, so we split, clean,
+    and render each entry as a chip.
+
+    Returns an empty string when there is nothing to show so the UI
+    gracefully collapses.
+    """
+    notes_row = data.get("notes_row") or []
+    raw = notes_row[0] if notes_row else ""
+    if not raw or not raw.strip():
+        return ""
+
+    # Split on '+' and clean: strip whitespace, drop empties and the
+    # em-dash filler that sometimes appears after a trimmed event name.
+    items: list[str] = []
+    seen: set[str] = set()
+    for piece in raw.split("+"):
+        s = piece.strip().strip("\u2014 ").strip()  # trailing em-dash
+        if not s:
+            continue
+        key = s.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        items.append(s)
+
+    if not items:
+        return ""
+
+    chips = "".join(f'<span class="week-chip">{_esc(s)}</span>' for s in items)
+    return (
+        '<div class="week-agenda">'
+        '<div class="week-agenda-head">'
+        '\U0001f4c5 This Week'
+        '</div>'
+        f'<div class="week-agenda-chips">{chips}</div>'
+        '</div>'
+    )
+
 
 def _build_coach_line(phase_name: str, last_sleep: float | None) -> str:
     """One-liner coaching advice based on cycle phase and sleep quality."""
@@ -924,6 +971,7 @@ def generate_html_report(data: dict) -> str:
     coach_line          = _build_coach_line(phase_name, last_sleep)
     pillars_html        = _build_pillars_html(data)
     pins_html           = _build_pins_html(data)
+    week_agenda_html    = _build_week_agenda(data)
 
     # Season pass (returns tuple)
     season_month, season_done, season_total, season_items_html = _build_season_pass(data)
@@ -992,6 +1040,8 @@ def generate_html_report(data: dict) -> str:
         "SEASON_ITEMS_HTML":   season_items_html,
         # Pins
         "PINS_HTML":           pins_html,
+        # Week Agenda (calendar events for Mon–Sun)
+        "WEEK_AGENDA_HTML":    week_agenda_html,
         # Footer
         "TAB_NAME":            data.get("tab_name", ""),
         "BUILD_DATE":          today.strftime("%Y.%m.%d"),

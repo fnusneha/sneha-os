@@ -81,7 +81,7 @@ def _google_creds_optional():
     If neither is available, we skip cycle/notes and carry on.
     """
     try:
-        from sheets import get_google_creds
+        from google_auth import get_google_creds
         return get_google_creds()
     except SystemExit:
         # sheets.py exits on missing credentials.json — swallow
