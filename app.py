@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import date, datetime
+from datetime import date
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -103,18 +103,16 @@ def dashboard():
 def rides():
     """Re-render the Ride Atlas HTML from the DB on every hit.
 
-    Render takes ~200 ms — it's just an in-memory template fill against
-    rows already in Postgres. No Strava API call in the request path;
-    a separate cron job refreshes the `rides` table twice a day.
+    `rides_report.generate()` reads from Postgres, fills a string
+    template, and returns the HTML — no disk round-trip and no Strava
+    API call in the request path (a separate cron job refreshes the
+    `rides` table).
     """
     try:
         # Import lazily so a broken rides_report.py never breaks /dashboard.
         from rides_report import generate
-        generate()  # writes ~/rides_report.html
-        html_path = Path(os.path.expanduser("~/rides_report.html"))
-        if not html_path.exists():
-            return _no_cache(app.response_class("rides not rendered", status=500))
-        resp = app.response_class(html_path.read_bytes(), content_type="text/html; charset=utf-8")
+        html = generate()
+        resp = app.response_class(html, content_type="text/html; charset=utf-8")
         return _no_cache(resp)
     except Exception as exc:
         log.exception("rides render failed")
@@ -239,8 +237,7 @@ def api_today():
           "last_sync": "2026-04-21"
         }
     """
-    from constants import DAILY_STEPS_GOAL, CORE_STAR_THRESHOLD
-    from api_clients import fetch_steps
+    from constants import CORE_STAR_THRESHOLD, DAILY_STEPS_GOAL
     from datetime import timedelta
     try:
         db = _db()
@@ -270,7 +267,7 @@ def api_today():
         cycle_day    = (today_row or {}).get("cycle_day")
 
         # Core items count for today (steps/sleep/cal + strength/cardio/stretch/sauna)
-        from constants import DAILY_STEPS_GOAL as STEPS_GOAL
+        STEPS_GOAL = DAILY_STEPS_GOAL
         core_done = 0
         if steps >= STEPS_GOAL: core_done += 1
         if sleep and float(sleep) >= 7.0: core_done += 1

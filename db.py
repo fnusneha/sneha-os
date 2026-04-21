@@ -24,7 +24,7 @@ import json
 import logging
 import os
 from contextlib import contextmanager
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from typing import Any, Iterable
 
 import psycopg

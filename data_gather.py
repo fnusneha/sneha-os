@@ -15,14 +15,11 @@ Usage:
 from __future__ import annotations
 
 import logging
+import time
 from datetime import date, timedelta
-from typing import Any
 
 from db import Db
-from constants import (
-    DAILY_STEPS_GOAL,
-    WEEKLY_STEPS_GOAL,
-)
+from constants import WEEKLY_STEPS_GOAL
 from scoring import calculate_challenge_score
 from api_clients import fetch_steps
 from tz import local_today
@@ -32,21 +29,20 @@ log = logging.getLogger(__name__)
 # Per-process cache for live steps so mobile refreshes don't each trigger
 # an Oura API call. TTL is short (60s) — enough to dedupe rapid reloads
 # but still current enough for a "did my steps update?" check.
-import time as _time
 _live_steps_cache: dict[str, tuple[float, int | None]] = {}
 _LIVE_STEPS_TTL = 60.0
 
 
 def _cached_fetch_steps(iso_day: str) -> int | None:
     hit = _live_steps_cache.get(iso_day)
-    if hit and _time.time() - hit[0] < _LIVE_STEPS_TTL:
+    if hit and time.time() - hit[0] < _LIVE_STEPS_TTL:
         return hit[1]
     try:
         val = fetch_steps(iso_day)
     except Exception as exc:
         log.warning("live steps fetch failed: %s", exc)
         val = None
-    _live_steps_cache[iso_day] = (_time.time(), val)
+    _live_steps_cache[iso_day] = (time.time(), val)
     return val
 
 
@@ -138,9 +134,13 @@ def gather_dashboard_data(
         if r and r.get("steps"):
             total_steps += int(r["steps"])
     # Include "today_steps" if today's row is missing or stale vs. live fetch.
-    if live_steps and today_steps and (today_row is None or today_steps > (today_row.get("steps") or 0)):
-        delta = today_steps - (today_row.get("steps") if today_row else 0 or 0)
-        total_steps += delta
+    # `today_row["steps"]` may be None when the column exists but hasn't been
+    # populated yet, so coerce to 0 BEFORE the subtraction (previously the
+    # expression relied on precedence and could do `int - None`).
+    if live_steps and today_steps:
+        logged_today = (today_row or {}).get("steps") or 0
+        if today_steps > logged_today:
+            total_steps += today_steps - logged_today
 
     remaining_steps = max(0, WEEKLY_STEPS_GOAL - total_steps)
     pct_steps = min(100, round((total_steps / WEEKLY_STEPS_GOAL) * 100)) if WEEKLY_STEPS_GOAL else 0

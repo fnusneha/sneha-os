@@ -7,6 +7,8 @@ import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.KeyEvent
 import android.view.View
@@ -35,6 +37,14 @@ class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView
     private lateinit var refreshLayout: SwipeRefreshLayout
 
+    // Retry state for Render cold-starts. When a page-load errors, we
+    // schedule a retry on the main Looper (so it runs after the current
+    // onReceivedError callback returns) instead of immediately giving
+    // up and showing the offline page.
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private var retryRunnable: Runnable? = null
+    private var retryAttempt = 0
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.i(
@@ -60,8 +70,11 @@ class MainActivity : AppCompatActivity() {
 
         configureWebView(webView)
         refreshLayout.setOnRefreshListener {
-            // Force-refresh triggers the backend's ?force=1 path which
-            // runs a fresh Oura/Garmin sync before returning HTML.
+            // Pull-to-refresh just reloads /dashboard. The backend reads
+            // straight from Postgres (scheduled `sync.py` cron does the
+            // external-API pulls), so a reload is enough to pick up the
+            // newest row. The `force=1` query param is a hint for future
+            // on-demand sync wiring; today it's a no-op.
             webView.loadUrl(baseDashboardUrl(force = true))
         }
 
@@ -96,6 +109,11 @@ class MainActivity : AppCompatActivity() {
         webView.onResume()
     }
 
+    override fun onDestroy() {
+        cancelRetry()
+        super.onDestroy()
+    }
+
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         if (keyCode == KeyEvent.KEYCODE_BACK && webView.canGoBack()) {
             webView.goBack()
@@ -109,6 +127,51 @@ class MainActivity : AppCompatActivity() {
     private fun baseDashboardUrl(force: Boolean): String {
         val base = BuildConfig.BASE_URL
         return if (force) "$base/dashboard?force=1" else "$base/dashboard"
+    }
+
+    /**
+     * Schedule a retry on Render cold-start errors.
+     *
+     * Render's free tier naps after 15 min of no traffic; the first
+     * request after that times out in the WebView before the container
+     * is done booting. Rather than immediately giving up and showing
+     * the static "Waking up…" fallback, we retry [MAX_RETRIES] times
+     * with an exponential backoff, giving the container ~90 s total to
+     * boot. Between retries the user sees the fallback page, so they
+     * know the app is alive and automatically recovering.
+     */
+    private fun scheduleRetryOrGiveUp(view: WebView) {
+        cancelRetry()
+        if (retryAttempt >= MAX_RETRIES) {
+            // Budget exhausted — leave the offline page visible and wait
+            // for the user to pull-to-refresh manually.
+            Log.w("SnehaOS", "gave up after ${MAX_RETRIES + 1} load attempts")
+            showOfflinePage(view)
+            return
+        }
+
+        showOfflinePage(view)
+        retryAttempt += 1
+        val delayMs = RETRY_BACKOFFS_MS[retryAttempt - 1]
+        Log.i("SnehaOS", "retry #${retryAttempt} in ${delayMs}ms")
+        retryRunnable = Runnable {
+            if (!isFinishing && !isDestroyed) {
+                webView.loadUrl(baseDashboardUrl(force = false))
+            }
+        }.also { mainHandler.postDelayed(it, delayMs) }
+    }
+
+    private fun cancelRetry() {
+        retryRunnable?.let { mainHandler.removeCallbacks(it) }
+        retryRunnable = null
+    }
+
+    private fun showOfflinePage(view: WebView) {
+        view.loadDataWithBaseURL(
+            BuildConfig.BASE_URL,
+            buildOfflineHtml(),
+            "text/html", "utf-8", null
+        )
     }
 
     private fun configureWebView(wv: WebView) {
@@ -146,6 +209,12 @@ class MainActivity : AppCompatActivity() {
 
             override fun onPageFinished(view: WebView, url: String) {
                 refreshLayout.isRefreshing = false
+                // A real page (not the data: offline fallback) loaded —
+                // clear any pending retry and reset the counter.
+                if (url.startsWith(BuildConfig.BASE_URL)) {
+                    cancelRetry()
+                    retryAttempt = 0
+                }
             }
 
             override fun onReceivedError(
@@ -153,13 +222,7 @@ class MainActivity : AppCompatActivity() {
             ) {
                 if (!request.isForMainFrame) return
                 refreshLayout.isRefreshing = false
-                // Render a clean "offline" placeholder instead of the ugly
-                // system-default white error page.
-                view.loadDataWithBaseURL(
-                    BuildConfig.BASE_URL,
-                    buildOfflineHtml(),
-                    "text/html", "utf-8", null
-                )
+                scheduleRetryOrGiveUp(view)
             }
         }
     }
@@ -181,6 +244,12 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val REQ_NOTIF = 42
 
+        // Render cold-start retry budget. Four attempts, 10/20/30/30 s
+        // apart = ~90 s total, which covers the typical 30–60 s boot
+        // plus the first retry that usually times out mid-boot.
+        private const val MAX_RETRIES = 4
+        private val RETRY_BACKOFFS_MS = longArrayOf(10_000, 20_000, 30_000, 30_000)
+
         // Inline, no-network fallback shown when the WebView can't reach
         // the backend (e.g. cold-start + no internet). Intentionally
         // matches the dashboard's dark palette so the app never shows
@@ -200,12 +269,19 @@ class MainActivity : AppCompatActivity() {
                 .hint{color:#3d5a77;font-size:12px;margin-top:24px}
                 .ver{position:fixed;bottom:12px;left:0;right:0;color:#3d5a77;
                   font-size:10px;font-family:ui-monospace,Menlo,monospace}
+                .dots::after{content:"";display:inline-block;width:1em;
+                  text-align:left;animation:dots 1.2s steps(4,end) infinite}
+                @keyframes dots{
+                  0%{content:""}25%{content:"."}
+                  50%{content:".."}75%{content:"..."}100%{content:""}
+                }
               </style>
             </head><body><div>
-              <h1>Waking up…</h1>
+              <h1>Waking up<span class="dots"></span></h1>
               <p>Render free tier naps after 15 min of no traffic.<br>
-                 First request after a nap takes 30–60 s.</p>
-              <p class="hint">Swipe down to retry.</p>
+                 First request after a nap takes 30–60 s. Retrying
+                 automatically…</p>
+              <p class="hint">Swipe down to retry now.</p>
             </div>
             <div class="ver">build ${BuildConfig.GIT_SHA} · ${BuildConfig.BUILD_TIME}</div>
             </body></html>

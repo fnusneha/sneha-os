@@ -20,7 +20,7 @@ for testing:
 from __future__ import annotations
 
 import os
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 _TZ_NAME = os.environ.get("APP_TIMEZONE", "America/Los_Angeles")
@@ -44,7 +44,6 @@ def local_today() -> date:
 
 def local_yesterday() -> date:
     """Yesterday in the user's timezone."""
-    from datetime import timedelta
     return local_today() - timedelta(days=1)
 
 

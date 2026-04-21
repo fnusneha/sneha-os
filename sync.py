@@ -2,10 +2,10 @@
 """
 Daily data-sync orchestrator.
 
-Pulls fitness and calendar data from the external sources (Oura, Garmin
-Connect, Strava, Google Calendar, Google Docs) and writes it into
-Postgres. Scheduled 4 times a day by GitHub Actions; also runnable by
-hand for backfills and one-off refreshes.
+Pulls fitness data from Oura, Garmin Connect, Strava, and Google
+Calendar (cycle + Week Agenda events) and writes it into Postgres.
+Scheduled 4 times a day by GitHub Actions; also runnable by hand for
+backfills and one-off refreshes:
 
     python sync.py                    # sync yesterday
     python sync.py --date 2026-04-20  # sync a specific date
@@ -14,6 +14,10 @@ hand for backfills and one-off refreshes.
     python sync.py --rides            # also refresh the Strava rides table
     python sync.py --last-sync        # print the stored last-sync date
     python sync.py --health           # print DB row counts
+
+The Habit Tracker Google Doc (read via `habit_source.py`) is fetched
+lazily at dashboard-render time, not here — it changes rarely and
+has its own 24h disk cache.
 """
 
 from __future__ import annotations
@@ -84,7 +88,8 @@ def _google_creds_optional():
         from google_auth import get_google_creds
         return get_google_creds()
     except SystemExit:
-        # sheets.py exits on missing credentials.json — swallow
+        # google_auth calls sys.exit on missing credentials.json — swallow
+        # so the sync doesn't abort for everyone when a single field fails.
         log.warning("Google creds unavailable — skipping GCal-dependent fields")
         return None
     except Exception as exc:

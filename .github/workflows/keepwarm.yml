@@ -1,0 +1,37 @@
+name: Keep Render warm
+
+# Render's free tier puts the service to sleep after ~15 min of no
+# traffic; first request after sleep takes 30–60 s (cold start).
+# This workflow pings /healthz every ~10 min during the user's active
+# hours so the container stays awake and the dashboard opens instantly.
+#
+# Cron is UTC. 7am–11pm Pacific = 14:00–06:00 UTC (spans midnight).
+# Running every 10 minutes for ~16 hours = ~96 pings/day × 30 days =
+# ~2880 runs/month, well under the 2000 free-minute budget since each
+# run is <10 s.
+
+on:
+  schedule:
+    # Every 10 minutes, on the 3rd/13th/23rd/… minute so it doesn't
+    # collide with the top-of-hour rush on shared Actions runners.
+    - cron: "3,13,23,33,43,53 14-23,0-6 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: keepwarm
+  cancel-in-progress: true
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Ping /healthz
+        run: |
+          # --max-time 90 s gives Render headroom to wake if this ping
+          # is the one that happened to find it asleep (the goal is
+          # that the NEXT real user request finds it warm).
+          code=$(curl -sS -o /dev/null --max-time 90 \
+            -w "%{http_code}" https://sneha-os.onrender.com/healthz)
+          echo "healthz returned $code"
+          [ "$code" = "200" ] || exit 1

@@ -1,8 +1,8 @@
-"""
-Shared constants for the fitness automation pipeline.
+"""Shared constants for the Sneha.OS backend.
 
-All magic numbers, row mappings, color definitions, goals, and activity
-type sets live here so every module imports from one place.
+One place for goals, thresholds, activity type sets, Google OAuth
+scopes, and calendar-notes filtering rules. Every module imports from
+here so the numbers never drift.
 """
 
 from pathlib import Path
@@ -11,73 +11,54 @@ from pathlib import Path
 # Paths
 # ═══════════════════════════════════════════════════════════════════
 SCRIPT_DIR = Path(__file__).resolve().parent
-LOG_DIR = SCRIPT_DIR / "logs"
-LOG_FILE = LOG_DIR / "sync.log"
-LAST_SYNC_FILE = SCRIPT_DIR / ".last_sync.json"
 
 # ═══════════════════════════════════════════════════════════════════
-# API / Auth
+# External APIs
 # ═══════════════════════════════════════════════════════════════════
 OURA_BASE = "https://api.ouraring.com/v2/usercollection"
 GARMIN_TOKEN_DIR = SCRIPT_DIR / ".garmin_tokens"
 
+# Google OAuth scopes — one token covers all three APIs:
+#   Sheets   → Travel Master Planner + cycling Library reads
+#   Drive    → Habit Tracker Google Doc export
+#   Calendar → cycle-day detection + Week Agenda events
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive",
     "https://www.googleapis.com/auth/calendar",
 ]
 
-# Calendar with period events
+# Primary calendar used for period + agenda events.
 CALENDAR_ID = "fnu.sneha@gmail.com"
 
-# Cycle config
+# Period-tracking lookback window (days) when scanning the calendar
+# for the most recent "Periods" event.
+PERIOD_LOOKBACK_DAYS = 90
+
+# Menstrual cycle length in days.
 CYCLE_LENGTH = 28
 
 # ═══════════════════════════════════════════════════════════════════
-# Google Sheets layout (1-indexed row numbers)
+# Daily + weekly goals
 # ═══════════════════════════════════════════════════════════════════
-ROW_NOTES = 2          # "Special Notes / Trips:" row
-ROW_DATE_NUM = 3
-ROW_STRENGTH = 5
-ROW_CARDIO = 6
-ROW_SAUNA = 7
-ROW_STEPS = 8
-ROW_STRETCH = 9
-ROW_NUTRITION = 11
-ROW_SLEEP = 12
-ROW_CYCLE = 13
-ROW_SEASON_PASS = 14        # Season pass done indices (comma-separated in B14)
-ROW_CHALLENGE_HEADER = 21   # "⭐ DAILY STARS — max 3/day" header
-ROW_MORNING_STAR = 19       # "✓" per day when morning ritual collected
-ROW_NIGHT_STAR = 20         # "✓" per day when night ritual collected
-ROW_DAILY_TOTAL = 22        # 0-3 daily star total
-
-# Template tab name used when copying
-TEMPLATE_TAB_NAME = "sheet1"
-
-# Column mapping: weekday (0=Mon) → column letter
-DAY_COL = {0: "C", 1: "D", 2: "E", 3: "F", 4: "G", 5: "H", 6: "I"}
-
-# ═══════════════════════════════════════════════════════════════════
-# Weekly & daily goals
-# ═══════════════════════════════════════════════════════════════════
-WEEKLY_STEPS_GOAL = 48000
+DAILY_STEPS_GOAL = 8_000
+WEEKLY_STEPS_GOAL = 48_000
 WEEKLY_STRENGTH_GOAL = 3
 WEEKLY_CARDIO_GOAL = 1
-DAILY_STEPS_GOAL = 8000
 
 # ═══════════════════════════════════════════════════════════════════
 # Scoring thresholds
 # ═══════════════════════════════════════════════════════════════════
 SLEEP_STAR_THRESHOLD_DEFAULT = 7.0
-SLEEP_STAR_THRESHOLD_LOW_ENERGY = 6.0   # Luteal-PMS & Menstrual phases
+SLEEP_STAR_THRESHOLD_LOW_ENERGY = 6.0   # Luteal-PMS + Menstrual phases
 LOW_ENERGY_PHASES = {"Menstrual", "Luteal-PMS"}
-# Core Missions star: earned when at least this many of 7 items are done
+
+# Core Missions star: earned when at least this many of 7 items are done.
 CORE_STAR_THRESHOLD = 4
 
-# Weekly medal thresholds (max 3/day × 7 days = 21)
-MEDAL_GOOD = 14     # 🥉 ~2 stars/day average
-MEDAL_PERFECT = 21  # 🥇 all 3 every day
+# Weekly medal thresholds (max 3 stars/day × 7 days = 21).
+MEDAL_GOOD = 14     # 🥉 roughly 2 stars/day average
+MEDAL_PERFECT = 21  # 🥇 every star, every day
 
 # ═══════════════════════════════════════════════════════════════════
 # Garmin activity type sets
@@ -94,7 +75,9 @@ STRETCH_TYPES = {
 
 # ═══════════════════════════════════════════════════════════════════
 # Cycle phase lookup (day-of-cycle → phase label)
-# Each entry: (start_day, end_day, label, guide_row)
+# Each entry: (start_day, end_day, label, legacy_guide_row)
+# The fourth field is kept for backwards-compat with older records
+# written before the Postgres migration and is ignored by current code.
 # ═══════════════════════════════════════════════════════════════════
 CYCLE_PHASES = [
     (1, 3, "Menstrual", 16),
@@ -105,18 +88,10 @@ CYCLE_PHASES = [
 ]
 
 # ═══════════════════════════════════════════════════════════════════
-# Sheet formatting colors (RGB 0.0–1.0)
+# Calendar notes filtering ("Week Agenda" card on Quest Hub)
 # ═══════════════════════════════════════════════════════════════════
-PHASE_HIGHLIGHT = {"red": 1.0, "green": 0.95, "blue": 0.6}   # light yellow
-PHASE_DEFAULT_BG = {"red": 1.0, "green": 1.0, "blue": 1.0}   # white
-GOLD_BG = {"red": 0.95, "green": 0.82, "blue": 0.45}
-GOLD_LIGHT = {"red": 1.0, "green": 0.96, "blue": 0.84}
-DARK_TEXT = {"red": 0.2, "green": 0.15, "blue": 0.05}
-WHITE_BG = {"red": 1, "green": 1, "blue": 1}
-
-# ═══════════════════════════════════════════════════════════════════
-# Calendar notes filtering
-# ═══════════════════════════════════════════════════════════════════
+# Events whose summary starts with any of these (case-insensitive) are
+# treated as noise and excluded from the weekly agenda.
 NOTES_SKIP_STARTS = [
     "office", "habit:", "reminder", "task", "strength training",
     "cardio", "sprint", "commute", "get ready", "bike", "wash",
@@ -126,27 +101,8 @@ NOTES_SKIP_STARTS = [
     "ooo", "out of office",
 ]
 
+# Events that are trip logistics. When a Travel:/Trip event is present
+# for the same week, these are hidden (the trip line covers them).
 NOTES_TRIP_LOGISTICS = [
     "drive", "checkin", "check in", "arrange", "airbnb", "pack", "commute",
 ]
-
-# ═══════════════════════════════════════════════════════════════════
-# PMS Guide tips (shown in morning report)
-# ═══════════════════════════════════════════════════════════════════
-PMS_GUIDE_TIPS = {
-    "Menstrual":   "Low energy → stretch, recover, yoga",
-    "Follicular":  "Energy rising → strength training, heavier lifts",
-    "Ovulation":   "Peak → PRs, heaviest lifts, strongest performance",
-    "Luteal-EM":   "Stable energy → normal workouts",
-    "Luteal-PMS":  "Energy drops → stretch, recover",
-}
-
-# ═══════════════════════════════════════════════════════════════════
-# HTTP retry config
-# ═══════════════════════════════════════════════════════════════════
-MAX_RETRIES = 3
-RATE_LIMIT_STATUS = 429
-RATE_LIMIT_BACKOFF_SECS = 30
-
-# Period lookback window
-PERIOD_LOOKBACK_DAYS = 90

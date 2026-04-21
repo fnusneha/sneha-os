@@ -50,10 +50,10 @@ def calculate_challenge_score(
     using _count_day_stars() which checks all 7 items.
 
     Args:
-        steps_row: Raw step values from sheet (index 0 = Mon).
-        sleep_row: Raw sleep values from sheet.
-        nutrition_row: Raw calorie values from sheet.
-        cycle_row: Raw cycle phase values from sheet.
+        steps_row: 7-element list of per-day step counts (index 0 = Monday).
+        sleep_row: 7-element list of per-day sleep hours.
+        nutrition_row: 7-element list of per-day calorie totals.
+        cycle_row: 7-element list of per-day cycle phase labels.
         strength_count: Total strength sessions this week (unused for scoring).
         cardio_count: Total cardio sessions this week (unused for scoring).
         cal_goal: Daily calorie goal from Garmin.

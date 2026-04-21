@@ -20,9 +20,10 @@ Architecture
 
 import json
 import logging
-import os
-import subprocess
+import time
 from pathlib import Path
+
+from tz import local_now, local_today
 
 log = logging.getLogger(__name__)
 
@@ -31,17 +32,15 @@ log = logging.getLogger(__name__)
 # CONFIGURATION
 # ═══════════════════════════════════════════════════════════════════
 
+from constants import (
+    CORE_STAR_THRESHOLD, DAILY_STEPS_GOAL, MEDAL_GOOD, MEDAL_PERFECT,
+    WEEKLY_CARDIO_GOAL, WEEKLY_STRENGTH_GOAL,
+)
+
 TEMPLATE_DIR = Path(__file__).resolve().parent / "templates"
 TEMPLATE_FILE = TEMPLATE_DIR / "morning_report.html"
 
-# Weekly goals (shared with oura_sheets_sync.py scoring)
-WEEKLY_STEPS_GOAL = 48_000
-DAILY_STEPS_GOAL = 8_000
-WEEKLY_STRENGTH_GOAL = 3
-WEEKLY_CARDIO_GOAL = 1
-CORE_STAR_THRESHOLD = 4  # items needed for core star
-MEDAL_GOOD = 14    # 🥉
-MEDAL_PERFECT = 21 # 🥇
+# 3 stars/day × 7 days. Used by the weekly XP bar.
 MAX_WEEKLY_STARS = 21
 
 # Cycle phase → (energy level, coaching advice)
@@ -70,7 +69,11 @@ DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 # ═══════════════════════════════════════════════════════════════════
 
 def _row_has(row: list, idx: int) -> bool:
-    """True if sheet row[idx] is non-empty (e.g. strength_row[3] = 'Arms 30m')."""
+    """True if row[idx] (a 7-element weekday list, 0=Mon) is non-empty.
+
+    Example: ``_row_has(strength_row, 3)`` → True if Thursday had a
+    strength session logged.
+    """
     return bool(str(row[idx]).strip()) if idx < len(row) else False
 
 
@@ -175,7 +178,7 @@ def _build_day_details_payload(data: dict, weekday: int) -> dict:
         ...
       }
     """
-    from datetime import date, timedelta
+    from datetime import timedelta
     morning_star_row = data.get("morning_star_row", [])
     night_star_row = data.get("night_star_row", [])
     steps_row = data.get("steps_row", [])
@@ -188,7 +191,7 @@ def _build_day_details_payload(data: dict, weekday: int) -> dict:
     cycle_row = data.get("cycle_row", [])
 
     # Compute the Monday date so we can show actual dates (e.g. "Mon, Apr 13")
-    today = data.get("today") or date.today()
+    today = data.get("today") or local_today()
     try:
         monday = today - timedelta(days=today.weekday())
     except AttributeError:
@@ -349,20 +352,18 @@ def _build_morning_ritual(data: dict) -> str:
     )
 
 
-# ── Core Missions (5 items, pre-checked from Google Sheet data) ──
+# ── Core Missions (7 items, pre-checked from Postgres rows) ──
 
 def _build_core_missions(data: dict, weekday: int) -> str:
     """7 core habits — pre-checked from sheet/API data (read-only in the UI).
 
     Hint text is dynamic so the user can see live progress toward the goal
     (e.g. 'Need 6,591 more · 1,409 / 8,000') without opening the day-details
-    modal. The user asked for this so a pull-to-refresh confirms new data
-    is flowing.
+    modal — a pull-to-refresh confirms fresh data is flowing.
     """
-    from constants import DAILY_STEPS_GOAL
     daily = data["score"].get("daily", {}).get(weekday, {})
 
-    # ── Steps: live from Oura (data['today_steps']) for today, else from sheet
+    # ── Steps: live from Oura (data['today_steps']) for today, else from DB
     steps_row = data.get("steps_row", [])
     if weekday == data["today"].weekday():
         steps_today = data.get("today_steps", 0) or 0
@@ -378,8 +379,7 @@ def _build_core_missions(data: dict, weekday: int) -> str:
         steps_left = DAILY_STEPS_GOAL - steps_today
         steps_hint = f"Need {steps_left:,} more  \u00b7  {steps_today:,} / {DAILY_STEPS_GOAL:,}"
 
-    # ── Sleep: hours logged last night (from sheet)
-    sleep_row = data.get("sleep_row", [])
+    # ── Sleep: hours logged last night
     last_sleep = data.get("last_sleep")
     sleep_done = bool(daily.get("sleep"))
     if last_sleep is not None:
@@ -710,8 +710,7 @@ def _build_pins_from_doc(annual_habits: list) -> list[tuple]:
     Returns:
         List of pin tuples: (id, pinned, label, month, icon, source).
     """
-    import datetime
-    today = datetime.date.today()
+    today = local_today()
     current_month_idx = today.month  # 1-12
 
     MONTH_TO_IDX = {"Jan":1,"Feb":2,"Mar":3,"Apr":4,"May":5,"Jun":6,
@@ -767,8 +766,8 @@ def _build_pins_html(data: dict = None) -> str:
     Returns:
         HTML string for the pins timeline.
     """
-    import datetime
-    current_month = datetime.date.today().strftime("%b")
+    today = local_today()
+    current_month = today.strftime("%b")
 
     MONTH_ORDER = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
                    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
@@ -783,7 +782,7 @@ def _build_pins_html(data: dict = None) -> str:
     # Build travel pins from live sheet data
     # Pin tuple: (pid, pinned, label, month, icon, source, start_date, year)
     travel_data = (data or {}).get("travel_pins", [])
-    current_year = datetime.date.today().year
+    current_year = today.year
     cal_pins = []
     for trip in travel_data:
         name_slug = trip["name"].lower().replace(" ", "-").replace("·", "").replace("'", "")[:30]
@@ -894,25 +893,30 @@ def _fill_template(template: str, placeholders: dict[str, str]) -> str:
 
 
 # ═══════════════════════════════════════════════════════════════════
-# PUBLIC API — called by oura_sheets_sync.py
+# PUBLIC API — called by Flask /dashboard handler in app.py
 # ═══════════════════════════════════════════════════════════════════
 
 def generate_html_report(data: dict) -> str:
     """Generate the Quest Hub dashboard HTML.
 
     Args:
-        data: report_data dict from generate_morning_report() containing:
-            - today (date), tab_name (str)
-            - last_sleep (float|None), avg_sleep (float), sleep_values (list)
-            - phase_name (str), latest_cycle_str (str)
-            - today_steps (int), total_steps (int), pct_steps (int)
-            - strength_count (int), cardio_count (int)
-            - cal_values (list[int|None]), cal_goal (int)
-            - score (dict with 'daily' sub-dict)
-            - strength_row, cardio_row, sauna_row, stretch_row (list)
+        data: report_data dict shaped by `data_gather.gather_dashboard_data`.
+            Expected keys:
+              - today (date), tab_name (str)
+              - last_sleep (float|None), avg_sleep (float), sleep_values (list)
+              - phase_name (str), latest_cycle_str (str)
+              - today_steps (int), total_steps (int), pct_steps (int)
+              - strength_count (int), cardio_count (int)
+              - cal_values (list[int|None]), cal_goal (int)
+              - score (dict with 'daily' sub-dict)
+              - strength_row / cardio_row / sauna_row / stretch_row /
+                morning_star_row / night_star_row (7-element lists,
+                index 0 = Monday)
+              - notes_row (list with at most one str: the Week Agenda line)
+              - travel_pins, annual_habits, season_done_indices
 
     Returns:
-        Full HTML string. Also writes to ~/morning_report.html.
+        Rendered HTML string ready for the Flask response.
     """
     today = data["today"]
     weekday = today.weekday()
@@ -930,19 +934,19 @@ def generate_html_report(data: dict) -> str:
     today_cal = cal_values[weekday] if weekday < len(cal_values) and cal_values[weekday] is not None else 0
     today_steps = data.get("today_steps", 0)
 
-    # ── Weekly stars (fully server-side from sheet data) ──
+    # ── Weekly stars (fully server-side from DB rows) ──
     morning_star_row = data.get("morning_star_row", [])
     night_star_row = data.get("night_star_row", [])
 
     weekly_stars = 0
     for wd in range(weekday + 1):
-        # Morning star from row 19
+        # Morning star — "✓" means the morning ritual was collected.
         if wd < len(morning_star_row) and str(morning_star_row[wd]).strip() == "\u2713":
             weekly_stars += 1
-        # Core star (4 of 7 items)
+        # Core star — at least CORE_STAR_THRESHOLD of 7 mission items hit.
         if _day_earned_core_star(data, wd):
             weekly_stars += 1
-        # Night star from row 20
+        # Night star — "✓" means the night ritual was collected.
         if wd < len(night_star_row) and str(night_star_row[wd]).strip() == "\u2713":
             weekly_stars += 1
 
@@ -954,7 +958,7 @@ def generate_html_report(data: dict) -> str:
     today_night_earned = (weekday < len(night_star_row) and
                           str(night_star_row[weekday]).strip() == "\u2713")
 
-    # Season pass done indices (from sheet row 14)
+    # Season pass done indices (from season_pass.done_indices in DB)
     season_done_indices = data.get("season_done_indices", set())
 
     # Week progress bar
@@ -1046,18 +1050,11 @@ def generate_html_report(data: dict) -> str:
         "TAB_NAME":            data.get("tab_name", ""),
         "BUILD_DATE":          today.strftime("%Y.%m.%d"),
         "TODAY_DAY_LABEL":     today.strftime("%a, %b %d"),
-        # Timestamps so the user knows exactly how fresh the data is.
-        # SYNCED_TS: unix seconds — used by JS to render "just now / Xm ago".
-        "SYNCED_TS":           str(int(__import__("time").time())),
-        "SYNCED_LABEL":        __import__("datetime").datetime.now().strftime("%-I:%M %p"),
+        # Freshness stamps. SYNCED_TS (unix seconds) lets the JS render
+        # "just now / Xm ago"; SYNCED_LABEL is the same moment in the
+        # user's local timezone as a fallback.
+        "SYNCED_TS":           str(int(time.time())),
+        "SYNCED_LABEL":        local_now().strftime("%-I:%M %p"),
     })
-
-    # ── Write to disk + open ───────────────────────────────────
-    html_path = Path.home() / "morning_report.html"
-    html_path.write_text(html, encoding="utf-8")
-    log.info("HTML report written to %s", html_path)
-
-    if not os.environ.get("OURA_EMIT_HTML"):
-        subprocess.Popen(["open", str(html_path)])
 
     return html

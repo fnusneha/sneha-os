@@ -21,6 +21,8 @@ import html
 import logging
 from collections import defaultdict, OrderedDict
 from datetime import datetime
+
+from tz import local_now
 from pathlib import Path
 from os.path import expanduser
 
@@ -1638,14 +1640,20 @@ def _insight_text(rides: list[dict], breakdown: list[dict]) -> str:
     return insight
 
 
-def generate():
+def generate() -> str:
+    """Render the Ride Atlas page and return the HTML as a string.
+
+    Also writes ``~/rides_report.html`` as a convenience so the page can
+    be opened directly from a terminal when running locally. The Flask
+    handler uses the return value; the file is only a side-effect.
+    """
     rides = _load_rides()
     stats = _lifetime_stats(rides)
     breakdown = _yearly_breakdown(rides)
 
     template = TEMPLATE.read_text()
 
-    now = datetime.now()
+    now = local_now()
     date_label = now.strftime("%a, %b %d")
 
     mp = _monthly_pulse(rides)
@@ -1676,8 +1684,13 @@ def generate():
     for key, val in replacements.items():
         page = page.replace(key, val)
 
-    OUTPUT.write_text(page)
-    print(f"Ride Atlas written to {OUTPUT} ({len(rides)} rides)")
+    try:
+        OUTPUT.write_text(page)
+    except OSError:
+        # Read-only FS on Render is fine — we only needed the return value.
+        pass
+    log.info("Ride Atlas rendered (%d rides)", len(rides))
+    return page
 
 
 if __name__ == "__main__":

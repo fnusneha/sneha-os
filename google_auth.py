@@ -22,7 +22,6 @@ import json
 import logging
 import os
 import sys
-from pathlib import Path
 
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
