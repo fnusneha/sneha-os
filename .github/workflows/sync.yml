@@ -1,0 +1,73 @@
+# Daily sync cron for Sneha.OS.
+#
+# Runs on GitHub-hosted ubuntu-latest. Pulls Oura/Garmin/Strava/GCal
+# and upserts into Neon. Render's Flask app reads from the same DB,
+# so the next dashboard load shows fresh numbers automatically.
+#
+# Schedule times are UTC. User is in Pacific (PT, UTC-7 PDT / UTC-8 PST).
+# 4 slots/day mirror the old launchd schedule (6am, noon, 6pm, 10pm PT):
+#   13:00 UTC = 06:00 PDT
+#   19:00 UTC = 12:00 PDT
+#   01:00 UTC = 18:00 PDT (prev day)
+#   05:00 UTC = 22:00 PDT (prev day)
+#
+# Rides sync only needs to run twice — we piggyback on noon + evening.
+
+name: sync
+
+on:
+  schedule:
+    - cron: "0 13 * * *"   # 06:00 PT — daily sync
+    - cron: "0 19 * * *"   # 12:00 PT — daily sync + rides
+    - cron: "0 1 * * *"    # 18:00 PT — daily sync
+    - cron: "0 5 * * *"    # 22:00 PT — daily sync + rides
+  workflow_dispatch:       # manual trigger from the Actions tab
+    inputs:
+      fetch_rides:
+        description: "Also fetch Strava rides?"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# Prevent overlapping runs (keeps Neon rate usage sane).
+concurrency:
+  group: sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DATABASE_URL:         ${{ secrets.DATABASE_URL }}
+      OURA_TOKEN:           ${{ secrets.OURA_TOKEN }}
+      GARMIN_EMAIL:         ${{ secrets.GARMIN_EMAIL }}
+      GARMIN_PASSWORD:      ${{ secrets.GARMIN_PASSWORD }}
+      STRAVA_CLIENT_ID:     ${{ secrets.STRAVA_CLIENT_ID }}
+      STRAVA_CLIENT_SECRET: ${{ secrets.STRAVA_CLIENT_SECRET }}
+      STRAVA_REFRESH_TOKEN: ${{ secrets.STRAVA_REFRESH_TOKEN }}
+      GOOGLE_TOKEN_JSON:    ${{ secrets.GOOGLE_TOKEN_JSON }}
+      GOOGLE_NO_INTERACTIVE: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run daily sync
+        run: python sync.py --morning --force
+
+      # Fetch rides on the noon/evening slots, or manual dispatch with flag.
+      - name: Fetch Strava rides
+        if: github.event.schedule == '0 19 * * *' || github.event.schedule == '0 5 * * *' || inputs.fetch_rides == true
+        run: python sync.py --rides

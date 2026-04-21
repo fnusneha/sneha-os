@@ -48,14 +48,55 @@ _spreadsheet_cache: dict[str, str] = {}
 # OAuth2 authentication
 # ═══════════════════════════════════════════════════════════════════
 
+def _load_creds_from_env() -> Credentials | None:
+    """Try to construct credentials from env vars (for Render / Actions).
+
+    Accepts either:
+      GOOGLE_TOKEN_JSON   — full user OAuth token (preferred, refresh-capable)
+      GOOGLE_CREDS_JSON   — OAuth CLIENT credentials (can't auth headlessly
+                            on its own, but callers may combine it later)
+
+    Returns valid Credentials, or None if env vars aren't set / invalid.
+    """
+    import json as _json
+    token_blob = os.getenv("GOOGLE_TOKEN_JSON")
+    if token_blob:
+        try:
+            data = _json.loads(token_blob)
+            creds = Credentials.from_authorized_user_info(data, SCOPES)
+            if creds and creds.valid:
+                return creds
+            if creds and creds.expired and creds.refresh_token:
+                log.info("Refreshing OAuth2 token from env...")
+                creds.refresh(Request())
+                return creds
+        except Exception as exc:
+            log.warning("GOOGLE_TOKEN_JSON parse failed: %s", exc)
+    return None
+
+
 def get_google_creds() -> Credentials:
-    """Get OAuth2 credentials, refreshing or prompting login as needed.
+    """Get OAuth2 credentials.
+
+    Search order:
+      1. GOOGLE_TOKEN_JSON env var  (Render, GitHub Actions)
+      2. token.json on disk         (local Mac dev)
+      3. Interactive browser login  (first-time local setup only)
+
+    The interactive path is a *hard* local-only path — in a headless
+    container (no browser, no port to bind run_local_server) it raises
+    so callers (Flask, cron) can degrade gracefully rather than hanging.
 
     Returns:
         Valid Google OAuth2 Credentials object.
     """
-    creds = None
+    # 1. env var (cloud)
+    env_creds = _load_creds_from_env()
+    if env_creds:
+        return env_creds
 
+    # 2. token.json (local)
+    creds = None
     if OAUTH_TOKEN_FILE.exists():
         creds = Credentials.from_authorized_user_file(str(OAUTH_TOKEN_FILE), SCOPES)
 
@@ -67,7 +108,14 @@ def get_google_creds() -> Credentials:
             except Exception as exc:
                 log.warning("Token refresh failed (%s) — re-authenticating...", exc)
                 creds = None
+
+        # 3. Interactive login (LOCAL ONLY — browser + port required)
         if not creds or not creds.valid:
+            if os.getenv("GOOGLE_NO_INTERACTIVE") == "1":
+                raise RuntimeError(
+                    "Google OAuth token missing/expired and interactive login "
+                    "is disabled. Set GOOGLE_TOKEN_JSON env var."
+                )
             if not OAUTH_CREDENTIALS_FILE.exists():
                 log.error("OAuth credentials file not found: %s", OAUTH_CREDENTIALS_FILE)
                 log.error("Download it from GCP Console → APIs → Credentials → OAuth 2.0 Client IDs")
@@ -78,8 +126,13 @@ def get_google_creds() -> Credentials:
             )
             creds = flow.run_local_server(port=0)
 
-        OAUTH_TOKEN_FILE.write_text(creds.to_json())
-        log.info("OAuth2 token saved to %s", OAUTH_TOKEN_FILE)
+        # Persist locally. In containers OAUTH_TOKEN_FILE is writable only
+        # under /tmp, so wrap in try/except.
+        try:
+            OAUTH_TOKEN_FILE.write_text(creds.to_json())
+            log.info("OAuth2 token saved to %s", OAUTH_TOKEN_FILE)
+        except OSError as exc:
+            log.warning("Could not persist token.json (%s) — carrying on", exc)
 
     return creds
 
