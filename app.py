@@ -207,6 +207,128 @@ def api_season_get():
     return jsonify(ok=True, month=month, indices=_db().get_season_pass(month))
 
 
+@app.get("/api/today")
+def api_today():
+    """Compact JSON snapshot of today's numbers. Used by the Android
+    home-screen widget.
+
+    Reads only from the DB (+ live Oura step count) — skips the Google
+    Sheets/Docs reads that `/dashboard` uses for travel pins + habits,
+    so this endpoint stays fast (~200 ms) and never blocks on an
+    expired Google token.
+
+    Shape:
+        {
+          "date": "2026-04-20",
+          "weekday": "Monday",
+          "steps": 4505,
+          "steps_goal": 8000,
+          "steps_left": 3495,
+          "sleep_hours": 6.9,
+          "calories": 1203,
+          "calorie_goal": 1520,
+          "cycle_phase": "Luteal-EM",
+          "cycle_day": 19,
+          "morning_star": true,
+          "night_star": false,
+          "sauna": true,
+          "core_done": 2,
+          "core_threshold": 4,
+          "stars_today": 1,
+          "stars_week": 3,
+          "last_sync": "2026-04-21"
+        }
+    """
+    from constants import DAILY_STEPS_GOAL, CORE_STAR_THRESHOLD
+    from api_clients import fetch_steps
+    from datetime import timedelta
+    try:
+        db = _db()
+        today = local_today()
+        weekday = today.weekday()
+        monday = today - timedelta(days=weekday)
+        sunday = monday + timedelta(days=6)
+
+        week_rows = db.get_entries_in_range(monday, sunday)
+        by_date = {r["date"]: r for r in week_rows}
+        week = [by_date.get(monday + timedelta(days=i)) for i in range(7)]
+        today_row = week[weekday]
+
+        # Live steps (same cached helper as the dashboard)
+        from data_gather import _cached_fetch_steps
+        steps_db = (today_row or {}).get("steps") or 0
+        steps_live = _cached_fetch_steps(today.isoformat())
+        steps = max(steps_db, steps_live or 0) or 0
+
+        sleep = (today_row or {}).get("sleep_hours")
+        calories = (today_row or {}).get("calories")
+        cal_goal = (today_row or {}).get("calorie_goal") or 0
+        morning_done = bool((today_row or {}).get("morning_star"))
+        night_done   = bool((today_row or {}).get("night_star"))
+        sauna_done   = bool((today_row or {}).get("sauna"))
+        cycle_phase  = (today_row or {}).get("cycle_phase") or ""
+        cycle_day    = (today_row or {}).get("cycle_day")
+
+        # Core items count for today (steps/sleep/cal + strength/cardio/stretch/sauna)
+        from constants import DAILY_STEPS_GOAL as STEPS_GOAL
+        core_done = 0
+        if steps >= STEPS_GOAL: core_done += 1
+        if sleep and float(sleep) >= 7.0: core_done += 1
+        if calories and calories > 0: core_done += 1
+        if (today_row or {}).get("strength_note"): core_done += 1
+        if (today_row or {}).get("cardio_note"):   core_done += 1
+        if (today_row or {}).get("stretch_note"):  core_done += 1
+        if sauna_done: core_done += 1
+
+        core_earned = core_done >= CORE_STAR_THRESHOLD
+        stars_today = int(morning_done) + int(core_earned) + int(night_done)
+
+        # Weekly stars: same logic across each weekday row in the week
+        stars_week = 0
+        for i, row in enumerate(week[: weekday + 1]):
+            if not row: continue
+            stars_week += int(bool(row.get("morning_star")))
+            stars_week += int(bool(row.get("night_star")))
+            # core star for that day
+            s = row.get("steps") or 0
+            sl = row.get("sleep_hours")
+            cal_i = row.get("calories") or 0
+            c = 0
+            if s >= STEPS_GOAL: c += 1
+            if sl and float(sl) >= 7.0: c += 1
+            if cal_i > 0: c += 1
+            for k in ("strength_note","cardio_note","stretch_note"):
+                if row.get(k): c += 1
+            if row.get("sauna"): c += 1
+            if c >= CORE_STAR_THRESHOLD:
+                stars_week += 1
+
+        return jsonify({
+            "ok": True,
+            "date": today.isoformat(),
+            "weekday": today.strftime("%A"),
+            "steps": steps,
+            "steps_goal": DAILY_STEPS_GOAL,
+            "steps_left": max(0, DAILY_STEPS_GOAL - steps),
+            "sleep_hours": float(sleep) if sleep is not None else None,
+            "calories": calories,
+            "calorie_goal": cal_goal,
+            "cycle_phase": cycle_phase,
+            "cycle_day": cycle_day,
+            "morning_star": morning_done,
+            "night_star": night_done,
+            "sauna": sauna_done,
+            "core_done": core_done,
+            "core_threshold": CORE_STAR_THRESHOLD,
+            "stars_today": stars_today,
+            "stars_week": stars_week,
+            "last_sync": db.get_state("last_sync_date"),
+        })
+    except Exception as exc:
+        log.exception("api_today failed")
+        return jsonify(ok=False, error=str(exc)), 500
+
+
 # ═══════════════════════════════════════════════════════════════════
 # Health
 # ═══════════════════════════════════════════════════════════════════

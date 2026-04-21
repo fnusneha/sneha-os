@@ -1,0 +1,10 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="?attr/colorPrimary">
+    <!-- Crescent moon for the night-ritual reminder -->
+    <path android:fillColor="@android:color/white"
+        android:pathData="M12,3C8.14,3 5,6.14 5,10C5,13.86 8.14,17 12,17C12.34,17 12.67,16.98 13,16.93C11.21,15.93 10,14.11 10,12C10,9.89 11.21,8.07 13,7.07C12.67,7.02 12.34,7 12,7V3Z"/>
+</vector>

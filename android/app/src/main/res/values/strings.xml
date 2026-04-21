@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Sneha.OS</string>
+    <string name="widget_name">Today · Sneha.OS</string>
+    <string name="widget_description">Today\'s star count + steps left.</string>
+</resources>

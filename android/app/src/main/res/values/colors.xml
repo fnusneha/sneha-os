@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="brand_bg">#0d1b2e</color>
+    <color name="brand_surface">#141f33</color>
+    <color name="brand_text">#E8EEF5</color>
+    <color name="brand_muted">#7A9AB8</color>
+    <color name="brand_dim">#3D5A77</color>
+    <color name="brand_mint">#6EE7B7</color>
+    <color name="brand_gold">#F5C842</color>
+    <color name="brand_sky">#7DD3FC</color>
+</resources>
