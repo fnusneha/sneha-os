@@ -170,6 +170,21 @@ body {
 /* ── 2. WEEKLY PULSE CARD ── */
 .weekly-pulse { padding: 14px 16px; }
 
+/* Eyebrow — matches the Atlas sum-eyebrow pattern for visual consistency */
+.wp-eyebrow {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.wp-eyebrow-label { color: var(--dim); font-weight: 500; }
+.wp-eyebrow-sep   { color: var(--dim); opacity: 0.5; }
+.wp-eyebrow-range { color: var(--muted); font-weight: 500; letter-spacing: 0.06em; }
+
 /* Hero row: stars number + 3 slots + season badge */
 .wp-hero-row {
   display: flex;
@@ -1049,8 +1064,10 @@ body {
 
 /* ── PINS ── */
 .pins-header { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px; margin-top:12px; }
+.pins-header-row { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px; gap:10px; }
+.pins-header-row .card-title { margin: 0; }
 .pins-title { font-family:'Fraunces',serif; font-size:16px; font-weight:400; }
-.pins-count { font-size:10px; color:var(--muted); }
+.pins-count { font-size:10px; color:var(--muted); font-family:'DM Mono',monospace; letter-spacing:0.04em; white-space:nowrap; }
 .pins-count span { color:var(--coral); font-weight:600; }
 .pins-timeline { position:relative; padding-left:22px; }
 .pins-timeline::before { content:''; position:absolute; left:7px; top:0; bottom:0; width:2px; background:linear-gradient(to bottom, var(--mint) 0%, rgba(255,255,255,0.06) 40%); }
@@ -1263,6 +1280,14 @@ body {
 
   <!-- ═══ 2. WEEKLY PULSE ═══ -->
   <div class="card weekly-pulse">
+    <!-- Eyebrow gives the card a clear identity matching the Atlas pattern
+         ("This Month" / "This Year"). Shows the actual week range so
+         you know WHICH week you're looking at. -->
+    <div class="wp-eyebrow">
+      <span class="wp-eyebrow-label">This Week</span>
+      <span class="wp-eyebrow-sep">&middot;</span>
+      <span class="wp-eyebrow-range">{{TAB_NAME}}</span>
+    </div>
     <!-- Row 1: Stars count + today slots + season badge -->
     <div class="wp-hero-row">
       <div class="wp-num-block">
@@ -1423,9 +1448,8 @@ body {
 
   <!-- ═══ 7. PINS · Multi-year Timeline ═══ -->
   <div class="card">
-    <div class="card-title">&#x1F4CD; Pins</div>
-    <div class="pins-header">
-      <div class="pins-title">Timeline</div>
+    <div class="pins-header-row">
+      <div class="card-title">&#x1F4CD; Pins &middot; Timeline</div>
       <div class="pins-count"><span id="pin-count">0</span> pinned</div>
     </div>
     <div class="pins-timeline" id="pinsTimeline">
