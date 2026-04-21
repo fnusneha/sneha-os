@@ -303,19 +303,30 @@ def _transform(a: dict) -> dict:
 
 # ── Main ────────────────────────────────────────────────────────────
 
-def main():
-    force = "--force" in sys.argv
+def fetch_all_rides(force: bool = False) -> list[dict]:
+    """Public entrypoint: return every ride (newest first) after token refresh.
 
+    Used by sync.py (writes to Neon) and the legacy main() (writes to
+    rides_cache.json). Keeping the disk cache for back-compat during the
+    migration window; once Render is cutover we'll drop the file write.
+    """
     if not all([CLIENT_ID, CLIENT_SECRET, REFRESH_TOKEN]):
-        print("Error: Missing STRAVA_CLIENT_ID, STRAVA_CLIENT_SECRET, or STRAVA_REFRESH_TOKEN in .env")
-        sys.exit(1)
-
+        raise RuntimeError(
+            "Missing STRAVA_CLIENT_ID, STRAVA_CLIENT_SECRET, or STRAVA_REFRESH_TOKEN"
+        )
     token = _get_access_token(force=force)
     rides = _fetch_all_rides(token)
-
-    # Sort newest first
     rides.sort(key=lambda r: r.get("id", 0), reverse=True)
+    return rides
 
+
+def main():
+    force = "--force" in sys.argv
+    try:
+        rides = fetch_all_rides(force=force)
+    except RuntimeError as e:
+        print(f"Error: {e}")
+        sys.exit(1)
     CACHE_FILE.write_text(json.dumps(rides, indent=2, ensure_ascii=False))
     print(f"Fetched {len(rides)} rides")
 
