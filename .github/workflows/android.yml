@@ -1,0 +1,105 @@
+name: Android APK build
+
+# Runs on every push to main so there's always exactly one "latest" APK
+# that matches what's on the Render web dashboard. Also runs on
+# workflow_dispatch so you can force a rebuild from the Actions tab
+# without pushing a commit.
+#
+# The built APK is published as an asset on a fixed GitHub Release
+# named "android-latest" (tag overwritten each build). That gives you
+# a stable install URL to bookmark on your phone:
+#
+#   https://github.com/fnusneha/sneha-os/releases/download/android-latest/app-debug.apk
+#
+# Tap the URL on Android → the download starts → tap the APK → install.
+# First time Android may ask you to allow "install from unknown sources"
+# for your browser; after that, updates are one-tap.
+
+on:
+  push:
+    branches: [main]
+    # Only rebuild when something Android-relevant changes. Keeps web
+    # deploys fast (Render handles those) and saves Actions minutes.
+    paths:
+      - 'android/**'
+      - '.github/workflows/android.yml'
+  workflow_dispatch:
+
+# Cancel a running build if a newer commit arrives mid-build. Only the
+# newest push matters for "latest".
+concurrency:
+  group: android-build
+  cancel-in-progress: true
+
+permissions:
+  contents: write  # needed to create/update the GitHub Release
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17 (Corretto)
+        uses: actions/setup-java@v4
+        with:
+          distribution: corretto
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          cmdline-tools-version: latest
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle*', 'android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      - name: Make gradlew executable
+        run: chmod +x ./android/gradlew
+
+      - name: Build debug APK
+        working-directory: android
+        run: |
+          BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          ./gradlew :app:assembleDebug --no-daemon \
+            -PgitSha="${GITHUB_SHA::7}" \
+            -PbuildTime="${BUILD_TIME}"
+
+      - name: Rename APK for clarity
+        run: |
+          cp android/app/build/outputs/apk/debug/app-debug.apk \
+             android/app/build/outputs/apk/debug/sneha-os.apk
+
+      - name: Publish to GitHub Release (android-latest)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-latest
+          name: "Android build — ${{ github.sha }}"
+          body: |
+            **Install on Android:**
+            Tap this link on your Pixel and the APK will download:
+            https://github.com/fnusneha/sneha-os/releases/download/android-latest/sneha-os.apk
+
+            Then tap the downloaded file to install. First install may
+            prompt you to allow "install from unknown sources" for your
+            browser — allow once, then every future update is one tap.
+
+            **Build info**
+            - Commit: `${{ github.sha }}`
+            - Message: ${{ github.event.head_commit.message }}
+            - Built: ${{ github.event.head_commit.timestamp }}
+          files: |
+            android/app/build/outputs/apk/debug/sneha-os.apk
+            android/app/build/outputs/apk/debug/app-debug.apk
+          prerelease: false
+          make_latest: false  # web deploys are the "true" latest

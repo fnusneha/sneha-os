@@ -22,6 +22,22 @@ android {
             "BASE_URL",
             "\"${project.findProperty("baseUrl") ?: "https://sneha-os.onrender.com"}\""
         )
+
+        // Git SHA + build timestamp baked in so the running app can report
+        // which commit produced it (used by the "You're on build X" chip in
+        // the offline fallback + as a version marker in crash logs).
+        // CI (.github/workflows/android.yml) passes these via -P flags;
+        // local builds fall back to "local" / current time.
+        buildConfigField(
+            "String",
+            "GIT_SHA",
+            "\"${project.findProperty("gitSha") ?: "local"}\""
+        )
+        buildConfigField(
+            "String",
+            "BUILD_TIME",
+            "\"${project.findProperty("buildTime") ?: "local"}\""
+        )
     }
 
     buildTypes {

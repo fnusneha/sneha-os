@@ -7,6 +7,7 @@ import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.view.KeyEvent
 import android.view.View
 import android.webkit.WebResourceError
@@ -36,6 +37,12 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Log.i(
+            "SnehaOS",
+            "build=${BuildConfig.GIT_SHA} " +
+            "time=${BuildConfig.BUILD_TIME} " +
+            "base=${BuildConfig.BASE_URL}"
+        )
         WindowCompat.setDecorFitsSystemWindows(window, true)
         window.statusBarColor = Color.parseColor("#0d1b2e")
         window.navigationBarColor = Color.parseColor("#0d1b2e")
@@ -150,7 +157,7 @@ class MainActivity : AppCompatActivity() {
                 // system-default white error page.
                 view.loadDataWithBaseURL(
                     BuildConfig.BASE_URL,
-                    OFFLINE_HTML,
+                    buildOfflineHtml(),
                     "text/html", "utf-8", null
                 )
             }
@@ -177,26 +184,31 @@ class MainActivity : AppCompatActivity() {
         // Inline, no-network fallback shown when the WebView can't reach
         // the backend (e.g. cold-start + no internet). Intentionally
         // matches the dashboard's dark palette so the app never shows
-        // a jarring white page.
-        private val OFFLINE_HTML = """
+        // a jarring white page. Footer carries the git SHA of the build
+        // so bug reports can be pinned to a commit.
+        fun buildOfflineHtml(): String = """
             <!doctype html><html><head>
               <meta charset="utf-8">
               <meta name="viewport" content="width=device-width,initial-scale=1">
               <style>
                 html,body{height:100%;margin:0;background:#0d1b2e;color:#e8eef5;
                   font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
-                  display:flex;align-items:center;justify-content:center;
-                  text-align:center;padding:24px}
+                  display:flex;flex-direction:column;align-items:center;
+                  justify-content:center;text-align:center;padding:24px}
                 h1{color:#6ee7b7;font-weight:500;letter-spacing:-0.01em;margin:0 0 10px}
                 p{color:#7a9ab8;font-size:14px;line-height:1.5}
                 .hint{color:#3d5a77;font-size:12px;margin-top:24px}
+                .ver{position:fixed;bottom:12px;left:0;right:0;color:#3d5a77;
+                  font-size:10px;font-family:ui-monospace,Menlo,monospace}
               </style>
             </head><body><div>
               <h1>Waking up…</h1>
               <p>Render free tier naps after 15 min of no traffic.<br>
                  First request after a nap takes 30–60 s.</p>
               <p class="hint">Swipe down to retry.</p>
-            </div></body></html>
+            </div>
+            <div class="ver">build ${BuildConfig.GIT_SHA} · ${BuildConfig.BUILD_TIME}</div>
+            </body></html>
         """.trimIndent()
     }
 }
