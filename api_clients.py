@@ -116,6 +116,27 @@ def fetch_steps(day: str) -> int | None:
 _garmin_client_cache = None
 
 
+def _hydrate_garmin_tokens_from_env():
+    """If GARMIN_OAUTH1_TOKEN / GARMIN_OAUTH2_TOKEN env vars exist, write
+    them to GARMIN_TOKEN_DIR so the `garminconnect` library can resume
+    instead of doing a fresh email+password login (which trips MFA).
+
+    Used in Render / GitHub Actions where we don't have a persistent
+    disk. On a local Mac the directory already exists and this is a no-op.
+    """
+    o1 = os.getenv("GARMIN_OAUTH1_TOKEN")
+    o2 = os.getenv("GARMIN_OAUTH2_TOKEN")
+    if not (o1 and o2):
+        return
+    try:
+        GARMIN_TOKEN_DIR.mkdir(parents=True, exist_ok=True)
+        (GARMIN_TOKEN_DIR / "oauth1_token.json").write_text(o1)
+        (GARMIN_TOKEN_DIR / "oauth2_token.json").write_text(o2)
+        log.info("Garmin: hydrated OAuth tokens from env")
+    except OSError as e:
+        log.warning("Could not write Garmin tokens to disk: %s", e)
+
+
 def _get_garmin_client():
     """Return an authenticated Garmin Connect client (cached per run).
 
@@ -132,6 +153,9 @@ def _get_garmin_client():
         log.warning("Garmin credentials not set in .env")
         return None
 
+    # Seed token dir from env vars on first use (cloud runs).
+    _hydrate_garmin_tokens_from_env()
+
     garmin = Garmin(_garmin_email(), _garmin_password())
     token_dir = str(GARMIN_TOKEN_DIR)
 
@@ -144,12 +168,18 @@ def _get_garmin_client():
         except Exception:
             pass  # token expired — fall through to fresh login
 
-    garmin.login()
-    GARMIN_TOKEN_DIR.mkdir(parents=True, exist_ok=True)
-    garmin.garth.dump(token_dir)
-    log.info("Garmin: fresh login, tokens saved")
-    _garmin_client_cache = garmin
-    return garmin
+    try:
+        garmin.login()
+        GARMIN_TOKEN_DIR.mkdir(parents=True, exist_ok=True)
+        garmin.garth.dump(token_dir)
+        log.info("Garmin: fresh login, tokens saved")
+        _garmin_client_cache = garmin
+        return garmin
+    except Exception as e:
+        # Don't break the whole sync if Garmin requires MFA in a
+        # headless env — fetchers will see None and skip gracefully.
+        log.warning("Garmin login failed (%s) — skipping Garmin metrics", e)
+        return None
 
 
 def fetch_nutrition(day: date) -> dict | None:

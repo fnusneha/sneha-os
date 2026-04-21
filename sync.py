@@ -38,6 +38,7 @@ from api_clients import (
 )
 from cycle import get_cycle_phase
 from db import Db
+from tz import local_today
 
 logging.basicConfig(
     level=logging.INFO,
@@ -200,7 +201,7 @@ def sync_rides(db: Db) -> int:
 
 def _backfill(db: Db, force: bool) -> int:
     last = read_last_sync(db)
-    today = date.today()
+    today = local_today()
 
     if last is None:
         start_date = today - timedelta(days=1)
@@ -275,7 +276,7 @@ def main():
         write_last_sync(db, target)
     else:
         # Default: sync yesterday
-        target = date.today() - timedelta(days=1)
+        target = local_today() - timedelta(days=1)
         creds = _google_creds_optional()
         sync_single_day(db, target, creds)
         write_last_sync(db, target)

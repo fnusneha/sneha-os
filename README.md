@@ -64,7 +64,7 @@ fitness-automation/
 ├── scoring.py             # Daily-star logic
 ├── html_report.py         # Quest Hub HTML renderer
 ├── rides_report.py        # Ride Atlas HTML renderer
-├── report.py              # Report data aggregator
+├── tz.py                  # Pacific-time helpers (local_today, local_now)
 ├── travel_source.py       # Travel Master Planner reader
 ├── habit_source.py        # Habit tracker doc reader
 ├── templates/

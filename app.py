@@ -36,7 +36,7 @@ from dotenv import load_dotenv
 # Load .env before importing modules that need DATABASE_URL etc.
 load_dotenv(Path(__file__).resolve().parent / ".env")
 
-from flask import Flask, jsonify, redirect, request
+from flask import Flask, jsonify, redirect, request  # noqa: F401 (Flask used below)
 
 # Rides render pulls from Neon because rides_report.py respects USE_DB_RIDES.
 os.environ.setdefault("USE_DB_RIDES", "1")
@@ -44,6 +44,7 @@ os.environ.setdefault("USE_DB_RIDES", "1")
 from db import Db
 from data_gather import gather_dashboard_data
 from html_report import generate_html_report
+from tz import local_today
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)-7s %(message)s")
 log = logging.getLogger(__name__)
@@ -92,13 +93,12 @@ def dashboard():
         html = generate_html_report(data)
     except Exception as exc:
         log.exception("dashboard render failed")
-        return _no_cache(
-            Flask.response_class(
-                f"<h1>Dashboard unavailable</h1><pre>{exc}</pre>",
-                status=500,
-                content_type="text/html",
-            )
+        resp = app.response_class(
+            f"<h1>Dashboard unavailable</h1><pre>{exc}</pre>",
+            status=500,
+            content_type="text/html",
         )
+        return _no_cache(resp)
     resp = app.response_class(html, content_type="text/html; charset=utf-8")
     return _no_cache(resp)
 
@@ -145,7 +145,7 @@ def api_collect():
     body = request.get_json(silent=True) or {}
     action = body.get("action")
     try:
-        d = _parse_date(body.get("date"), default=date.today())
+        d = _parse_date(body.get("date"), default=local_today())
     except ValueError as exc:
         return jsonify(ok=False, error=str(exc)), 400
 
@@ -172,7 +172,7 @@ def api_manual():
     field = body.get("field")
     value = body.get("value")
     try:
-        d = _parse_date(body.get("date"), default=date.today())
+        d = _parse_date(body.get("date"), default=local_today())
     except ValueError as exc:
         return jsonify(ok=False, error=str(exc)), 400
 
@@ -199,7 +199,7 @@ def api_season_toggle():
     if not isinstance(idx, int) or not isinstance(done, bool):
         return jsonify(ok=False, error="index (int) and done (bool) required"), 400
 
-    month = date.today().strftime("%Y-%m")
+    month = local_today().strftime("%Y-%m")
     db = _db()
     updated = db.toggle_season_item(month, idx, done)
     return jsonify(ok=True, month=month, indices=updated)
@@ -208,7 +208,7 @@ def api_season_toggle():
 @app.get("/api/season")
 def api_season_get():
     """Return the current month's done_indices (used on page load)."""
-    month = date.today().strftime("%Y-%m")
+    month = local_today().strftime("%Y-%m")
     return jsonify(ok=True, month=month, indices=_db().get_season_pass(month))
 
 

@@ -10,3 +10,6 @@ psycopg[binary]>=3.1
 flask>=3.0
 garminconnect>=0.2.17
 gunicorn>=22.0
+# Ensures zoneinfo works in minimal container images (no /usr/share/zoneinfo
+# baked in). tz.py depends on this to get Pacific time right on Render.
+tzdata>=2024.1

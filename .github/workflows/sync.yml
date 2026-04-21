@@ -4,14 +4,17 @@
 # and upserts into Neon. Render's Flask app reads from the same DB,
 # so the next dashboard load shows fresh numbers automatically.
 #
-# Schedule times are UTC. User is in Pacific (PT, UTC-7 PDT / UTC-8 PST).
-# 4 slots/day mirror the old launchd schedule (6am, noon, 6pm, 10pm PT):
-#   13:00 UTC = 06:00 PDT
-#   19:00 UTC = 12:00 PDT
-#   01:00 UTC = 18:00 PDT (prev day)
-#   05:00 UTC = 22:00 PDT (prev day)
+# Schedule times are UTC. GitHub Actions cron does NOT support DST.
+# User is in Pacific. The 4 UTC slots below map to:
+#   Summer (PDT, UTC-7):    06:00 / 12:00 / 18:00 / 22:00 PT
+#   Winter (PST, UTC-8):    05:00 / 11:00 / 17:00 / 21:00 PT
+# Either way it's 4×/day which is all we need — Oura/Garmin data
+# backfills regardless of exact hour.
 #
-# Rides sync only needs to run twice — we piggyback on noon + evening.
+# sync.py uses local_today() (see tz.py) so date-sensitive decisions
+# match Pacific regardless of when the runner actually starts.
+#
+# Rides sync piggybacks on the 19:00 UTC (noon PT) + 05:00 UTC (10pm PT) slots.
 
 name: sync
 

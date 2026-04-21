@@ -24,8 +24,29 @@ from constants import (
 )
 from scoring import calculate_challenge_score
 from api_clients import fetch_steps
+from tz import local_today
 
 log = logging.getLogger(__name__)
+
+# Per-process cache for live steps so mobile refreshes don't each trigger
+# an Oura API call. TTL is short (60s) — enough to dedupe rapid reloads
+# but still current enough for a "did my steps update?" check.
+import time as _time
+_live_steps_cache: dict[str, tuple[float, int | None]] = {}
+_LIVE_STEPS_TTL = 60.0
+
+
+def _cached_fetch_steps(iso_day: str) -> int | None:
+    hit = _live_steps_cache.get(iso_day)
+    if hit and _time.time() - hit[0] < _LIVE_STEPS_TTL:
+        return hit[1]
+    try:
+        val = fetch_steps(iso_day)
+    except Exception as exc:
+        log.warning("live steps fetch failed: %s", exc)
+        val = None
+    _live_steps_cache[iso_day] = (_time.time(), val)
+    return val
 
 
 # The old pipeline returned sheet-column-style lists where index 0 = Monday,
@@ -73,7 +94,7 @@ def gather_dashboard_data(
     """
     db = Db()
     if today is None:
-        today = date.today()
+        today = local_today()
     weekday = today.weekday()
     monday = today - timedelta(days=weekday)
     sunday = monday + timedelta(days=6)
@@ -105,12 +126,9 @@ def gather_dashboard_data(
     # hint is always current even between syncs.
     today_steps = today_steps_db
     if live_steps:
-        try:
-            fresh = fetch_steps(today.isoformat())
-            if fresh:
-                today_steps = fresh
-        except Exception as exc:
-            log.warning("live steps fetch failed: %s (falling back to DB)", exc)
+        fresh = _cached_fetch_steps(today.isoformat())
+        if fresh:
+            today_steps = fresh
 
     # Weekly totals.
     total_steps = 0
@@ -258,7 +276,7 @@ if __name__ == "__main__":
 
     logging.basicConfig(level=logging.INFO, format="%(message)s")
 
-    d = date.fromisoformat(sys.argv[1]) if len(sys.argv) > 1 else date.today()
+    d = date.fromisoformat(sys.argv[1]) if len(sys.argv) > 1 else local_today()
     data = gather_dashboard_data(d, live_steps=False)
 
     # Print a digestible summary (full dict is huge)
