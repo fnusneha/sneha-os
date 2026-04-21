@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.sneha.rides-sync</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>-lc</string>
+        <string>cd /Users/sneha.rana/fitness-automation &amp;&amp; source .venv/bin/activate &amp;&amp; python3 strava_fetch.py &amp;&amp; python3 rides_report.py</string>
+    </array>
+
+    <key>StartCalendarInterval</key>
+    <array>
+        <dict>
+            <key>Hour</key>
+            <integer>7</integer>
+            <key>Minute</key>
+            <integer>30</integer>
+        </dict>
+        <dict>
+            <key>Hour</key>
+            <integer>20</integer>
+            <key>Minute</key>
+            <integer>30</integer>
+        </dict>
+    </array>
+
+    <key>StandardOutPath</key>
+    <string>/Users/sneha.rana/fitness-automation/logs/launchd_rides_stdout.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/sneha.rana/fitness-automation/logs/launchd_rides_stderr.log</string>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/sneha.rana/fitness-automation</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+</dict>
+</plist>

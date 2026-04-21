@@ -1,4 +1,4 @@
-# Secrets
+# Secrets — never commit any of these
 .env
 service_account.json
 credentials.json
@@ -10,9 +10,26 @@ __pycache__/
 *.pyc
 .venv/
 
-# Runtime
+# Runtime caches + outputs
 logs/
+cache/
 .last_sync.json
+rides_cache.json
+.strava_token_cache.json
 
-# Claude Code (project-local settings stay local)
+# Generated HTML (written by old script to home dir — never in repo).
+# Use leading slash so only repo-root paths match. templates/*.html are
+# source files and MUST be tracked.
+/morning_report.html
+/rides_report.html
+
+# macOS noise
+.DS_Store
+
+# Editor backup files
+*.bak
+*.backup_*
+
+# Claude Code (project-local settings + session data stay local)
 .claude/settings.local.json
+.claude/projects/

@@ -19,9 +19,13 @@ Any of: "good morning", "gm", "morning sync", "run the sync", "sync my data", "f
 cd /Users/sneha.rana/fitness-automation && source .venv/bin/activate && python3 oura_sheets_sync.py --morning --force
 ```
 
+This writes the HTML dashboard to `~/morning_report.html` and auto-opens it in the browser.
+
 ### 2. Show the report
 
-After running the command, immediately show the user the formatted report from the output (everything after the log lines — starting with the morning greeting). Copy-paste the report section into your response text. The user needs to see their fitness data right away. Do not skip or summarize it.
+After running the command, immediately show the user the formatted text report from the output (everything after the log lines — starting with the morning greeting). Copy-paste the report section into your response text. The user needs to see their fitness data right away. Do not skip or summarize it.
+
+The HTML dashboard has already opened in their browser automatically — no need to render it again.
 
 ### 3. Handle errors
 

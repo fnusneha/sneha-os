@@ -1,0 +1,1351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sneha.OS — Ride Atlas</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0d1b2e;
+  --surface: rgba(255,255,255,0.06);
+  --surface-border: rgba(255,255,255,0.09);
+  --text: #e8eef5;
+  --muted: #7a9ab8;
+  --dim: #3d5a77;
+  --mint: #6ee7b7;
+  --gold: #f5c842;
+  --coral: #fb7185;
+  --sky: #7dd3fc;
+  --violet: #a78bfa;
+  --amber: #fbbf24;
+  --rose: #fda4af;
+  --navy-light: rgba(13,27,46,0.85);
+  --route-red: #e05050;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  min-height: 100vh;
+  padding: 0 0 80px;
+  background-image: radial-gradient(ellipse 70% 35% at 50% 0%, rgba(125,211,252,0.07) 0%, transparent 70%);
+  -webkit-font-smoothing: antialiased;
+}
+.w { width:100%; max-width:540px; margin:0 auto; padding:0 16px; }
+
+/* ── HERO BAR ── */
+.hero {
+  padding: 14px 16px;
+  margin-bottom: 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(13,27,46,0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.hero-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.hero-brand {
+  font-family: 'Fraunces', serif;
+  font-size: 20px;
+  font-weight: 300;
+  letter-spacing: -0.02em;
+}
+.hero-brand em { color: var(--mint); font-style: normal; font-size: 17px; }
+.hero-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+.hero-date { color: var(--muted); }
+.hero-sep { color: var(--dim); }
+.hero-status { color: var(--sky); font-size: 10px; font-weight: 500; }
+
+/* ── TAB BAR ── */
+.tab-bar {
+  display: flex;
+  margin: 14px 0 18px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  padding: 4px;
+}
+.tab {
+  flex: 1;
+  padding: 10px 8px;
+  border-radius: 11px;
+  font-size: 11px;
+  color: var(--muted);
+  text-decoration: none;
+  text-align: center;
+  border: 1px solid transparent;
+  transition: all 0.2s;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+.tab:hover { color: var(--text); }
+.tab.active {
+  background: rgba(125,211,252,0.08);
+  color: var(--sky);
+  border-color: rgba(125,211,252,0.2);
+}
+
+/* ── SECTION LABEL ── */
+.section-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--dim);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin: 24px 0 10px;
+}
+
+/* ── LIFETIME STATS ── */
+.stats-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.stat-pill {
+  flex: 1;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  padding: 14px 12px;
+  backdrop-filter: blur(12px);
+}
+.stat-label {
+  font-size: 0.55rem;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 6px;
+}
+.stat-value {
+  font-family: 'Fraunces', serif;
+  font-size: 1.4rem;
+  font-weight: 400;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+.stat-value.mint { color: var(--mint); }
+.stat-value.gold { color: var(--gold); }
+.stat-value.sky { color: var(--sky); }
+.stat-sub {
+  font-size: 0.55rem;
+  color: var(--dim);
+  letter-spacing: 0.03em;
+}
+
+/* ── CROWNING ACHIEVEMENT ── */
+.crown-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px;
+  overflow: hidden;
+  margin-bottom: 8px;
+  backdrop-filter: blur(12px);
+}
+.crown-map {
+  height: 220px;
+  background: var(--bg);
+  background-image:
+    linear-gradient(rgba(125,211,252,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(125,211,252,0.03) 1px, transparent 1px);
+  background-size: 28px 28px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.crown-map svg { width: 100%; height: 100%; padding: 18px; }
+.crown-info {
+  padding: 14px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.crown-left { flex: 1; }
+.crown-name {
+  font-family: 'Fraunces', serif;
+  font-size: 1.1rem;
+  font-weight: 400;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.crown-meta {
+  font-size: 0.6rem;
+  color: var(--muted);
+  display: flex;
+  gap: 10px;
+}
+.crown-right { text-align: right; margin-left: 12px; }
+.crown-dist {
+  font-family: 'Fraunces', serif;
+  font-size: 1.4rem;
+  color: var(--sky);
+  line-height: 1;
+}
+.crown-dist-label {
+  font-size: 0.5rem;
+  color: var(--dim);
+  letter-spacing: 0.06em;
+}
+
+/* ── ROUTE CARDS (2-col grid) ── */
+.region-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.route-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  overflow: hidden;
+  backdrop-filter: blur(12px);
+}
+.map-zone {
+  height: 130px;
+  background: var(--bg);
+  background-image:
+    linear-gradient(rgba(125,211,252,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(125,211,252,0.03) 1px, transparent 1px);
+  background-size: 28px 28px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.map-zone svg { width: 100%; height: 100%; padding: 10px; }
+.map-placeholder {
+  color: var(--dim);
+  font-size: 10px;
+  text-align: center;
+}
+.region-badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  background: rgba(13,27,46,0.85);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px;
+  padding: 3px 6px;
+  font-size: 0.5rem;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.epic-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: rgba(245,200,66,0.15);
+  border: 1px solid rgba(245,200,66,0.3);
+  border-radius: 6px;
+  padding: 3px 6px;
+  font-size: 0.5rem;
+  color: var(--gold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.route-info { padding: 10px 12px; }
+.route-name {
+  font-family: 'Fraunces', serif;
+  font-size: 0.82rem;
+  font-weight: 400;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 3px;
+}
+.route-meta {
+  font-size: 0.55rem;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+.route-date {
+  font-size: 0.58rem;
+  color: var(--coral);
+}
+
+/* ── YEARLY TABLE ── */
+.card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 10px;
+  backdrop-filter: blur(12px);
+}
+.card-title {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--dim);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.year-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.62rem;
+}
+.year-table th {
+  color: var(--dim);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 6px 4px;
+  text-align: left;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  font-size: 0.5rem;
+}
+.year-table td {
+  padding: 7px 4px;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  color: var(--text);
+}
+.year-table td:first-child {
+  font-family: 'Fraunces', serif;
+  font-size: 0.8rem;
+  color: var(--sky);
+}
+.year-table .best-ride {
+  color: var(--muted);
+  font-size: 0.55rem;
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── UPCOMING RIDES ── */
+.upcoming-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.upcoming-row:last-child { border-bottom: none; }
+.upcoming-icon { font-size: 14px; flex-shrink: 0; }
+.upcoming-info { flex: 1; min-width: 0; }
+.upcoming-name {
+  font-size: 0.7rem;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.upcoming-sub { font-size: 0.55rem; color: var(--muted); }
+.upcoming-dist {
+  font-size: 0.72rem;
+  color: var(--mint);
+  flex-shrink: 0;
+  font-family: 'Fraunces', serif;
+}
+
+/* ── INSIGHT BLOCK ── */
+.insight {
+  background: rgba(255,255,255,0.03);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin: 16px 0;
+  font-size: 0.65rem;
+  color: var(--muted);
+  line-height: 1.6;
+  position: relative;
+  overflow: hidden;
+}
+.insight::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(245,200,66,0.25), rgba(125,211,252,0.25));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+.insight em { font-style: normal; color: var(--gold); }
+.insight strong { color: var(--text); font-weight: 500; }
+
+/* ── SYNC BUTTON ── */
+.sync-btn {
+  padding: 4px 10px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.04);
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  cursor: pointer;
+  transition: all 0.3s;
+  letter-spacing: 0.03em;
+  margin-left: 8px;
+}
+.sync-btn:hover { border-color: rgba(125,211,252,0.3); color: var(--sky); background: rgba(125,211,252,0.08); }
+.sync-btn.syncing { opacity: 0.5; pointer-events: none; }
+
+/* ── CALIFORNIA COVERAGE MAP ── */
+.ca-coverage { padding: 16px; }
+.ca-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+.ca-title {
+  font-family: 'Fraunces', serif;
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--text);
+}
+.ca-sub {
+  font-size: 0.55rem;
+  color: var(--muted);
+  letter-spacing: 0.03em;
+}
+.ca-count { text-align: right; }
+.ca-count-num {
+  font-family: 'Fraunces', serif;
+  font-size: 1.4rem;
+  color: var(--sky);
+  line-height: 1;
+}
+.ca-count-label {
+  font-size: 0.5rem;
+  color: var(--dim);
+  letter-spacing: 0.04em;
+}
+.ca-map-zone {
+  background: var(--bg);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  padding: 8px;
+  margin-bottom: 8px;
+  background-image:
+    linear-gradient(rgba(125,211,252,0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(125,211,252,0.02) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+.ca-map-svg { width: 100%; height: auto; display: block; }
+.ca-map-svg .map-city {
+  font-family: 'DM Mono', monospace;
+  font-size: 8px;
+  fill: rgba(200, 220, 240, 0.28);
+  letter-spacing: 0.03em;
+  pointer-events: none;
+  font-weight: 400;
+}
+.ca-map-svg .pin-count {
+  font-family: 'DM Mono', monospace;
+  font-size: 8px;
+  font-weight: 600;
+  fill: rgba(13, 27, 46, 0.95);
+  pointer-events: none;
+  letter-spacing: 0;
+}
+.ca-map-svg .pin-lbl {
+  fill: rgba(200, 220, 240, 0.55);
+  paint-order: stroke;
+  stroke: rgba(13, 27, 46, 0.8);
+  stroke-width: 2.5px;
+  stroke-linejoin: round;
+}
+/* Chip list — collapsible, compact */
+.ca-chips {
+  padding: 8px 0 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.chip-row {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+.chip-row::-webkit-scrollbar { display: none; }
+.chip-label {
+  font-size: 0.48rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  border-radius: 5px;
+  flex-shrink: 0;
+  position: sticky;
+  left: 0;
+  background: rgba(13,27,46,0.95);
+  z-index: 2;
+}
+.chip-label.chip-ridden { color: #fb7185; background: rgba(224,80,80,0.15); }
+.chip-label.chip-booked { color: #7dd3fc; background: rgba(125,211,252,0.15); }
+.chip-label.chip-wishlist { color: #f5c842; background: rgba(245,200,66,0.15); }
+.chip {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.5rem;
+  padding: 3px 7px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.02);
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+}
+.chip:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+.chip.chip-ridden-btn:hover { border-color: rgba(224,80,80,0.4); }
+.chip.chip-booked-btn:hover { border-color: rgba(125,211,252,0.4); }
+.chip.chip-wishlist-btn:hover { border-color: rgba(245,200,66,0.4); }
+.chip.active {
+  background: rgba(255,255,255,0.08);
+  color: var(--text);
+  border-color: rgba(255,255,255,0.25);
+}
+/* Floating legend overlay inside the map */
+.ca-map-zone { position: relative; }
+.ca-legend-float {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(13,27,46,0.88);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  z-index: 10;
+}
+.leg-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.55rem;
+  letter-spacing: 0.03em;
+}
+.leg-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 1.5px rgba(13,27,46,0.6);
+}
+.leg-ridden { background: #e05050; }
+.leg-booked { background: #7dd3fc; }
+.leg-wishlist { background: #f5c842; }
+.leg-label {
+  color: var(--text);
+  flex: 1;
+  min-width: 48px;
+}
+.leg-count {
+  color: var(--muted);
+  font-family: 'Fraunces', serif;
+  font-size: 0.7rem;
+  min-width: 20px;
+  text-align: right;
+}
+.ca-hint {
+  text-align: center;
+  font-size: 0.55rem;
+  color: var(--muted);
+  letter-spacing: 0.03em;
+  padding: 10px 0 4px;
+  font-style: italic;
+}
+
+/* Pin popup */
+.pin-booked:hover, .pin-wishlist:hover, .pin-ridden:hover {
+  opacity: 1 !important;
+  transform-origin: center;
+}
+.ca-popup {
+  display: none;
+  margin-top: 12px;
+  padding: 14px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 12px;
+  position: relative;
+  animation: popIn 0.25s ease;
+}
+.ca-popup.show { display: block; }
+@keyframes popIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:none; } }
+.ca-popup-close {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  color: var(--muted);
+  font-size: 18px;
+  cursor: pointer;
+  line-height: 1;
+}
+.ca-popup-close:hover { color: var(--text); }
+.ca-popup-type {
+  font-size: 0.5rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.ca-popup-type.booked { color: var(--sky); }
+.ca-popup-type.wishlist { color: var(--gold); }
+.ca-popup-type.ridden { color: var(--coral); }
+.ca-popup-title {
+  font-family: 'Fraunces', serif;
+  font-size: 0.95rem;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.ca-popup-meta {
+  font-size: 0.6rem;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.ca-popup-notes {
+  font-size: 0.65rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* Region summary grid */
+.reg-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.reg-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+}
+.reg-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #e05050;
+  flex-shrink: 0;
+}
+.reg-info { flex: 1; min-width: 0; }
+.reg-name {
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: var(--text);
+}
+.reg-sub {
+  font-size: 0.5rem;
+  color: var(--muted);
+}
+.reg-miles {
+  font-family: 'Fraunces', serif;
+  font-size: 1rem;
+  color: var(--sky);
+  flex-shrink: 0;
+  line-height: 1;
+}
+.reg-miles span {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.5rem;
+  color: var(--muted);
+}
+
+/* ── RIDE PULSE (mirrors Weekly Pulse) ── */
+.rp-pulse, .rp-year { padding: 14px 16px; }
+
+.rp-hero-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.rp-num-block {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.rp-big-num {
+  font-family: 'Fraunces', serif;
+  font-size: 28px;
+  font-weight: 400;
+  color: var(--gold);
+  line-height: 1;
+}
+.rp-big-sub {
+  font-size: 8px;
+  color: var(--dim);
+  line-height: 1.3;
+}
+.rp-slots {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+.rp-slot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  border: 1.5px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.03);
+  transition: all 0.4s;
+  position: relative;
+}
+.rp-slot.slot-empty { opacity: 0.3; }
+.rp-slot.slot-earned {
+  border-color: rgba(245,200,66,0.5);
+  background: rgba(245,200,66,0.12);
+  opacity: 1;
+}
+/* Text-based slots (for monthly pulse) */
+.rp-slot-val {
+  font-family: 'Fraunces', serif;
+  font-size: 9px;
+  color: var(--text);
+  line-height: 1;
+}
+.rp-slot-lbl {
+  font-size: 4.5px;
+  color: var(--dim);
+  letter-spacing: 0.04em;
+  line-height: 1;
+  margin-top: 1px;
+}
+
+/* ── Trophy block ── Compact single-row layout. Sits on the same line as
+   the miles hero number so the whole "this period" summary is one row. */
+.rp-trophy-block {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-shrink: 1;
+  min-width: 0;
+}
+.rp-medal-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 9px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  min-width: 0;
+  white-space: nowrap;
+}
+.rp-medal-earned {
+  background: linear-gradient(135deg, rgba(245,200,66,0.15), rgba(245,200,66,0.05));
+  border-color: rgba(245,200,66,0.35);
+  box-shadow: 0 0 10px rgba(245,200,66,0.12);
+}
+.rp-medal-next { opacity: 0.85; }
+.rp-medal-icon-lg {
+  font-size: 18px;
+  line-height: 1;
+  filter: drop-shadow(0 0 4px rgba(245,200,66,0.35));
+  flex-shrink: 0;
+}
+.rp-medal-icon-lg.rp-dim {
+  filter: grayscale(0.8) opacity(0.55);
+}
+.rp-medal-info {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 0;
+}
+.rp-medal-name {
+  font-family: 'Fraunces', serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1;
+}
+.rp-medal-earned .rp-medal-name { color: var(--gold); }
+.rp-medal-desc {
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1;
+}
+.rp-earned-tag {
+  color: var(--mint);
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+}
+.rp-togo-num {
+  color: var(--text);
+  font-weight: 700;
+  font-family: 'Fraunces', serif;
+  font-size: 12px;
+}
+.rp-trophy-complete {
+  background: linear-gradient(135deg, rgba(245,200,66,0.18), rgba(110,231,183,0.10));
+  border-color: rgba(245,200,66,0.4);
+  padding: 6px 12px;
+}
+.rp-trophy-full {
+  font-size: 22px;
+  line-height: 1;
+  filter: drop-shadow(0 0 6px rgba(245,200,66,0.4));
+}
+
+/* Stat footer — the old 3-circle data, now in context under the progress bar */
+.rp-stats-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0 12px;
+  font-size: 11px;
+  color: var(--muted);
+  flex-wrap: wrap;
+}
+.rp-stats-row .rp-stat strong {
+  color: var(--text);
+  font-weight: 600;
+  font-family: 'Fraunces', serif;
+  font-size: 13px;
+}
+.rp-stat-sep { color: var(--dim); opacity: 0.5; }
+
+/* Small phones — keep miles + both trophy chips on ONE row. Tier NAME
+   ("Bronze") is hidden since the medal icon already conveys the tier.
+   `.rp-desc-extra` (e.g. "50mi · " prefix or "to go" suffix) is hidden to
+   keep chips compact — the core info ("earned" / "24mi") stays. */
+@media (max-width: 420px) {
+  .rp-hero-row { flex-wrap: nowrap; gap: 8px; }
+  .rp-big-num { font-size: 22px; }
+  .rp-big-sub { font-size: 7px; }
+  .rp-medal-chip { padding: 4px 7px; gap: 4px; }
+  .rp-medal-icon-lg { font-size: 16px; }
+  .rp-medal-name { display: none; }
+  .rp-medal-desc { font-size: 10px; }
+  .rp-togo-num { font-size: 11px; }
+}
+@media (max-width: 360px) {
+  /* extra tight — drop the prefix/suffix text too */
+  .rp-desc-extra { display: none; }
+}
+
+/* Progress bar */
+.rp-bar-row {
+  position: relative;
+  margin-bottom: 18px;  /* extra room so medal labels below aren't clipped */
+  padding-top: 18px;
+}
+.rp-track {
+  width: 100%;
+  height: 3px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 3px;
+  overflow: visible;
+  position: relative;
+}
+.rp-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--sky), var(--mint));
+  box-shadow: 0 0 6px rgba(110,231,183,0.2);
+  transition: width 0.6s ease;
+}
+.rp-fill-year {
+  background: linear-gradient(90deg, var(--amber), var(--gold));
+  box-shadow: 0 0 6px rgba(245,200,66,0.2);
+}
+.rp-medal {
+  position: absolute;
+  top: -12px;
+  transform: translateX(-50%);
+  line-height: 1;
+  white-space: nowrap;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.rp-medal-ico {
+  font-size: 16px;
+  line-height: 1;
+  transition: filter 0.3s, opacity 0.3s;
+}
+.rp-medal.dim .rp-medal-ico { filter: grayscale(0.85); opacity: 0.5; }
+.rp-medal.lit .rp-medal-ico { filter: drop-shadow(0 0 5px rgba(245,200,66,0.6)); }
+/* Label stays bright/readable regardless of whether the tier is earned */
+.rp-medal-lbl {
+  display: block;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text);
+  text-align: center;
+  margin-top: 3px;
+  letter-spacing: 0.02em;
+}
+.rp-medal.dim .rp-medal-lbl { color: var(--muted); }
+.rp-medal.lit .rp-medal-lbl { color: var(--gold); }
+/* Legacy — old bare-span fallback so we don't break anything else */
+.rp-medal > span:not([class]) {
+  display: block;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--muted);
+  text-align: center;
+  margin-top: 2px;
+  margin-top: -1px;
+  letter-spacing: 0.03em;
+}
+
+/* Week cells (Monthly Pulse) — mirrors wp-days */
+.rp-days {
+  display: flex;
+  gap: 6px;
+}
+.rp-day {
+  flex: 1;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 8px 2px 6px;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.02);
+}
+.rp-day-num {
+  font-family: 'Fraunces', serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1;
+  color: var(--dim);
+}
+.rp-day-lbl {
+  font-size: 7px;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.rp-mi {
+  font-family: 'DM Mono', monospace;
+  font-size: 6px;
+  color: var(--dim);
+  margin-left: 1px;
+}
+.rp-day.has-miles {
+  background: rgba(125,211,252,0.1);
+  border-color: rgba(125,211,252,0.2);
+}
+.rp-day.has-miles .rp-day-num { color: var(--sky); }
+.rp-day.is-today {
+  border: 1.5px solid var(--mint);
+  background: rgba(110,231,183,0.08);
+}
+.rp-day.is-today .rp-day-num { color: var(--mint); }
+.rp-day.is-today .rp-mi { color: rgba(110,231,183,0.5); }
+
+/* Month grid (Year at a Glance) — 6 columns × 2 rows (legacy full-year mode) */
+.rp-months {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+}
+.rp-months .rp-day { aspect-ratio: auto; padding: 8px 2px 6px; }
+.rp-months .rp-day.is-today .rp-day-num { color: var(--gold); }
+.rp-months .rp-day.is-today .rp-mi { color: rgba(245,200,66,0.5); }
+.rp-months .rp-day.is-today {
+  border-color: rgba(245,200,66,0.3);
+  background: rgba(245,200,66,0.08);
+}
+
+/* Compact mode — only past+current months + a "TO GO" chip. Single row.
+   Uses flex with wrap so it adapts as months pass through the year. */
+.rp-months.rp-months-compact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.rp-months-compact .rp-day {
+  flex: 1 1 0;
+  min-width: 52px;
+  padding: 8px 4px 6px;
+}
+.rp-more-chip {
+  flex: 0 0 auto !important;
+  min-width: 52px;
+  background: transparent;
+  border: 1px dashed rgba(125,154,184,0.25) !important;
+  opacity: 0.65;
+}
+.rp-more-chip .rp-day-num {
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  font-weight: 500;
+}
+.rp-more-chip .rp-day-lbl {
+  color: var(--dim);
+  font-size: 8px;
+  letter-spacing: 0.1em;
+}
+
+/* Caption above pulse/year cards so user always knows WHICH period is being shown */
+.rp-section-caption {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-bottom: 12px;
+  font-weight: 500;
+}
+
+/* ── YEAR-OVER-YEAR CARD ── */
+.yoy-card { padding: 18px 18px 22px; }
+.yoy-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; }
+.yoy-title {
+  font-family: 'Fraunces', serif;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.yoy-sub { font-size: 10px; color: var(--dim); letter-spacing: 0.05em; text-transform: uppercase; }
+
+/* Pace comparison chips */
+.yoy-chips { display: flex; gap: 10px; margin-bottom: 18px; }
+.yoy-chip {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  display: flex; flex-direction: column; gap: 2px;
+}
+.yoy-chip-lbl { font-size: 9px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+.yoy-chip-val {
+  font-family: 'Fraunces', serif;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1;
+  display: flex; align-items: baseline; gap: 3px;
+}
+.yoy-chip.yoy-up .yoy-chip-val { color: var(--mint); }
+.yoy-chip.yoy-down .yoy-chip-val { color: var(--coral); }
+.yoy-chip-sub { font-size: 10px; color: var(--dim); margin-top: 2px; }
+.yoy-mi { font-size: 10px; color: var(--dim); font-weight: 400; font-family: 'DM Mono', monospace; letter-spacing: 0; }
+.yoy-chip-empty { padding: 12px; font-size: 11px; color: var(--dim); text-align: center; flex: 1; }
+
+/* Sparkline */
+.yoy-spark-wrap {
+  margin: 6px -6px 6px;
+  padding: 0;
+}
+.yoy-svg { width: 100%; height: auto; display: block; }
+
+/* Legend under sparkline */
+.yoy-legend {
+  display: flex; flex-wrap: wrap; gap: 8px 14px;
+  margin: 4px 4px 12px;
+  justify-content: center;
+}
+.yoy-legend-item {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px; color: var(--muted);
+}
+.yoy-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  display: inline-block;
+}
+.yoy-legend-year { color: var(--text); font-weight: 500; }
+.yoy-legend-mi { color: var(--muted); }
+
+.yoy-divider {
+  height: 1px;
+  background: rgba(255,255,255,0.06);
+  margin: 8px 0 14px;
+}
+
+.yoy-bars-label {
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+/* Horizontal year bars */
+.yoy-bars { display: flex; flex-direction: column; gap: 8px; }
+.yoy-bar-row {
+  display: grid;
+  grid-template-columns: 44px 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 4px;
+  border-radius: 6px;
+}
+.yoy-bar-current {
+  background: rgba(110,231,183,0.06);
+  border: 1px solid rgba(110,231,183,0.18);
+  padding: 8px 6px;
+}
+.yoy-bar-year {
+  font-family: 'Fraunces', serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+}
+.yoy-bar-current .yoy-bar-year { color: var(--mint); }
+.yoy-bar-track {
+  height: 6px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.yoy-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, rgba(125,154,184,0.4), rgba(125,154,184,0.7));
+  border-radius: 3px;
+}
+.yoy-bar-current .yoy-bar-fill {
+  background: linear-gradient(90deg, var(--mint), var(--gold));
+  box-shadow: 0 0 8px rgba(110,231,183,0.3);
+}
+.yoy-bar-val {
+  font-family: 'Fraunces', serif;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text);
+  min-width: 60px;
+  text-align: right;
+}
+.yoy-bar-current .yoy-bar-val { color: var(--mint); }
+.yoy-bar-count {
+  font-size: 9px;
+  color: var(--dim);
+  letter-spacing: 0.05em;
+  min-width: 50px;
+  text-align: right;
+}
+
+/* Tighter on small phones */
+@media (max-width: 380px) {
+  .yoy-chips { flex-direction: column; }
+  .yoy-bar-row { grid-template-columns: 36px 1fr auto; }
+  .yoy-bar-count { display: none; }
+}
+
+/* ── FOOTER ── */
+.footer {
+  text-align: center;
+  padding: 24px 16px;
+  font-size: 9px;
+  color: var(--dim);
+  letter-spacing: 0.06em;
+}
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="w">
+    <div class="hero-top">
+      <div class="hero-brand">SNEHA<em>.OS</em></div>
+      <div class="hero-right">
+        <span class="hero-date">{{DATE_LABEL}}</span>
+        <span class="hero-sep">&middot;</span>
+        <span class="hero-status">ride atlas.</span>
+        <button class="sync-btn" id="syncBtn" onclick="syncRides()">&#x21bb; sync</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="w">
+
+<!-- TAB BAR -->
+<div class="tab-bar">
+  <a href="https://mbp-fvnwqhyh4j.tail790bc5.ts.net/dashboard" class="tab">&#9889; Quest Hub</a>
+  <a href="https://mbp-fvnwqhyh4j.tail790bc5.ts.net/rides" class="tab active">&#x1f6b4; Ride Atlas</a>
+</div>
+
+<!-- MONTHLY PULSE (mirrors Weekly Pulse) -->
+{{MONTHLY_PULSE_HTML}}
+
+<!-- YEAR AT A GLANCE -->
+{{YEARLY_WIDGET_HTML}}
+
+<!-- YEAR-OVER-YEAR PROGRESS -->
+{{YEAR_OVER_YEAR_HTML}}
+
+<!-- ALL-TIME STATS -->
+<div class="section-label">All-Time</div>
+<div class="stats-row">
+  <div class="stat-pill">
+    <div class="stat-label">Distance</div>
+    <div class="stat-value mint">{{TOTAL_MILES}}</div>
+    <div class="stat-sub">miles ridden</div>
+  </div>
+  <div class="stat-pill">
+    <div class="stat-label">Elevation</div>
+    <div class="stat-value gold">{{TOTAL_ELEVATION_SHORT}}</div>
+    <div class="stat-sub">feet climbed</div>
+  </div>
+  <div class="stat-pill">
+    <div class="stat-label">Rides</div>
+    <div class="stat-value sky">{{TOTAL_RIDES}}</div>
+    <div class="stat-sub">logged</div>
+  </div>
+</div>
+
+<!-- CROWNING ACHIEVEMENT -->
+<div class="section-label">Crowning Achievement</div>
+{{CROWN_HTML}}
+
+<!-- CALIFORNIA COVERAGE MAP -->
+{{CA_COVERAGE_HTML}}
+
+<!-- UPCOMING RIDES (from Travel Master Planner sheet) — flows naturally after the map since both are about planned/upcoming trips -->
+<div class="card">
+  <div class="card-title">Upcoming Rides</div>
+  {{UPCOMING_RIDES_HTML}}
+</div>
+
+<!-- ROUTE CARDS GROUPED BY REGION -->
+{{REGIONS_HTML}}
+
+<!-- INSIGHT -->
+<div class="insight">
+  {{INSIGHT_TEXT}}
+</div>
+
+<!-- FOOTER -->
+<div class="footer">ride atlas &middot; sneha.os</div>
+
+</div><!-- /.w -->
+
+<script>
+function buildSVG(coords, bbox, vw, vh) {
+  if (!coords || !coords.length || !bbox) return '';
+  const pad = 0.1;
+  const latR = bbox.max_lat - bbox.min_lat || 0.001;
+  const lngR = bbox.max_lng - bbox.min_lng || 0.001;
+  const pLat = latR * pad, pLng = lngR * pad;
+  const minLat = bbox.min_lat - pLat, maxLat = bbox.max_lat + pLat;
+  const minLng = bbox.min_lng - pLng, maxLng = bbox.max_lng + pLng;
+  const pts = coords.map(c => [
+    ((c[1] - minLng) / (maxLng - minLng)) * vw,
+    ((1 - (c[0] - minLat) / (maxLat - minLat))) * vh
+  ]);
+  const d = pts.map((p, i) => `${i===0?'M':'L'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+  const s = pts[0];
+  return `<svg viewBox="0 0 ${vw} ${vh}" preserveAspectRatio="xMidYMid meet">
+    <path d="${d}" stroke="rgba(224,80,80,0.18)" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="${d}" stroke="#e05050" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="${s[0].toFixed(1)}" cy="${s[1].toFixed(1)}" r="6" fill="none" stroke="#e05050" stroke-width="1.5" opacity="0.4"/>
+    <circle cx="${s[0].toFixed(1)}" cy="${s[1].toFixed(1)}" r="3" fill="#e05050"/>
+  </svg>`;
+}
+
+// Render SVGs client-side for all map zones
+const RIDES = {{RIDES_JSON}};
+document.querySelectorAll('[data-ride-id]').forEach(el => {
+  const id = parseInt(el.dataset.rideId);
+  const ride = RIDES.find(r => r.id === id);
+  if (!ride || !ride.coords || !ride.coords.length) return;
+  const zone = el.querySelector('.map-zone') || el.querySelector('.crown-map');
+  if (!zone) return;
+  const isCrown = zone.classList.contains('crown-map');
+  const vw = 400, vh = isCrown ? 220 : 130;
+  // Keep badges, replace placeholder
+  const badges = zone.querySelectorAll('.region-badge, .epic-badge');
+  zone.innerHTML = buildSVG(ride.coords, ride.bbox, vw, vh);
+  badges.forEach(b => zone.appendChild(b));
+});
+
+// CA map pin/chip click handler
+document.addEventListener('click', function(e) {
+  const target = e.target.closest('.pin-booked, .pin-wishlist, .pin-ridden, .chip');
+  if (!target || !window.CA_PIN_DATA) return;
+  const idx = target.dataset.pinIdx;
+  if (!idx) return;
+  const data = window.CA_PIN_DATA.find(d => d.idx === idx);
+  if (!data) return;
+
+  // Highlight the corresponding chip
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  const chip = document.querySelector(`.chip[data-pin-idx="${idx}"]`);
+  if (chip) chip.classList.add('active');
+
+  // Briefly pulse the matching pin
+  document.querySelectorAll('circle[data-pin-idx]').forEach(c => {
+    c.style.filter = '';
+  });
+  document.querySelectorAll(`circle[data-pin-idx="${idx}"]`).forEach(c => {
+    c.style.filter = 'drop-shadow(0 0 6px currentColor)';
+  });
+
+  const popup = document.getElementById('caPopup');
+  const typeEl = document.getElementById('caPopupType');
+  const typeLabels = { ridden: 'Ridden', booked: 'Booked · Upcoming', wishlist: 'Wishlist' };
+  typeEl.textContent = typeLabels[data.type] || data.type;
+  typeEl.className = 'ca-popup-type ' + data.type;
+  // decode HTML entities in name
+  const tmpDiv = document.createElement('div');
+  tmpDiv.innerHTML = data.name;
+  document.getElementById('caPopupTitle').textContent = tmpDiv.textContent;
+  document.getElementById('caPopupMeta').textContent = data.date || '';
+  document.getElementById('caPopupNotes').textContent = data.notes || '';
+  popup.classList.add('show');
+  popup.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+});
+
+function syncRides() {
+  const btn = document.getElementById('syncBtn');
+  btn.textContent = 'syncing\u2026';
+  btn.classList.add('syncing');
+  fetch('/api/rides/refresh', { method: 'POST' })
+    .then(r => r.json())
+    .then(() => location.reload())
+    .catch(() => {
+      btn.textContent = '\u21bb sync';
+      btn.classList.remove('syncing');
+    });
+}
+</script>
+</body>
+</html>

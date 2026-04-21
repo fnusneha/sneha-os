@@ -1,0 +1,2131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Compile.OS — Quest Hub</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0d1b2e;
+  --surface: rgba(255,255,255,0.06);
+  --surface-border: rgba(255,255,255,0.09);
+  --text: #e8eef5;
+  --muted: #7a9ab8;
+  --dim: #3d5a77;
+  --mint: #6ee7b7;
+  --gold: #f5c842;
+  --coral: #fb7185;
+  --sky: #7dd3fc;
+  --violet: #a78bfa;
+  --amber: #fbbf24;
+  --rose: #fda4af;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  min-height: 100vh;
+  padding: 0 0 80px;
+  background-image: radial-gradient(ellipse 70% 35% at 50% 0%, rgba(110,231,183,0.07) 0%, transparent 70%);
+  -webkit-font-smoothing: antialiased;
+}
+.w { width:100%; max-width:440px; margin:0 auto; padding:0 16px; }
+
+/* ── GLASSMORPHISM CARDS ── */
+.card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 12px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.card-title {
+  font-family: 'Fraunces', serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+
+/* ── 1. HERO BAR (sticky, minimal) ── */
+.hero {
+  padding: 14px 16px;
+  margin-bottom: 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(13,27,46,0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.hero-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.hero-brand {
+  font-family: 'Fraunces', serif;
+  font-size: 20px;
+  font-weight: 300;
+  letter-spacing: -0.02em;
+}
+.hero-brand em { color: var(--mint); font-style: normal; font-size: 17px; }
+.hero-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+.hero-date { color: var(--muted); }
+
+/* ── Sync pill (data freshness indicator + pull-to-refresh) ── */
+.sync-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px 4px;
+  justify-content: center;
+}
+.sync-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(110,231,183,0.08);
+  border: 1px solid rgba(110,231,183,0.22);
+  color: var(--mint);
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  cursor: pointer;
+  transition: transform 0.15s, background 0.2s;
+}
+.sync-pill:active { transform: scale(0.96); }
+.sync-pill:hover { background: rgba(110,231,183,0.14); }
+.sync-pill.syncing {
+  background: rgba(125,211,252,0.1);
+  border-color: rgba(125,211,252,0.3);
+  color: var(--sky);
+  pointer-events: none;
+}
+.sync-pill.syncing .sync-ico {
+  animation: syncspin 1s linear infinite;
+}
+.sync-pill.stale {
+  background: rgba(251,113,133,0.08);
+  border-color: rgba(251,113,133,0.25);
+  color: var(--coral);
+}
+@keyframes syncspin { to { transform: rotate(360deg); } }
+.sync-ico {
+  display: inline-block;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+}
+.sync-hint {
+  font-size: 10px;
+  color: var(--dim);
+  font-family: 'DM Mono', monospace;
+  letter-spacing: 0.02em;
+}
+@media (max-width: 400px) {
+  .sync-hint { display: none; }
+}
+.hero-sep { color: var(--dim); }
+.hero-status { color: var(--mint); font-size: 10px; }
+.hero-status.compiled { color: var(--gold); }
+.compile-dots::after {
+  content: '';
+  animation: dots 1.5s steps(3, end) infinite;
+}
+@keyframes dots {
+  0% { content: ''; }
+  33% { content: '.'; }
+  66% { content: '..'; }
+  100% { content: '...'; }
+}
+.hero-status.compiled .compile-dots::after { animation: none; content: ''; }
+
+/* Sleep + cycle pills (legacy — kept for back-compat, not rendered) */
+.pills, .intel-pills { display:flex; gap:8px; flex-wrap:wrap; }
+.intel-pills { margin-bottom: 12px; }
+.pill {
+  font-size: 10px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+.pill-sleep { background:rgba(110,231,183,0.1); border:1px solid rgba(110,231,183,0.2); color:var(--mint); }
+.pill-cycle { background:rgba(125,211,252,0.1); border:1px solid rgba(125,211,252,0.2); color:var(--sky); }
+
+/* ── 2. WEEKLY PULSE CARD ── */
+.weekly-pulse { padding: 14px 16px; }
+
+/* Hero row: stars number + 3 slots + season badge */
+.wp-hero-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.wp-num-block {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.wp-stars-num {
+  font-family: 'Fraunces', serif;
+  font-size: 28px;
+  font-weight: 400;
+  color: var(--gold);
+  line-height: 1;
+}
+.wp-stars-sub {
+  font-size: 8px;
+  color: var(--dim);
+  line-height: 1.3;
+}
+.wp-slots {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+.wp-slot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  border: 1.5px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.03);
+  transition: all 0.4s;
+}
+.wp-slot.slot-empty { opacity: 0.3; }
+.wp-slot.slot-earned {
+  border-color: rgba(245,200,66,0.5);
+  background: rgba(245,200,66,0.12);
+  opacity: 1;
+}
+.wp-season-block { margin-left: 4px; }
+.season-badge-compact {
+  display: none;
+  font-size: 8px;
+  padding: 3px 8px;
+  border-radius: 8px;
+  white-space: nowrap;
+  transition: all 0.4s;
+}
+.season-badge-compact.earned {
+  display: inline;
+  background: rgba(245,200,66,0.12);
+  border: 1px solid rgba(245,200,66,0.25);
+  color: var(--gold);
+  animation: badgeFade 0.5s ease;
+}
+@keyframes badgeFade { from { opacity:0; transform:scale(0.9); } to { opacity:1; transform:scale(1); } }
+
+/* Progress bar row */
+.wp-bar-row {
+  position: relative;
+  margin-bottom: 10px;
+  padding-top: 10px;
+}
+.wp-week-track {
+  width: 100%;
+  height: 3px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 3px;
+  overflow: visible;
+  position: relative;
+}
+.wp-week-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--amber), var(--gold));
+  box-shadow: 0 0 6px rgba(245,200,66,0.2);
+  transition: width 0.6s ease;
+}
+.wp-medal-marker {
+  position: absolute;
+  top: -8px;
+  transform: translateX(-50%);
+  font-size: 11px;
+  transition: opacity 0.3s;
+}
+.wp-medal-marker.dim { opacity: 0.2; }
+.wp-medal-marker.lit { opacity: 1; }
+.wp-days {
+  display: flex;
+  gap: 6px;
+}
+.wp-day {
+  flex: 1;
+  aspect-ratio: 1;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  transition: all 0.3s;
+}
+.wp-day-num {
+  font-family: 'Fraunces', serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1;
+}
+.wp-day-lbl {
+  font-size: 8px;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.wp-day.has-stars {
+  background: rgba(110,231,183,0.12);
+  border: 1px solid rgba(110,231,183,0.25);
+}
+.wp-day.has-stars .wp-day-num { color: var(--mint); }
+.wp-day.zero-stars {
+  background: rgba(251,113,133,0.08);
+  border: 1px solid rgba(251,113,133,0.15);
+}
+.wp-day.zero-stars .wp-day-num { color: var(--coral); }
+.wp-day.is-today {
+  border: 1.5px solid var(--mint);
+  background: rgba(110,231,183,0.08);
+}
+.wp-day.is-today .wp-day-num { color: var(--gold); }
+.wp-day.is-today .wp-day-lbl { color: var(--mint); }
+.wp-day.is-future {
+  background: rgba(255,255,255,0.02);
+  border: 1px dashed rgba(255,255,255,0.07);
+}
+/* Clickable affordance for past + today bubbles */
+.wp-day-clickable { cursor: pointer; transition: transform 0.15s, border-color 0.15s, background 0.15s; }
+.wp-day-clickable:hover, .wp-day-clickable:focus {
+  transform: translateY(-2px);
+  outline: none;
+  border-color: var(--mint);
+  background: rgba(110,231,183,0.1);
+}
+.wp-day-clickable:active { transform: scale(0.96); }
+.wp-day-clickable::after {
+  content: "";
+  display: block;
+  width: 14px;
+  height: 2px;
+  margin: 3px auto -3px;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.15);
+  transition: background 0.2s;
+}
+.wp-day-clickable:hover::after { background: var(--mint); }
+
+/* ── Day Details Modal ── */
+.day-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(5,10,20,0.78);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 10000;
+  padding: 12px;
+  animation: dmFade 0.2s ease-out;
+}
+.day-modal.hidden { display: none; }
+@keyframes dmFade { from { opacity: 0; } to { opacity: 1; } }
+.day-modal-card {
+  background: linear-gradient(180deg, #1a2644, #0f1a2e);
+  border: 1px solid rgba(125,211,252,0.18);
+  border-radius: 18px;
+  width: 100%;
+  max-width: 480px;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 22px 20px 24px;
+  position: relative;
+  animation: dmSlide 0.28s cubic-bezier(0.2,0.8,0.3,1);
+  box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
+}
+@keyframes dmSlide { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.day-modal-close {
+  position: absolute;
+  top: 10px; right: 14px;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 26px;
+  cursor: pointer;
+  padding: 4px 10px;
+  line-height: 1;
+}
+.day-modal-close:hover { color: var(--text); }
+
+.day-modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.dm-day-label {
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.1;
+}
+.dm-day-date {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+  letter-spacing: 0.02em;
+}
+.dm-stars-big {
+  text-align: right;
+  font-family: 'Fraunces', serif;
+  font-size: 32px;
+  font-weight: 600;
+  color: var(--gold);
+  line-height: 1;
+}
+.dm-stars-max {
+  font-size: 14px;
+  color: var(--dim);
+}
+.dm-stars-lbl {
+  font-size: 9px;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-top: 4px;
+  font-family: 'DM Mono', monospace;
+  font-weight: 400;
+}
+
+.dm-stages {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+.dm-stage {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  font-size: 13px;
+}
+.dm-stage.earned {
+  background: linear-gradient(90deg, rgba(245,200,66,0.12), rgba(110,231,183,0.08));
+  border-color: rgba(245,200,66,0.3);
+}
+.dm-stage-ico { font-size: 18px; }
+.dm-stage-name { flex: 1; color: var(--text); font-weight: 500; }
+.dm-stage-state {
+  font-size: 11px;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+}
+.dm-stage.earned .dm-stage-state { color: var(--mint); font-weight: 600; }
+
+.dm-section-label {
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  font-weight: 500;
+}
+.dm-core-count-num, .dm-core-total-num { color: var(--text); }
+
+.dm-core-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.dm-core-item {
+  display: grid;
+  grid-template-columns: 22px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.02);
+  font-size: 12px;
+}
+.dm-core-item.done {
+  background: rgba(110,231,183,0.08);
+  border: 1px solid rgba(110,231,183,0.18);
+}
+.dm-core-item.not-done {
+  border: 1px solid rgba(255,255,255,0.04);
+  opacity: 0.65;
+}
+.dm-core-check {
+  color: var(--mint);
+  font-size: 14px;
+  font-weight: bold;
+}
+.dm-core-item.not-done .dm-core-check { color: var(--dim); }
+.dm-core-name { color: var(--text); display: flex; flex-direction: column; gap: 2px; }
+.dm-core-target { font-size: 10px; color: var(--dim); font-family: 'DM Mono', monospace; }
+.dm-core-val {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  color: var(--text);
+  font-weight: 500;
+  text-align: right;
+}
+.dm-core-item.not-done .dm-core-val { color: var(--muted); }
+
+.dm-cycle-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: rgba(168,139,250,0.08);
+  border: 1px solid rgba(168,139,250,0.18);
+  border-radius: 10px;
+  font-size: 12px;
+}
+.dm-cycle-lbl { color: var(--muted); }
+.dm-cycle-val { color: var(--text); font-weight: 500; }
+.dm-cycle-row.empty { display: none; }
+
+/* Tiny phones */
+@media (max-width: 380px) {
+  .dm-day-label { font-size: 18px; }
+  .dm-stars-big { font-size: 26px; }
+}
+
+/* ── 3. DAILY QUEST (stages) ── */
+.quest-section { padding: 0 16px; margin-bottom: 12px; }
+.quest-section .card-title { padding: 0 4px; margin-bottom: 10px; }
+
+/* Compact context strip that replaces the Daily Intelligence card.
+   Shows cycle phase (the ONLY non-redundant bit from the old card) plus
+   the coach line, which is useful but short. */
+.today-context {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 14px;
+  margin: 0 4px 12px;
+  border-radius: 10px;
+  background: rgba(168,139,250,0.06);
+  border: 1px solid rgba(168,139,250,0.15);
+}
+.today-ctx-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(125,211,252,0.12);
+  border: 1px solid rgba(125,211,252,0.24);
+  color: var(--sky);
+  font-size: 11px;
+  font-family: 'DM Mono', monospace;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.today-ctx-note {
+  font-size: 11px;
+  color: var(--muted);
+  flex: 1;
+  min-width: 0;
+  line-height: 1.4;
+}
+.today-ctx-note strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.today-ctx-note em { color: var(--mint); font-style: normal; }
+
+.stage {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 14px;
+  margin-bottom: 10px;
+  overflow: hidden;
+  transition: all 0.3s;
+}
+.stage-header {
+  display: flex;
+  align-items: center;
+  padding: 12px 14px;
+  cursor: pointer;
+  gap: 10px;
+  user-select: none;
+}
+.stage-icon { font-size: 18px; flex-shrink: 0; }
+.stage-info { flex: 1; }
+.stage-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+.stage-sub {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 1px;
+}
+.stage-star {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  flex-shrink: 0;
+  transition: all 0.4s;
+  color: var(--dim);
+}
+.stage-star.star-ready {
+  background: rgba(245,200,66,0.15);
+  border-color: rgba(245,200,66,0.35);
+  color: var(--gold);
+  animation: starPulse 2s ease-in-out infinite;
+}
+@keyframes starPulse {
+  0%,100% { box-shadow: 0 0 6px rgba(245,200,66,0.15); }
+  50% { box-shadow: 0 0 14px rgba(245,200,66,0.35); }
+}
+.stage-star.star-collected {
+  background: rgba(245,200,66,0.2);
+  border-color: rgba(245,200,66,0.4);
+  box-shadow: 0 0 10px rgba(245,200,66,0.2);
+  color: var(--gold);
+  animation: none;
+}
+.stage-chevron {
+  font-size: 10px;
+  color: var(--dim);
+  transition: transform 0.3s;
+  flex-shrink: 0;
+}
+.stage.collapsed .stage-chevron { transform: rotate(-90deg); }
+.stage-body {
+  max-height: 600px;
+  overflow: hidden;
+  transition: max-height 0.4s ease;
+  padding: 0 14px;
+}
+.stage.collapsed .stage-body { max-height: 0; padding: 0 14px; }
+
+/* Core missions "progress toward star" banner */
+.core-progress-banner {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: linear-gradient(90deg, rgba(110,231,183,0.08), rgba(110,231,183,0.03));
+  border: 1px solid rgba(110,231,183,0.2);
+}
+.core-progress-text {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 8px;
+  text-align: center;
+}
+.core-progress-text strong {
+  color: var(--mint);
+  font-family: 'Fraunces', serif;
+  font-size: 16px;
+  font-weight: 600;
+  padding: 0 2px;
+}
+.core-progress-text strong#core-banner-needed {
+  color: var(--gold);
+}
+.core-progress-banner.earned strong#core-banner-needed,
+.core-progress-banner.earned .core-progress-lbl { display: none; }
+.core-progress-banner.earned .core-progress-text::after {
+  content: " \2B50 earned";
+  color: var(--mint);
+  font-weight: 600;
+}
+.core-progress-bar {
+  position: relative;
+  height: 4px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 3px;
+  overflow: visible;
+}
+.core-progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--sky), var(--mint));
+  transition: width 0.3s ease;
+}
+.core-progress-tick {
+  position: absolute;
+  top: -4px;
+  width: 2px;
+  height: 12px;
+  background: var(--gold);
+  transform: translateX(-50%);
+  border-radius: 1px;
+  box-shadow: 0 0 4px rgba(245,200,66,0.6);
+}
+
+/* Stage visual states */
+.stage.amber-stage.stage-active { border-left: 3px solid var(--amber); box-shadow: -4px 0 16px -4px rgba(251,191,36,0.35); }
+.stage.mint-stage.stage-active { border-left: 3px solid var(--mint); box-shadow: -4px 0 16px -4px rgba(110,231,183,0.35); }
+.stage.violet-stage.stage-active { border-left: 3px solid var(--violet); box-shadow: -4px 0 16px -4px rgba(167,139,250,0.35); }
+.stage.stage-active .stage-icon { animation: orbPulse 2.5s ease-in-out infinite; }
+@keyframes orbPulse { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.12); opacity: 0.85; } }
+
+.stage.stage-complete {
+  border-left: 3px solid var(--gold) !important;
+  box-shadow: none !important;
+}
+.stage.stage-complete .stage-body { max-height: 0; padding: 0 14px; }
+.stage.stage-complete .stage-chevron { display: none; }
+.stage.stage-complete .stage-header { cursor: default; }
+
+/* Summary row (after collection) */
+.stage-summary {
+  font-size: 10px;
+  color: var(--dim);
+  padding: 0 14px 12px;
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: max-height 0.4s ease, opacity 0.4s ease 0.1s;
+}
+.stage-summary.visible { max-height: 50px; opacity: 1; }
+.stage-summary span { color: var(--dim); }
+
+/* Quest items */
+.q-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 0;
+  gap: 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  cursor: pointer;
+  user-select: none;
+}
+/* Core Mission items — read-only status display */
+.q-item[data-readonly="true"] { cursor: default; }
+.core-status { font-size: 14px; flex-shrink: 0; width: 20px; text-align: center; }
+.q-item.core-done .q-name { color: var(--mint); }
+.q-item.core-pending .q-name { color: var(--muted); }
+.q-item.core-pending .core-status { opacity: 0.3; }
+.q-item:last-of-type { border-bottom: none; }
+.q-check {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 1.5px solid var(--dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: transparent;
+  transition: all 0.3s;
+  flex-shrink: 0;
+}
+.q-item.done .q-check {
+  border-color: var(--mint);
+  background: rgba(110,231,183,0.15);
+  color: var(--mint);
+}
+.q-item.done .q-check::after { content: "\2713"; }
+.q-icon { font-size: 14px; flex-shrink: 0; }
+.q-text { flex: 1; }
+.q-name { font-size: 11px; color: var(--text); }
+.q-hint { font-size: 9px; color: var(--dim); margin-top: 1px; }
+.q-item.done .q-name { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--dim); }
+
+/* Collect button */
+.collect-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 10px;
+  margin: 10px 0 4px;
+  border: none;
+  border-radius: 10px;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s;
+  letter-spacing: 0.03em;
+}
+.collect-btn.amber-btn { background: rgba(251,191,36,0.12); color: var(--amber); border: 1px solid rgba(251,191,36,0.2); }
+.collect-btn.mint-btn { background: rgba(110,231,183,0.12); color: var(--mint); border: 1px solid rgba(110,231,183,0.2); }
+.collect-btn.violet-btn { background: rgba(167,139,250,0.12); color: var(--violet); border: 1px solid rgba(167,139,250,0.2); }
+.collect-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.collect-btn.collected { opacity: 0.5; pointer-events: none; }
+
+/* ── 4. DAILY INTELLIGENCE (targets + coach merged) ── */
+.targets-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.target-label {
+  font-size: 10px;
+  color: var(--muted);
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.target-value {
+  font-family: 'Fraunces', serif;
+  font-size: 20px;
+  font-weight: 400;
+  margin-bottom: 2px;
+}
+.target-sub {
+  font-size: 9px;
+  color: var(--dim);
+  margin-bottom: 4px;
+}
+.bar-bg {
+  width: 100%;
+  height: 5px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.6s ease;
+}
+.intel-divider {
+  height: 1px;
+  background: rgba(255,255,255,0.06);
+  margin: 14px 0 12px;
+}
+.coach-line {
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.coach-line strong { color: var(--text); }
+.coach-line em { color: var(--sky); font-style: italic; }
+
+/* ── 5. ACCORDION SECTIONS ── */
+.accordion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+.accordion-header .card-title { margin-bottom: 0; }
+.accordion-chevron {
+  font-size: 10px;
+  color: var(--dim);
+  transition: transform 0.3s;
+}
+.accordion-section.collapsed .accordion-chevron { transform: rotate(-90deg); }
+.accordion-body {
+  max-height: 2000px;
+  overflow: hidden;
+  transition: max-height 0.4s ease, opacity 0.3s;
+  opacity: 1;
+}
+.accordion-section.collapsed .accordion-body {
+  max-height: 0;
+  opacity: 0;
+}
+
+/* ── PILLAR HEALTH ── */
+.pillars-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+.pillar {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.pillar:hover { border-color: rgba(255,255,255,0.12); }
+.pillar-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.pillar-name {
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.pillar-pct {
+  font-family: 'Fraunces', serif;
+  font-size: 16px;
+  font-weight: 400;
+}
+.pillar-bar {
+  width: 100%;
+  height: 4px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.pillar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.6s ease;
+}
+.pillar-reason {
+  font-size: 9px;
+  color: var(--dim);
+  margin-top: 6px;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s;
+  line-height: 1.5;
+}
+.pillar.expanded .pillar-reason { max-height: 80px; }
+
+/* ── SEASON PASS ── */
+.season-progress { margin-bottom: 12px; }
+.season-progress-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.season-badge {
+  font-size: 9px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 500;
+  display: inline-block;
+  margin-top: 6px;
+}
+.badge-behind { background: rgba(251,113,133,0.15); color: var(--coral); border: 1px solid rgba(251,113,133,0.25); }
+.badge-track { background: rgba(110,231,183,0.15); color: var(--mint); border: 1px solid rgba(110,231,183,0.25); }
+.badge-complete { background: rgba(245,200,66,0.15); color: var(--gold); border: 1px solid rgba(245,200,66,0.25); }
+.season-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 0;
+  gap: 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  cursor: pointer;
+  user-select: none;
+}
+.season-item:last-child { border-bottom: none; }
+.si-check {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid var(--dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  color: transparent;
+  transition: all 0.3s;
+  flex-shrink: 0;
+}
+.season-item.si-done .si-check {
+  border-color: var(--mint);
+  background: rgba(110,231,183,0.15);
+  color: var(--mint);
+}
+.season-item.si-done .si-check::after { content: "\2713"; }
+.season-item.si-overdue .si-check { border-color: var(--coral); }
+.si-info { flex: 1; }
+.si-name { font-size: 11px; }
+.si-meta { font-size: 9px; color: var(--dim); margin-top: 1px; }
+.si-status {
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 8px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.si-status-done { background: rgba(110,231,183,0.1); color: var(--mint); }
+.si-status-due { background: rgba(125,211,252,0.1); color: var(--sky); }
+.si-status-overdue { background: rgba(251,113,133,0.1); color: var(--coral); }
+
+/* ── PINS ── */
+.pins-header { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px; margin-top:12px; }
+.pins-title { font-family:'Fraunces',serif; font-size:16px; font-weight:400; }
+.pins-count { font-size:10px; color:var(--muted); }
+.pins-count span { color:var(--coral); font-weight:600; }
+.pins-timeline { position:relative; padding-left:22px; }
+.pins-timeline::before { content:''; position:absolute; left:7px; top:0; bottom:0; width:2px; background:linear-gradient(to bottom, var(--mint) 0%, rgba(255,255,255,0.06) 40%); }
+.pin-month { font-size:9px; color:var(--dim); text-transform:uppercase; letter-spacing:0.1em; margin:14px 0 4px; position:relative; }
+.pin-month::before { content:''; position:absolute; left:-18px; top:50%; transform:translateY(-50%); width:8px; height:8px; border-radius:50%; background:var(--dim); border:2px solid var(--bg); }
+
+/* Year separator between pinned-year sections (e.g. 2026 → 2027 roadmap) */
+.pin-year-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 20px 0 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: linear-gradient(90deg, rgba(110,231,183,0.08), rgba(110,231,183,0.0));
+  border-left: 3px solid var(--mint);
+  position: relative;
+}
+.pin-year-header::before {
+  content: '';
+  position: absolute;
+  left: -23px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--mint);
+  box-shadow: 0 0 8px rgba(110,231,183,0.5);
+  border: 2px solid var(--bg);
+}
+.pin-year-header.pin-year-future {
+  background: linear-gradient(90deg, rgba(168,139,250,0.12), rgba(168,139,250,0.0));
+  border-left-color: var(--violet);
+}
+.pin-year-header.pin-year-future::before {
+  background: var(--violet);
+  box-shadow: 0 0 8px rgba(168,139,250,0.5);
+}
+.pin-year-header:first-child { margin-top: 0; }
+.pin-year-num {
+  font-family: 'Fraunces', serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+.pin-year-future .pin-year-num { color: var(--violet); }
+.pin-year-sub {
+  font-size: 10px;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.pin-row { display:flex; align-items:center; padding:8px 10px; margin-bottom:4px; border-radius:10px; gap:8px; user-select:none; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); }
+.pin-icon { font-size:14px; flex-shrink:0; transition:transform 0.3s; }
+.pin-row.pinned .pin-icon { transform:scale(1.15); }
+.pin-label { font-size:11px; color:var(--text); flex:1; }
+.pin-row.pinned { background:rgba(110,231,183,0.05); border-color:rgba(110,231,183,0.12); opacity:1; }
+.pin-row.pinned .pin-label { color:var(--mint); text-decoration:line-through; text-decoration-color:rgba(110,231,183,0.4); }
+.pin-row.soon { opacity:0.65; }
+.pin-row.upcoming { opacity:0.40; }
+.pin-src { font-size:8px; padding:2px 6px; border-radius:8px; margin-left:auto; flex-shrink:0; letter-spacing:0.04em; opacity:0.7; }
+.pin-src-cal { background:rgba(125,211,252,0.1); border:1px solid rgba(125,211,252,0.2); color:var(--sky); }
+.pin-src-habit { background:rgba(167,139,250,0.1); border:1px solid rgba(167,139,250,0.2); color:var(--violet); }
+
+/* ── FOOTER + DEPLOY ── */
+.footer {
+  text-align: center;
+  padding: 20px 16px;
+  font-size: 10px;
+  color: var(--dim);
+}
+.footer-updated { margin-bottom: 10px; }
+.deploy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 24px;
+  border: 1px solid rgba(110,231,183,0.2);
+  border-radius: 20px;
+  background: rgba(110,231,183,0.08);
+  color: var(--mint);
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.3s;
+  letter-spacing: 0.03em;
+}
+.deploy-btn:hover { border-color: rgba(110,231,183,0.4); background: rgba(110,231,183,0.12); }
+.deploy-btn.deployed {
+  opacity: 0.5;
+  pointer-events: none;
+  border-color: rgba(245,200,66,0.3);
+  color: var(--gold);
+  background: rgba(245,200,66,0.08);
+}
+
+/* ── MANTRA OVERLAY ── */
+.mantra-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(13,27,46,0.92);
+  z-index: 1000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+.mantra-overlay.show { opacity: 1; pointer-events: auto; }
+.mantra-text {
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  font-weight: 300;
+  color: var(--gold);
+  text-align: center;
+  padding: 0 32px;
+  line-height: 1.5;
+  animation: mantraIn 0.6s ease;
+}
+@keyframes mantraIn { from { opacity:0; transform:scale(0.95) translateY(8px); } to { opacity:1; transform:none; } }
+
+/* Star explosion */
+.star-burst {
+  position: fixed;
+  pointer-events: none;
+  z-index: 1001;
+  font-size: 24px;
+  animation: burstAnim 0.8s ease forwards;
+}
+@keyframes burstAnim {
+  0% { opacity:1; transform:scale(0.5); }
+  50% { opacity:1; transform:scale(1.4); }
+  100% { opacity:0; transform:scale(0.8) translateY(-40px); }
+}
+
+/* ── TAB BAR ── */
+.tab-bar {
+  display: flex;
+  gap: 6px;
+  padding: 6px 0 8px;
+  position: sticky;
+  top: 47px;
+  z-index: 99;
+  background: rgba(13,27,46,0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  margin: 0 0 4px;
+}
+.tab {
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 11px;
+  color: var(--muted);
+  text-decoration: none;
+  border: 1px solid transparent;
+  transition: all 0.2s;
+  letter-spacing: 0.02em;
+}
+.tab:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+.tab.active {
+  background: rgba(13,27,46,0.85);
+  color: var(--mint);
+  border-color: rgba(110,231,183,0.2);
+}
+
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<!-- MANTRA OVERLAY -->
+<div class="mantra-overlay" id="mantraOverlay">
+  <div class="mantra-text" id="mantraText"></div>
+</div>
+
+<div class="w">
+
+  <!-- ═══ 1. HERO BAR (sticky) ═══ -->
+  <div class="hero">
+    <div class="hero-top">
+      <div class="hero-brand">SNEHA<em>.OS</em></div>
+      <div class="hero-right">
+        <span class="hero-date">{{TODAY_DAY_LABEL}}</span>
+        <span class="hero-sep">&middot;</span>
+        <span class="hero-status" id="compile-status-text">compiling<span class="compile-dots"></span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB BAR -->
+  <div class="tab-bar">
+    <a href="https://mbp-fvnwqhyh4j.tail790bc5.ts.net/dashboard" class="tab active">&#9889; Quest Hub</a>
+    <a href="https://mbp-fvnwqhyh4j.tail790bc5.ts.net/rides" class="tab">&#x1f6b4; Ride Atlas</a>
+  </div>
+
+  <!-- Sync freshness pill + pull-to-refresh hint.
+       Tapping this pill forces a fresh Oura/Garmin/Sheet fetch. The "Xm ago"
+       label is computed client-side from {{SYNCED_TS}} so refreshing the
+       page immediately shows how stale the data is. -->
+  <div class="sync-bar">
+    <button id="sync-pill" class="sync-pill" onclick="refreshNow(this)" data-synced-ts="{{SYNCED_TS}}">
+      <span class="sync-ico">&#x21bb;</span>
+      <span class="sync-lbl">synced <span id="sync-age">just now</span></span>
+    </button>
+    <span class="sync-hint">tap to pull new data</span>
+  </div>
+
+  <!-- ═══ 2. WEEKLY PULSE ═══ -->
+  <div class="card weekly-pulse">
+    <!-- Row 1: Stars count + today slots + season badge -->
+    <div class="wp-hero-row">
+      <div class="wp-num-block">
+        <div class="wp-stars-num" id="wp-stars-num">{{WEEKLY_STARS}}</div>
+        <div class="wp-stars-sub">stars<br>this week</div>
+      </div>
+      <div class="wp-slots">
+        <div class="wp-slot {{TODAY_MORNING_CLS}}" id="slot-morning">&#x2600;&#xFE0F;</div>
+        <div class="wp-slot {{TODAY_CORE_CLS}}" id="slot-core">&#x26A1;</div>
+        <div class="wp-slot {{TODAY_NIGHT_CLS}}" id="slot-night">&#x1F319;</div>
+      </div>
+      <div class="wp-season-block">
+        <span class="season-badge-compact" id="season-badge">&#x1F3AB; {{SEASON_MONTH_SHORT}}</span>
+      </div>
+    </div>
+    <!-- Row 2: Progress bar with medals -->
+    <div class="wp-bar-row">
+      <div class="wp-week-track">
+        <div class="wp-week-fill" id="wp-week-fill" style="width:{{XP_PCT}}%;"></div>
+        <div class="{{MEDAL_GOOD_CLS}}" style="left:66.7%;">&#x1F949;</div>
+        <div class="{{MEDAL_PERFECT_CLS}}" style="left:100%;">&#x1F947;</div>
+      </div>
+    </div>
+    <!-- Row 3: Day bubbles -->
+    <div class="wp-days">
+      {{PULSE_DAYS_HTML}}
+    </div>
+  </div>
+
+  <!-- ═══ 3. DAILY QUEST ═══ -->
+  <div class="quest-section">
+    <div class="card-title">&#x2B50; Daily Quest</div>
+
+    <!-- Today's context strip: cycle phase + coaching note.
+         (Was previously in the "Daily Intelligence" card, which duplicated
+         the Core Missions data. That card is now gone — these two bits are
+         the only non-redundant info it had, shown compactly here.) -->
+    <div class="today-context">
+      <span class="today-ctx-pill">{{CYCLE_ICON}} {{CYCLE_LABEL}}</span>
+      <span class="today-ctx-note">{{COACH_LINE}}</span>
+    </div>
+
+    <!-- Morning Ritual (expanded by default) -->
+    <div class="stage amber-stage stage-active" id="stage-morning">
+      <div class="stage-header" onclick="toggleStage('stage-morning')">
+        <span class="stage-icon">&#x2600;&#xFE0F;</span>
+        <div class="stage-info">
+          <div class="stage-name">Morning Ritual</div>
+          <div class="stage-sub" id="sub-morning">4 checkpoints</div>
+        </div>
+        <div class="stage-star" id="star-morning">&#x2606;</div>
+        <span class="stage-chevron">&#x25BC;</span>
+      </div>
+      <div class="stage-summary" id="summary-morning"></div>
+      <div class="stage-body">
+        {{MORNING_RITUAL_HTML}}
+        <button class="collect-btn amber-btn" id="collect-morning" onclick="collectStar('morning','amber')">&#x2B50; Collect Morning Star</button>
+      </div>
+    </div>
+
+    <!-- Core Missions (collapsed by default) -->
+    <div class="stage mint-stage stage-active collapsed" id="stage-core">
+      <div class="stage-header" onclick="toggleStage('stage-core')">
+        <span class="stage-icon">&#x26A1;</span>
+        <div class="stage-info">
+          <div class="stage-name">Core Missions</div>
+          <div class="stage-sub" id="sub-core"><span id="core-done-count">{{CORE_DONE_COUNT}}</span> of 4 needed for star &middot; 7 habits tracked</div>
+        </div>
+        <div class="stage-star" id="star-core">&#x2606;</div>
+        <span class="stage-chevron">&#x25BC;</span>
+      </div>
+      <div class="stage-summary" id="summary-core"></div>
+      <div class="stage-body">
+        <div class="core-progress-banner" id="core-progress-banner">
+          <span class="core-progress-text">
+            <strong id="core-banner-count">{{CORE_DONE_COUNT}}</strong>
+            <span class="core-progress-lbl"> of 7 done &middot; need </span>
+            <strong id="core-banner-needed">{{CORE_NEEDED_COUNT}}</strong>
+            <span class="core-progress-lbl"> more to earn &#x2B50;</span>
+          </span>
+          <div class="core-progress-bar">
+            <div class="core-progress-fill" id="core-progress-fill" style="width:{{CORE_PROGRESS_PCT}}%"></div>
+            <div class="core-progress-tick" style="left:57%" title="Threshold: 4 of 7"></div>
+          </div>
+        </div>
+        {{CORE_MISSIONS_HTML}}
+        <button class="collect-btn mint-btn" id="collect-core" onclick="collectStar('core','mint')">&#x2B50; Collect Day Star</button>
+      </div>
+    </div>
+
+    <!-- Night Ritual (collapsed by default) -->
+    <div class="stage violet-stage stage-active collapsed" id="stage-night">
+      <div class="stage-header" onclick="toggleStage('stage-night')">
+        <span class="stage-icon">&#x1F319;</span>
+        <div class="stage-info">
+          <div class="stage-name">Night Ritual</div>
+          <div class="stage-sub" id="sub-night">4 checkpoints</div>
+        </div>
+        <div class="stage-star" id="star-night">&#x2606;</div>
+        <span class="stage-chevron">&#x25BC;</span>
+      </div>
+      <div class="stage-summary" id="summary-night"></div>
+      <div class="stage-body" id="night-body">
+        {{NIGHT_RITUAL_HTML}}
+        <button class="collect-btn violet-btn" id="collect-night" onclick="collectStar('night','violet')">&#x2B50; Collect Night Star</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 4. SEASON PASS (accordion) ═══ -->
+  <div class="card accordion-section collapsed" id="section-season" data-section="season">
+    <div class="accordion-header" onclick="toggleAccordion('season')">
+      <div class="card-title">&#x1F4C5; Season Pass &mdash; {{SEASON_MONTH}}</div>
+      <span class="accordion-chevron">&#x25BC;</span>
+    </div>
+    <div class="accordion-body">
+      <div class="season-progress">
+        <div class="season-progress-label">
+          <span id="season-count-label">{{SEASON_DONE}} of {{SEASON_TOTAL}} complete</span>
+          <span id="season-pct-label">{{SEASON_PCT}}%</span>
+        </div>
+        <div class="bar-bg"><div class="bar-fill" id="season-bar-fill" style="width:{{SEASON_PCT}}%;background:var(--mint);"></div></div>
+        <span class="season-badge {{SEASON_BADGE_CLS}}" id="season-status-badge">{{SEASON_BADGE_TEXT}}</span>
+      </div>
+      {{SEASON_ITEMS_HTML}}
+    </div>
+  </div>
+
+  <!-- ═══ 6. PILLAR HEALTH (accordion) ═══ -->
+  <div class="card accordion-section collapsed" id="section-pillars" data-section="pillars">
+    <div class="accordion-header" onclick="toggleAccordion('pillars')">
+      <div class="card-title">&#x1F9E9; Pillar Health</div>
+      <span class="accordion-chevron">&#x25BC;</span>
+    </div>
+    <div class="accordion-body">
+      <div class="pillars-grid">
+        {{PILLARS_HTML}}
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 7. PINS · Multi-year Timeline ═══ -->
+  <div class="card">
+    <div class="card-title">&#x1F4CD; Pins</div>
+    <div class="pins-header">
+      <div class="pins-title">Timeline</div>
+      <div class="pins-count"><span id="pin-count">0</span> pinned</div>
+    </div>
+    <div class="pins-timeline" id="pinsTimeline">
+      {{PINS_HTML}}
+    </div>
+  </div>
+
+  <!-- Server data for JS -->
+  <div id="server-state" data-morning="{{MORNING_COLLECTED}}" data-core="{{CORE_COLLECTED}}" data-night="{{NIGHT_COLLECTED}}" data-season="{{SEASON_DONE_INDICES}}" class="hidden"></div>
+
+  <!-- Per-day breakdown payload (populated by html_report.py) -->
+  <script id="day-details-data" type="application/json">{{DAY_DETAILS_JSON}}</script>
+
+  <!-- ═══ Day Details Modal ═══ -->
+  <div id="day-modal" class="day-modal hidden" onclick="if(event.target===this)closeDayModal()">
+    <div class="day-modal-card" role="dialog" aria-modal="true" aria-labelledby="dm-title">
+      <button class="day-modal-close" onclick="closeDayModal()" aria-label="Close">&times;</button>
+      <div class="day-modal-head">
+        <div>
+          <div class="dm-day-label" id="dm-title">—</div>
+          <div class="dm-day-date" id="dm-date">—</div>
+        </div>
+        <div class="dm-stars-big">
+          <span id="dm-stars">0</span><span class="dm-stars-max">/3</span>
+          <div class="dm-stars-lbl">stars earned</div>
+        </div>
+      </div>
+
+      <div class="dm-stages">
+        <div class="dm-stage" id="dm-stage-morning">
+          <span class="dm-stage-ico">☀️</span>
+          <span class="dm-stage-name">Morning Ritual</span>
+          <span class="dm-stage-state" id="dm-morning-state">—</span>
+        </div>
+        <div class="dm-stage" id="dm-stage-core">
+          <span class="dm-stage-ico">⚡</span>
+          <span class="dm-stage-name">Core Missions</span>
+          <span class="dm-stage-state" id="dm-core-state">—</span>
+        </div>
+        <div class="dm-stage" id="dm-stage-night">
+          <span class="dm-stage-ico">🌙</span>
+          <span class="dm-stage-name">Night Ritual</span>
+          <span class="dm-stage-state" id="dm-night-state">—</span>
+        </div>
+      </div>
+
+      <div class="dm-section-label">Core items — <span id="dm-core-count">0</span> of <span id="dm-core-total">7</span></div>
+      <div class="dm-core-list" id="dm-core-list"></div>
+
+      <div class="dm-cycle-row" id="dm-cycle-row">
+        <span class="dm-cycle-lbl">Cycle phase</span>
+        <span class="dm-cycle-val" id="dm-cycle-val">—</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 8. FOOTER ═══ -->
+  <div class="footer">
+    <div class="footer-updated">{{TAB_NAME}} &middot; v{{BUILD_DATE}}</div>
+    <button class="deploy-btn" id="deploy-btn" onclick="deployDay()">&#x1F680; Deploy</button>
+  </div>
+
+</div>
+
+<script>
+(function() {
+  // ?reset in URL clears all localStorage and reloads clean
+  if (window.location.search.includes('reset')) {
+    localStorage.clear();
+    window.location.href = window.location.pathname;
+    return;
+  }
+
+  // Local-date key (NOT UTC) — so Collects after 5pm Pacific don't land on tomorrow's column.
+  function localDateISO(d) {
+    d = d || new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return y + '-' + m + '-' + day;
+  }
+  const TODAY_KEY = localDateISO();
+  const ROUTINE_KEY = 'routines_' + TODAY_KEY;
+  const ACCORDION_KEY = 'accordion_state';
+
+  // Visible error toast — replaces silent .catch(()=>{}) so Collects that
+  // fail to persist are loud instead of invisible.
+  function showError(msg) {
+    let el = document.getElementById('err-toast');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'err-toast';
+      el.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#c0392b;color:#fff;padding:12px 18px;border-radius:8px;font-size:14px;z-index:99999;max-width:90%;box-shadow:0 4px 12px rgba(0,0,0,.3)';
+      document.body.appendChild(el);
+    }
+    el.textContent = '\u26a0\ufe0f ' + msg;
+    el.style.display = 'block';
+    clearTimeout(el._t);
+    el._t = setTimeout(() => { el.style.display = 'none'; }, 6000);
+  }
+
+  // Persist an action to the server. Returns a Promise that rejects on failure
+  // so callers can surface errors instead of swallowing them.
+  function postCollect(action, date) {
+    return fetch('/api/collect', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({action: action, date: date})
+    }).then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    }).then(j => {
+      if (!j.ok) throw new Error(j.error || 'server rejected');
+      return j;
+    });
+  }
+
+  // ── Stage toggle ──
+  window.toggleStage = function(id) {
+    const el = document.getElementById(id);
+    if (el.classList.contains('stage-complete')) return;
+    el.classList.toggle('collapsed');
+  };
+
+  // ── Routine state persistence ──
+  function loadRoutineState() {
+    try { return JSON.parse(localStorage.getItem(ROUTINE_KEY)) || {}; } catch(e) { return {}; }
+  }
+  function saveRoutineState(state) {
+    localStorage.setItem(ROUTINE_KEY, JSON.stringify(state));
+  }
+
+  // ── Quest item toggle ──
+  // Auto-persist: when a stage reaches its threshold (all 4 morning/night,
+  // or 4+ core), immediately POST the star to the sheet so a forgotten
+  // "Collect" tap cannot lose the star. The Collect button stays for the
+  // animation + "feel", but is no longer the only persistence path.
+  const AUTO_PERSIST_THRESHOLDS = { morning: 4, night: 4, core: 4 };
+  const _autoPosted = {};
+  window.toggleQuestItem = function(el, stage, idx) {
+    // Core items pre-checked from sheet data are read-only
+    if (el.dataset.readonly === 'true') return;
+    el.classList.toggle('done');
+    const state = loadRoutineState();
+    if (!state[stage]) state[stage] = {};
+    state[stage][idx] = el.classList.contains('done');
+    saveRoutineState(state);
+    updateCollectButtons();
+
+    // Auto-POST if threshold reached and not already saved for this stage today
+    const stageEl = document.getElementById('stage-' + stage);
+    if (!stageEl) return;
+    const items = stageEl.querySelectorAll('.q-item');
+    const doneCount = Array.from(items).filter(i => i.classList.contains('done')).length;
+    const threshold = AUTO_PERSIST_THRESHOLDS[stage] || 99;
+    const alreadyCollected = (loadRoutineState())[stage + '_collected'];
+    const dayKey = TODAY_KEY + ':' + stage;
+    if (doneCount >= threshold && !alreadyCollected && !_autoPosted[dayKey]) {
+      _autoPosted[dayKey] = true;
+      postCollect(stage, TODAY_KEY).then(() => {
+        const st = loadRoutineState();
+        st[stage + '_collected'] = true;
+        saveRoutineState(st);
+      }).catch(err => {
+        _autoPosted[dayKey] = false;  // allow retry on next tick
+        showError('Auto-save failed (' + err.message + '). Tap Collect to retry.');
+      });
+    }
+  };
+
+  // ── Stage constants ──
+  const STAGE_ORDER = ['morning', 'core', 'night'];
+  const STAGE_LABELS = { morning: '4 checkpoints', core: '7 habits tracked', night: '4 checkpoints' };
+
+  // ── Set stage visual state: active or complete ──
+  function setStageState(stage, newState) {
+    const el = document.getElementById('stage-' + stage);
+    if (!el) return;
+    el.classList.remove('stage-active', 'stage-complete');
+    el.classList.add('stage-' + newState);
+    const subEl = document.getElementById('sub-' + stage);
+    if (newState === 'active' && subEl) {
+      subEl.textContent = STAGE_LABELS[stage];
+    }
+  }
+
+  // Summary text shown when a stage is collected.
+  // (Previously showed a "N-day streak" computed from localStorage only —
+  // removed because it was unreliable (clears with browser data, doesn't
+  // sync across devices, didn't reflect the Google Sheet source of truth).
+  // Tap any past day bubble in the Weekly Pulse to see actual history.)
+  function getSummaryText(stage) {
+    const labels = { morning: 'Morning ritual complete', core: 'Core mission complete', night: 'Night ritual complete' };
+    return '\u2b50  ' + (labels[stage] || 'Star earned');
+  }
+
+  function showSummary(stage) {
+    const sumEl = document.getElementById('summary-' + stage);
+    if (!sumEl) return;
+    sumEl.innerHTML = '<span>' + getSummaryText(stage) + '</span>';
+    requestAnimationFrame(() => sumEl.classList.add('visible'));
+  }
+
+  // ── Compile status (header indicator) ──
+  function updateCompileStatus() {
+    const state = loadRoutineState();
+    const allCollected = STAGE_ORDER.every(s => state[s + '_collected']);
+    const el = document.getElementById('compile-status-text');
+    if (!el) return;
+    if (allCollected) {
+      el.textContent = 'compiled \u2713';
+      el.classList.add('compiled');
+    } else {
+      el.innerHTML = 'compiling<span class="compile-dots"></span>';
+      el.classList.remove('compiled');
+    }
+  }
+
+  // ── Apply stage states on load (from server data + localStorage) ──
+  function applyStageStates() {
+    const serverState = (document.getElementById('server-state') || {}).dataset || {};
+    const localState = loadRoutineState();
+
+    STAGE_ORDER.forEach((stage) => {
+      // Server state is the SOLE source of truth on page load.
+      // localStorage is only used for same-session optimistic UI (between
+      // collecting a star and the next sync that regenerates the HTML).
+      const isCollected = serverState[stage] === 'true';
+
+      if (isCollected) {
+        setStageState(stage, 'complete');
+        const starEl = document.getElementById('star-' + stage);
+        if (starEl) {
+          starEl.textContent = '\u2605';
+          starEl.classList.remove('star-ready');
+          starEl.classList.add('star-collected');
+        }
+        showSummary(stage);
+        // Sync localStorage with server truth
+        localState[stage + '_collected'] = true;
+      } else {
+        setStageState(stage, 'active');
+        if (stage !== 'morning') {
+          const el = document.getElementById('stage-' + stage);
+          if (el && !el.classList.contains('collapsed')) {
+            el.classList.add('collapsed');
+          }
+        }
+      }
+    });
+    saveRoutineState(localState);
+  }
+
+  // ── Restore routine checks ──
+  function restoreRoutineState() {
+    const serverState = (document.getElementById('server-state') || {}).dataset || {};
+    const state = loadRoutineState();
+
+    ['morning','core','night'].forEach(stage => {
+      const stageEl = document.getElementById('stage-' + stage);
+      if (!stageEl) return;
+
+      // Core items are read-only — state from server HTML only
+      // Morning/Night checkboxes: restore from localStorage
+      if (stage !== 'core') {
+        const items = stageEl.querySelectorAll('.q-item');
+        items.forEach((item, idx) => {
+          if (state[stage] && state[stage][idx]) {
+            item.classList.add('done');
+          }
+        });
+      }
+
+      // Mark collected button — server is source of truth
+      if (serverState[stage] === 'true') {
+        const btn = document.getElementById('collect-' + stage);
+        if (btn) {
+          btn.classList.add('collected');
+          btn.textContent = '\u2B50 Collected!';
+        }
+        state[stage + '_collected'] = true;
+      }
+    });
+    saveRoutineState(state);
+    applyStageStates();
+    updateCollectButtons();
+    updateCompileStatus();
+  }
+
+  // ── Collect buttons + star indicators ──
+  const CORE_THRESHOLD = 4; // 4 of 7 items needed for core star
+  function updateCollectButtons() {
+    ['morning','core','night'].forEach(stage => {
+      const stageEl = document.getElementById('stage-' + stage);
+      if (!stageEl) return;
+      const items = stageEl.querySelectorAll('.q-item');
+      const doneCount = Array.from(items).filter(i => i.classList.contains('done')).length;
+      // Morning/Night: all items needed. Core: 4 of 7 needed.
+      const ready = (stage === 'core')
+        ? doneCount >= CORE_THRESHOLD
+        : (items.length > 0 && doneCount === items.length);
+      const btn = document.getElementById('collect-' + stage);
+      const starEl = document.getElementById('star-' + stage);
+      if (btn && !btn.classList.contains('collected')) {
+        btn.disabled = !ready;
+        if (ready && stageEl.classList.contains('stage-active')) {
+          if (starEl) {
+            starEl.textContent = '\u2B50';
+            starEl.classList.add('star-ready');
+            starEl.classList.remove('star-collected');
+          }
+        } else if (starEl && !starEl.classList.contains('star-collected')) {
+          starEl.textContent = '\u2606';
+          starEl.classList.remove('star-ready');
+        }
+      }
+    });
+  }
+
+  // ── Weekly Pulse updater ──
+  function updateWeeklyPulse(delta) {
+    const numEl = document.getElementById('wp-stars-num');
+    if (!numEl) return;
+    const updated = (parseInt(numEl.textContent) || 0) + delta;
+    numEl.textContent = updated;
+    // Update progress bar
+    const barEl = document.getElementById('wp-week-fill');
+    if (barEl) barEl.style.width = Math.min(100, Math.round((updated / 21) * 100)) + '%';
+    // Update medal markers
+    const markers = document.querySelectorAll('.wp-medal-marker');
+    [14, 21].forEach((t, i) => {
+      if (markers[i]) {
+        markers[i].classList.toggle('lit', updated >= t);
+        markers[i].classList.toggle('dim', updated < t);
+      }
+    });
+  }
+
+  // ── Fill a today slot as earned ──
+  function fillSlot(slotId) {
+    const el = document.getElementById(slotId);
+    if (el) {
+      el.classList.remove('slot-empty');
+      el.classList.add('slot-earned');
+    }
+  }
+
+  // ── Update today's day bubble ──
+  function updateTodayBubble() {
+    const todayBubble = document.querySelector('.wp-day.is-today');
+    if (!todayBubble) return;
+    const numEl = todayBubble.querySelector('.wp-day-num');
+    if (numEl) {
+      const current = parseInt(numEl.textContent) || 0;
+      numEl.textContent = current + 1;
+    }
+  }
+
+  // ── Collect star ──
+  const MANTRAS = [
+    "Systems beat motivation.\nYou just proved it.",
+    "Another star earned.\nConsistency compounds.",
+    "The chain grows stronger.",
+    "Small wins, big results.",
+    "You showed up. That's everything.",
+  ];
+  window.collectStar = function(stage, color) {
+    const btn = document.getElementById('collect-' + stage);
+    if (btn.disabled || btn.classList.contains('collected')) return;
+
+    const overlay = document.getElementById('mantraOverlay');
+    const text = document.getElementById('mantraText');
+    text.textContent = MANTRAS[Math.floor(Math.random() * MANTRAS.length)];
+    overlay.classList.add('show');
+
+    setTimeout(() => {
+      overlay.classList.remove('show');
+
+      const rect = btn.getBoundingClientRect();
+      for (let i = 0; i < 6; i++) {
+        const star = document.createElement('div');
+        star.className = 'star-burst';
+        star.textContent = '\u2B50';
+        star.style.left = (rect.left + rect.width/2 + (Math.random()-0.5)*60) + 'px';
+        star.style.top = (rect.top + (Math.random()-0.5)*40) + 'px';
+        document.body.appendChild(star);
+        setTimeout(() => star.remove(), 900);
+      }
+
+      btn.classList.add('collected');
+      btn.textContent = '\u2B50 Collected!';
+
+      // Morning/Night: POST to server + fill slot. Core: check threshold.
+      const todayDate = localDateISO();
+      if (stage === 'morning' || stage === 'night') {
+        fillSlot('slot-' + stage);
+        updateWeeklyPulse(1);
+        updateTodayBubble();
+        postCollect(stage, todayDate).catch(err => {
+          showError('Star NOT saved to sheet (' + err.message + '). Refresh and retry.');
+        });
+      } else if (stage === 'core') {
+        const coreEl = document.getElementById('stage-core');
+        const items = coreEl ? coreEl.querySelectorAll('.q-item') : [];
+        const doneCount = Array.from(items).filter(i => i.classList.contains('done')).length;
+        if (doneCount >= CORE_THRESHOLD) {
+          fillSlot('slot-core');
+          updateWeeklyPulse(1);
+          updateTodayBubble();
+        }
+        postCollect('core', todayDate).catch(err => {
+          showError('Core total NOT saved (' + err.message + '). Refresh and retry.');
+        });
+      }
+
+      const state = loadRoutineState();
+      state[stage + '_collected'] = true;
+      saveRoutineState(state);
+
+      const starEl = document.getElementById('star-' + stage);
+      if (starEl) {
+        starEl.textContent = '\u2605';
+        starEl.classList.remove('star-ready');
+        starEl.classList.add('star-collected');
+      }
+
+      setTimeout(() => {
+        setStageState(stage, 'complete');
+        showSummary(stage);
+        updateCompileStatus();
+      }, 350);
+    }, 1800);
+  };
+
+  // ── Accordion persistence ──
+  function loadAccordionState() {
+    try { return JSON.parse(localStorage.getItem(ACCORDION_KEY)) || {}; } catch(e) { return {}; }
+  }
+  function saveAccordionState(state) {
+    localStorage.setItem(ACCORDION_KEY, JSON.stringify(state));
+  }
+  window.toggleAccordion = function(sectionId) {
+    const el = document.getElementById('section-' + sectionId);
+    if (!el) return;
+    el.classList.toggle('collapsed');
+    const state = loadAccordionState();
+    state[sectionId] = el.classList.contains('collapsed');
+    saveAccordionState(state);
+  };
+  function restoreAccordionState() {
+    const state = loadAccordionState();
+    ['pillars', 'season'].forEach(id => {
+      const el = document.getElementById('section-' + id);
+      if (!el) return;
+      // Default: collapsed. If user explicitly expanded, respect that.
+      if (state[id] === false) {
+        el.classList.remove('collapsed');
+      } else {
+        el.classList.add('collapsed');
+      }
+    });
+  }
+
+  // ── Pillar expand ──
+  window.togglePillar = function(el) {
+    el.classList.toggle('expanded');
+  };
+
+  // ── Season Pass (server-side via Google Sheet row 14) ──
+  window.toggleSeasonItem = function(el, idx) {
+    el.classList.toggle('si-done');
+    const isDone = el.classList.contains('si-done');
+
+    // Update progress count, bar, and badge
+    const allItems = document.querySelectorAll('.season-item');
+    const total = allItems.length;
+    const doneCount = Array.from(allItems).filter(i => i.classList.contains('si-done')).length;
+    const pct = total > 0 ? Math.round((doneCount / total) * 100) : 0;
+
+    const countLabel = document.getElementById('season-count-label');
+    if (countLabel) countLabel.textContent = doneCount + ' of ' + total + ' complete';
+
+    const pctLabel = document.getElementById('season-pct-label');
+    if (pctLabel) pctLabel.textContent = pct + '%';
+
+    const barFill = document.getElementById('season-bar-fill');
+    if (barFill) barFill.style.width = pct + '%';
+
+    const statusBadge = document.getElementById('season-status-badge');
+    if (statusBadge) {
+      statusBadge.classList.remove('badge-behind', 'badge-track', 'badge-complete');
+      if (doneCount === total) {
+        statusBadge.textContent = 'Complete';
+        statusBadge.classList.add('badge-complete');
+      } else if (doneCount >= Math.floor(total / 2)) {
+        statusBadge.textContent = 'On Track';
+        statusBadge.classList.add('badge-track');
+      } else {
+        statusBadge.textContent = 'Behind';
+        statusBadge.classList.add('badge-behind');
+      }
+    }
+
+    // Season pass badge in weekly pulse
+    const allDone = doneCount === total;
+    const wpBadge = document.getElementById('season-badge');
+    if (allDone) {
+      if (wpBadge) wpBadge.classList.add('earned');
+      const seasonSection = document.getElementById('section-season');
+      if (seasonSection) setTimeout(() => seasonSection.classList.add('collapsed'), 600);
+    } else {
+      if (wpBadge) wpBadge.classList.remove('earned');
+    }
+
+    // Write to Google Sheet (source of truth)
+    fetch('/api/season', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({index: idx, done: isDone})
+    }).catch(() => {});
+  };
+  function restoreCyclesState() {
+    // Fetch live season state from server (Google Sheet row 14)
+    fetch('/api/season')
+      .then(r => r.json())
+      .then(data => {
+        if (!data.ok) return;
+        const serverIndices = new Set(data.indices || []);
+        const allItems = document.querySelectorAll('.season-item');
+        const total = allItems.length;
+        let doneCount = 0;
+
+        allItems.forEach((el, idx) => {
+          if (serverIndices.has(idx)) {
+            el.classList.add('si-done');
+            doneCount++;
+          } else {
+            el.classList.remove('si-done');
+          }
+        });
+
+        // Update progress UI
+        const pct = total > 0 ? Math.round((doneCount / total) * 100) : 0;
+        const countLabel = document.getElementById('season-count-label');
+        if (countLabel) countLabel.textContent = doneCount + ' of ' + total + ' complete';
+        const pctLabel = document.getElementById('season-pct-label');
+        if (pctLabel) pctLabel.textContent = pct + '%';
+        const barFill = document.getElementById('season-bar-fill');
+        if (barFill) barFill.style.width = pct + '%';
+        const statusBadge = document.getElementById('season-status-badge');
+        if (statusBadge) {
+          statusBadge.classList.remove('badge-behind', 'badge-track', 'badge-complete');
+          if (doneCount === total) {
+            statusBadge.textContent = 'Complete';
+            statusBadge.classList.add('badge-complete');
+          } else if (doneCount >= Math.floor(total / 2)) {
+            statusBadge.textContent = 'On Track';
+            statusBadge.classList.add('badge-track');
+          } else {
+            statusBadge.textContent = 'Behind';
+            statusBadge.classList.add('badge-behind');
+          }
+        }
+
+        // Season pass badge + auto-collapse
+        const allDone = doneCount === total;
+        const wpBadge = document.getElementById('season-badge');
+        if (allDone) {
+          if (wpBadge) wpBadge.classList.add('earned');
+          const seasonSection = document.getElementById('section-season');
+          if (seasonSection) seasonSection.classList.add('collapsed');
+        }
+      })
+      .catch(() => {
+        // Fallback: use server-rendered HTML state (from last sync)
+        const allItems = document.querySelectorAll('.season-item');
+        const allDone = allItems.length > 0 && Array.from(allItems).every(i => i.classList.contains('si-done'));
+        if (allDone) {
+          const badge = document.getElementById('season-badge');
+          if (badge) badge.classList.add('earned');
+        }
+      });
+  }
+
+  // ── Pins (read-only — state from travel sheet + habit doc) ──
+  function updatePinCount() {
+    const n = document.querySelectorAll('.pin-row.pinned').length;
+    const el = document.getElementById('pin-count');
+    if (el) el.textContent = n;
+  }
+  window.togglePin = function() {}; // read-only
+  function restorePins() { updatePinCount(); }
+
+  // ── Deploy button (shares dashboard link) ──
+  window.deployDay = function() {
+    const url = 'https://mbp-fvnwqhyh4j.tail790bc5.ts.net/dashboard';
+    if (navigator.share) {
+      navigator.share({ title: 'SNEHA.OS Dashboard', url: url });
+    } else {
+      navigator.clipboard.writeText(url).then(() => {
+        const btn = document.getElementById('deploy-btn');
+        if (btn) {
+          btn.innerHTML = '\u2705 Link copied!';
+          setTimeout(() => { btn.innerHTML = '\uD83D\uDE80 Deploy'; }, 2000);
+        }
+      });
+    }
+  };
+  function restoreDeployState() { /* no-op — share button has no persistent state */ }
+
+  // ── Day Details Modal ──
+  // Opens when user taps a past or today day bubble in the Weekly Pulse.
+  let _dayDetails = {};
+  try {
+    const el = document.getElementById('day-details-data');
+    if (el && el.textContent.trim()) _dayDetails = JSON.parse(el.textContent);
+  } catch (e) { console.warn('day-details parse failed', e); }
+
+  window.showDayDetails = function(wd) {
+    const d = _dayDetails[wd];
+    if (!d) return;
+    const modal = document.getElementById('day-modal');
+    if (!modal) return;
+
+    // Header
+    document.getElementById('dm-title').textContent =
+      d.is_today ? 'Today · ' + d.day_label : d.day_label;
+    document.getElementById('dm-date').textContent = d.date_str || '';
+    document.getElementById('dm-stars').textContent = d.stars;
+
+    // Stage chips
+    function setStage(id, done, doneText, notDoneText) {
+      const el = document.getElementById('dm-stage-' + id);
+      const st = document.getElementById('dm-' + id + '-state');
+      if (done) { el.classList.add('earned'); st.textContent = doneText; }
+      else       { el.classList.remove('earned'); st.textContent = notDoneText; }
+    }
+    setStage('morning', d.morning_done, '⭐ Earned', 'Not collected');
+    setStage('core', d.core_earned,
+      '⭐ Earned · ' + d.core_count + '/7',
+      d.core_count + '/7 · need ' + d.core_threshold);
+    setStage('night', d.night_done, '⭐ Earned', 'Not collected');
+
+    // Core item list
+    document.getElementById('dm-core-count').textContent = d.core_count;
+    document.getElementById('dm-core-total').textContent = '7';
+    const list = document.getElementById('dm-core-list');
+    list.innerHTML = '';
+    (d.core_items || []).forEach(item => {
+      const row = document.createElement('div');
+      row.className = 'dm-core-item ' + (item.done ? 'done' : 'not-done');
+      row.innerHTML =
+        '<div class="dm-core-check">' + (item.done ? '\u2713' : '\u2022') + '</div>' +
+        '<div class="dm-core-name">' + item.name +
+          '<span class="dm-core-target">' + (item.target || '') + '</span>' +
+        '</div>' +
+        '<div class="dm-core-val">' + (item.value || '—') + '</div>';
+      list.appendChild(row);
+    });
+
+    // Cycle row
+    const cyRow = document.getElementById('dm-cycle-row');
+    const cyVal = document.getElementById('dm-cycle-val');
+    if (d.cycle) {
+      cyRow.classList.remove('empty');
+      cyVal.textContent = d.cycle;
+    } else {
+      cyRow.classList.add('empty');
+    }
+
+    // Show modal
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+  };
+
+  window.closeDayModal = function() {
+    const modal = document.getElementById('day-modal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    document.body.style.overflow = '';
+  };
+
+  // Escape key closes modal
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeDayModal();
+  });
+
+  // Enter/Space on a focused day bubble opens it (a11y)
+  document.addEventListener('keydown', function(e) {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.classList &&
+        e.target.classList.contains('wp-day-clickable')) {
+      e.preventDefault();
+      const wd = parseInt(e.target.dataset.wd, 10);
+      if (!isNaN(wd)) showDayDetails(wd);
+    }
+  });
+
+  // ── Sync pill: age label + manual refresh ──
+  // Shows "synced just now / Xm ago / Xh ago" based on server-stamped time,
+  // so the user can tell immediately if the data is fresh after a refresh.
+  const syncPill = document.getElementById('sync-pill');
+  const syncAgeEl = document.getElementById('sync-age');
+  function updateSyncAge() {
+    if (!syncPill || !syncAgeEl) return;
+    const ts = parseInt(syncPill.dataset.syncedTs || '0', 10);
+    if (!ts) return;
+    const ageSec = Math.max(0, Math.floor(Date.now() / 1000) - ts);
+    let label;
+    if (ageSec < 45) label = 'just now';
+    else if (ageSec < 60 * 60) label = Math.round(ageSec / 60) + 'm ago';
+    else if (ageSec < 24 * 60 * 60) label = Math.round(ageSec / 3600) + 'h ago';
+    else label = Math.floor(ageSec / 86400) + 'd ago';
+    syncAgeEl.textContent = label;
+    // Stale after 2h — flip to coral so it's obvious new data is needed
+    if (ageSec > 2 * 60 * 60) syncPill.classList.add('stale');
+    else syncPill.classList.remove('stale');
+  }
+  updateSyncAge();
+  setInterval(updateSyncAge, 30 * 1000);
+
+  // Tap to refresh: hits /dashboard?force=1 which re-runs Oura+Garmin+Sheet
+  // sync, writes fresh data, then reloads the page so new numbers show up.
+  window.refreshNow = function(btn) {
+    if (!btn) return;
+    btn.classList.add('syncing');
+    const lbl = btn.querySelector('.sync-lbl');
+    if (lbl) lbl.innerHTML = 'fetching fresh data\u2026';
+    // Full-page reload with force=1 is the simplest correct thing — server
+    // blocks the response until regen completes (up to 60s), so when the
+    // page comes back it has the new numbers.
+    window.location.href = '/dashboard?force=1';
+  };
+
+  // ── Pull-to-refresh (mobile gesture) ──
+  // Only triggers when user is at the top of the page and pulls down ~80px.
+  (function setupPullToRefresh() {
+    let startY = 0, pulling = false, indicator = null;
+    const THRESHOLD = 80;
+    window.addEventListener('touchstart', (e) => {
+      if (window.scrollY > 2) return;
+      startY = e.touches[0].clientY;
+      pulling = true;
+    }, { passive: true });
+    window.addEventListener('touchmove', (e) => {
+      if (!pulling) return;
+      const dy = e.touches[0].clientY - startY;
+      if (dy <= 0) return;
+      if (!indicator) {
+        indicator = document.createElement('div');
+        indicator.id = 'ptr-indicator';
+        indicator.style.cssText = 'position:fixed;top:0;left:50%;transform:translateX(-50%);background:rgba(110,231,183,0.92);color:#0d1b2e;padding:6px 16px;border-radius:0 0 12px 12px;font-family:DM Mono,monospace;font-size:11px;font-weight:600;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,0.3);transition:opacity 0.2s';
+        document.body.appendChild(indicator);
+      }
+      indicator.textContent = dy < THRESHOLD ? '\u2193  pull to refresh' : '\u2191  release to refresh';
+      indicator.style.opacity = Math.min(1, dy / THRESHOLD);
+    }, { passive: true });
+    window.addEventListener('touchend', (e) => {
+      if (!pulling) return;
+      pulling = false;
+      const dy = e.changedTouches[0].clientY - startY;
+      if (indicator) {
+        if (dy >= THRESHOLD) {
+          indicator.textContent = 'refreshing\u2026';
+          // Trigger the same refresh path as the pill
+          refreshNow(document.getElementById('sync-pill'));
+        } else {
+          indicator.style.opacity = '0';
+          setTimeout(() => indicator && indicator.remove(), 200);
+          indicator = null;
+        }
+      }
+    }, { passive: true });
+  })();
+
+  // ── Init ──
+  restoreRoutineState();
+  restoreCyclesState();
+  restorePins();
+  restoreAccordionState();
+  restoreDeployState();
+})();
+</script>
+</body>
+</html>
