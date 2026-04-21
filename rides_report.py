@@ -1183,15 +1183,16 @@ def _ca_coverage_html(rides: list[dict]) -> str:
     city_labels = []  # filled in after pins are processed
 
     # 4. BOOKED pins (from Master Planner — upcoming cycling trips)
+    # Uses the same Google OAuth flow as the Quest Hub (token.json on
+    # Mac, GOOGLE_TOKEN_JSON env var on Render). The old code here tried
+    # to read service_account.json which was never actually in the
+    # OAuth flow and broke on Render.
     booked_data = []
     booked_points = []
     try:
         from travel_source import fetch_travel_pins
-        from google.oauth2.service_account import Credentials
-        creds = Credentials.from_service_account_file(
-            SCRIPT_DIR / "service_account.json",
-            scopes=["https://www.googleapis.com/auth/spreadsheets"],
-        )
+        from sheets import get_google_creds
+        creds = get_google_creds()
         pins = fetch_travel_pins(creds)
         booked_cycling = [p for p in pins if not p["pinned"] and p["icon"] == "\U0001f6b4"]
 
@@ -1235,11 +1236,8 @@ def _ca_coverage_html(rides: list[dict]) -> str:
     wishlist_points = []
     try:
         from travel_source import fetch_library_cycling
-        from google.oauth2.service_account import Credentials
-        creds = Credentials.from_service_account_file(
-            SCRIPT_DIR / "service_account.json",
-            scopes=["https://www.googleapis.com/auth/spreadsheets"],
-        )
+        from sheets import get_google_creds
+        creds = get_google_creds()
         wish = fetch_library_cycling(creds)
 
         # Deduplicate by location
@@ -1612,12 +1610,8 @@ def _upcoming_rides_html() -> str:
     """Fetch cycling trips from the Travel Master Planner sheet."""
     try:
         from travel_source import fetch_travel_pins
-        from google.oauth2.service_account import Credentials
-
-        creds = Credentials.from_service_account_file(
-            SCRIPT_DIR / "service_account.json",
-            scopes=["https://www.googleapis.com/auth/spreadsheets"],
-        )
+        from sheets import get_google_creds
+        creds = get_google_creds()
         pins = fetch_travel_pins(creds)
     except Exception as e:
         log.warning("Could not fetch travel pins: %s", e)
@@ -1679,11 +1673,8 @@ def _insight_text(rides: list[dict], breakdown: list[dict]) -> str:
     next_up = None
     try:
         from travel_source import fetch_travel_pins
-        from google.oauth2.service_account import Credentials
-        creds = Credentials.from_service_account_file(
-            SCRIPT_DIR / "service_account.json",
-            scopes=["https://www.googleapis.com/auth/spreadsheets"],
-        )
+        from sheets import get_google_creds
+        creds = get_google_creds()
         pins = fetch_travel_pins(creds)
         cycling = [p for p in pins if not p["pinned"] and p["icon"] == "\U0001f6b4"]
 
