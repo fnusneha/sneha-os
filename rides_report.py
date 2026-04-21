@@ -16,9 +16,15 @@ from datetime import datetime
 from pathlib import Path
 from os.path import expanduser
 
+from dotenv import load_dotenv
+
 log = logging.getLogger(__name__)
 
 SCRIPT_DIR = Path(__file__).resolve().parent
+# Load .env early so USE_DB_RIDES/DATABASE_URL are visible when
+# rides_report.py is run as a script (`python rides_report.py`).
+load_dotenv(SCRIPT_DIR / ".env")
+
 CACHE_FILE = SCRIPT_DIR / "rides_cache.json"
 TEMPLATE = SCRIPT_DIR / "templates" / "rides.html"
 OUTPUT = Path(expanduser("~/rides_report.html"))
@@ -80,6 +86,21 @@ MAX_PER_GROUP = 6
 
 
 def _load_rides() -> list[dict]:
+    """Return all rides in the same shape the renderer expects.
+
+    Prefers the DB (`USE_DB_RIDES=1`) so Render/Flask reads live data
+    instead of the stale rides_cache.json on disk. Legacy local CLI
+    (`python rides_report.py`) falls back to the JSON cache so existing
+    Mac workflows keep working during the migration window.
+    """
+    import os
+    if os.getenv("USE_DB_RIDES") == "1":
+        from db import Db
+        rows = Db().list_rides()
+        # payload JSONB already has every field rides_report expects.
+        # Drop 0-mile junk like the cache loader does.
+        return [r["payload"] for r in rows
+                if (r.get("payload") or {}).get("distance", 0) > 0.5]
     if not CACHE_FILE.exists():
         return []
     rides = json.loads(CACHE_FILE.read_text())

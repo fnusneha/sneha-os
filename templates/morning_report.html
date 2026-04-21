@@ -694,6 +694,70 @@ body {
   box-shadow: 0 0 4px rgba(245,200,66,0.6);
 }
 
+/* ── Manual log card (Sauna toggle, future manual fields) ── */
+.manual-log-card {
+  margin: 12px 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(245,200,66,0.04);
+  border: 1px solid rgba(245,200,66,0.15);
+}
+.manual-log-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+.manual-log-title {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.manual-log-hint {
+  font-size: 9px;
+  color: var(--dim);
+  letter-spacing: 0.02em;
+}
+.manual-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, transform 0.1s;
+  text-align: left;
+}
+.manual-toggle:active { transform: scale(0.97); }
+.manual-toggle .manual-ico { font-size: 18px; }
+.manual-toggle .manual-label { flex: 1; font-weight: 500; }
+.manual-toggle .manual-state {
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-family: 'DM Mono', monospace;
+  background: rgba(255,255,255,0.06);
+  color: var(--muted);
+}
+.manual-toggle.done {
+  background: linear-gradient(90deg, rgba(245,200,66,0.16), rgba(110,231,183,0.08));
+  border-color: rgba(245,200,66,0.4);
+}
+.manual-toggle.done .manual-state {
+  background: rgba(245,200,66,0.2);
+  color: var(--gold);
+  font-weight: 600;
+}
+.manual-toggle.saving { opacity: 0.55; pointer-events: none; }
+
 /* Stage visual states */
 .stage.amber-stage.stage-active { border-left: 3px solid var(--amber); box-shadow: -4px 0 16px -4px rgba(251,191,36,0.35); }
 .stage.mint-stage.stage-active { border-left: 3px solid var(--mint); box-shadow: -4px 0 16px -4px rgba(110,231,183,0.35); }
@@ -1181,8 +1245,8 @@ body {
 
   <!-- TAB BAR -->
   <div class="tab-bar">
-    <a href="https://mbp-fvnwqhyh4j.tail790bc5.ts.net/dashboard" class="tab active">&#9889; Quest Hub</a>
-    <a href="https://mbp-fvnwqhyh4j.tail790bc5.ts.net/rides" class="tab">&#x1f6b4; Ride Atlas</a>
+    <a href="/dashboard" class="tab active">&#9889; Quest Hub</a>
+    <a href="/rides" class="tab">&#x1f6b4; Ride Atlas</a>
   </div>
 
   <!-- Sync freshness pill + pull-to-refresh hint.
@@ -1285,6 +1349,23 @@ body {
           </div>
         </div>
         {{CORE_MISSIONS_HTML}}
+
+        <!-- Manual toggles. Sauna isn't auto-tracked anywhere, so the user
+             logs it from the phone. Toggling flips daily_entries.sauna
+             via /api/manual — no page reload; frontend updates in place. -->
+        <div class="manual-log-card">
+          <div class="manual-log-head">
+            <span class="manual-log-title">Log manual</span>
+            <span class="manual-log-hint">Tap to toggle today</span>
+          </div>
+          <button type="button" class="manual-toggle {{SAUNA_CLS}}" id="toggle-sauna"
+                  onclick="toggleManual('sauna', this)">
+            <span class="manual-ico">&#x2668;&#xfe0f;</span>
+            <span class="manual-label">Sauna / Steam</span>
+            <span class="manual-state" id="sauna-state">{{SAUNA_STATE_TEXT}}</span>
+          </button>
+        </div>
+
         <button class="collect-btn mint-btn" id="collect-core" onclick="collectStar('core','mint')">&#x2B50; Collect Day Star</button>
       </div>
     </div>
@@ -1813,6 +1894,42 @@ body {
     el.classList.toggle('expanded');
   };
 
+  // ── Manual log toggle (sauna, future fields) ──
+  // Posts to /api/manual. Uses optimistic UI: flips immediately, then
+  // syncs to server. On failure reverts and shows the existing toast.
+  window.toggleManual = function(field, btn) {
+    if (!btn) return;
+    const currentlyDone = btn.classList.contains('done');
+    const next = !currentlyDone;
+
+    // Optimistic toggle so the tap feels instant.
+    btn.classList.toggle('done', next);
+    const stateEl = btn.querySelector('.manual-state');
+    if (stateEl) stateEl.textContent = next ? '\u2713 logged' : 'not logged';
+    btn.classList.add('saving');
+
+    const todayLocal = (typeof localDateISO === 'function') ? localDateISO() : null;
+    fetch('/api/manual', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({field: field, value: next, date: todayLocal})
+    }).then(r => r.ok ? r.json() : Promise.reject(r))
+      .then(j => {
+        btn.classList.remove('saving');
+        if (!j.ok) throw new Error(j.error || 'server rejected');
+      })
+      .catch(err => {
+        btn.classList.remove('saving');
+        btn.classList.toggle('done', currentlyDone);  // revert
+        if (stateEl) stateEl.textContent = currentlyDone ? '\u2713 logged' : 'not logged';
+        if (typeof showError === 'function') {
+          showError('Sauna save failed: ' + (err && err.message || err));
+        } else {
+          alert('Could not save sauna toggle');
+        }
+      });
+  };
+
   // ── Season Pass (server-side via Google Sheet row 14) ──
   window.toggleSeasonItem = function(el, idx) {
     el.classList.toggle('si-done');
@@ -1940,7 +2057,7 @@ body {
 
   // ── Deploy button (shares dashboard link) ──
   window.deployDay = function() {
-    const url = 'https://mbp-fvnwqhyh4j.tail790bc5.ts.net/dashboard';
+    const url = window.location.origin + '/dashboard';
     if (navigator.share) {
       navigator.share({ title: 'SNEHA.OS Dashboard', url: url });
     } else {

@@ -957,6 +957,10 @@ def generate_html_report(data: dict) -> str:
         "CORE_DONE_COUNT":     str(today_core_items),
         "CORE_NEEDED_COUNT":   str(max(0, CORE_STAR_THRESHOLD - today_core_items)),
         "CORE_PROGRESS_PCT":   str(min(100, round((today_core_items / 7) * 100))),
+        # Manual-log toggle: sauna today. Values: "done" class if ticked,
+        # empty otherwise; sibling state text reflects either way.
+        "SAUNA_CLS":           ("done" if _row_has(data.get("sauna_row", []), weekday) else ""),
+        "SAUNA_STATE_TEXT":    ("\u2713 logged" if _row_has(data.get("sauna_row", []), weekday) else "not logged"),
         "MORNING_COLLECTED":   "true" if today_morning_earned else "false",
         "NIGHT_COLLECTED":     "true" if today_night_earned else "false",
         "CORE_COLLECTED":      "true" if today_core_earned else "false",
