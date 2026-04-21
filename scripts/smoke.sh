@@ -12,8 +12,9 @@
 #   3. /dashboard renders HTML with the Quest Hub markers
 #   4. /rides renders HTML with the Ride Atlas markers
 #   5. /api/season GET returns the current month's done indices
-#   6. /api/manual sauna toggle round-trips through the DB (flips
-#      twice so it ends where it started).
+#   6. /api/manual sauna toggle round-trips through the DB. The test
+#      reads the current value, flips it, then restores it — so your
+#      real sauna log is never left in the wrong state.
 #
 # Exits non-zero on any failure.
 
@@ -74,10 +75,15 @@ echo "=== 4. Season pass (GET) ==="
 check "/api/season returns indices" json_key "$URL/api/season" "indices"
 
 echo
-echo "=== 5. Sauna round-trip (dangerous — flips today's value twice) ==="
+echo "=== 5. Sauna round-trip (non-destructive — restores original value) ==="
 TODAY=$(date +%Y-%m-%d)
-check "POST /api/manual sauna=false" post_ok "$URL/api/manual" "{\"field\":\"sauna\",\"value\":false,\"date\":\"$TODAY\"}"
-check "POST /api/manual sauna=true"  post_ok "$URL/api/manual" "{\"field\":\"sauna\",\"value\":true,\"date\":\"$TODAY\"}"
+# Read current sauna state so we can restore it after the round-trip.
+ORIG=$(curl -fsS --max-time 15 "$URL/api/today" \
+       | python3 -c "import sys,json; print('true' if json.load(sys.stdin).get('sauna') else 'false')" \
+       2>/dev/null || echo "false")
+OTHER=$([ "$ORIG" = "true" ] && echo "false" || echo "true")
+check "POST /api/manual sauna=$OTHER (flip)"   post_ok "$URL/api/manual" "{\"field\":\"sauna\",\"value\":$OTHER,\"date\":\"$TODAY\"}"
+check "POST /api/manual sauna=$ORIG (restore)" post_ok "$URL/api/manual" "{\"field\":\"sauna\",\"value\":$ORIG,\"date\":\"$TODAY\"}"
 
 echo
 echo "=== Summary ==="
