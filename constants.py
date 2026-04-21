@@ -121,6 +121,9 @@ NOTES_SKIP_STARTS = [
     "office", "habit:", "reminder", "task", "strength training",
     "cardio", "sprint", "commute", "get ready", "bike", "wash",
     "sauna", "potential", "weatherbug", "attending:", "holiday",
+    # Out-of-office markers are implied when a trip event exists;
+    # showing "OOO" separately is just noise.
+    "ooo", "out of office",
 ]
 
 NOTES_TRIP_LOGISTICS = [

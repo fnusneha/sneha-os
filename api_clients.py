@@ -450,6 +450,21 @@ def fetch_week_calendar_notes(monday: date, sunday: date, creds) -> str | None:
         timed_events: list[str] = []
         allday_events: list[str] = []
         has_trip = False
+        # Distinctive keywords from any Travel:/Trip event in the week.
+        # Everything else that contains one of these is considered a
+        # sub-event of the trip (packet pickup, expo, shakeout ride, …)
+        # and collapsed into the single trip line for readability.
+        trip_keywords: set[str] = set()
+
+        # Common words that shouldn't trigger the "same trip" collapse
+        # (otherwise a trip named "Trip to Yosemite" would eat every
+        # event with the word "to").
+        _TRIP_STOPWORDS = {
+            "the", "a", "an", "to", "at", "in", "on", "of", "and",
+            "for", "with", "by", "from", "this", "that", "it", "is",
+            "trip", "travel", "home", "day", "weekend", "event",
+            "week", "sneha", "my",
+        }
 
         for ev in events_result.get("items", []):
             summary = (ev.get("summary") or "").strip()
@@ -474,6 +489,14 @@ def fetch_week_calendar_notes(monday: date, sunday: date, creds) -> str | None:
             lower = summary.lower()
             if "trip" in lower or lower.startswith("travel:"):
                 has_trip = True
+                # Extract distinctive words for trip-sub-event collapse.
+                core = lower
+                for prefix in ("travel:", "trip:"):
+                    if core.startswith(prefix):
+                        core = core[len(prefix):]
+                for w in re.findall(r"[a-z][a-z0-9']{3,}", core):
+                    if w not in _TRIP_STOPWORDS:
+                        trip_keywords.add(w)
 
             if is_allday:
                 allday_events.append(summary)
@@ -499,10 +522,24 @@ def fetch_week_calendar_notes(monday: date, sunday: date, creds) -> str | None:
         # Filter logistics if a trip exists, deduplicate similar names
         kept: list[str] = []
         seen: set[str] = set()
+        trip_line_added = False
 
         for summary in candidates:
             if has_trip and _is_trip_logistics(summary):
                 continue
+
+            lower = summary.lower()
+            is_trip_event = "trip" in lower or lower.startswith("travel:")
+
+            # Collapse sub-events of a trip: if we've already captured a
+            # Travel:/Trip line and this event shares a distinctive word
+            # with it, drop it. (e.g. "Travel: Santa Rosa Levi's
+            # GranFondo" absorbs "GranFondo Expo", "GranFondo Fri
+            # Shakeout Ride", "GranFondo Packet Pickup".)
+            if not is_trip_event and trip_keywords:
+                words_here = set(re.findall(r"[a-z][a-z0-9']{3,}", lower))
+                if words_here & trip_keywords:
+                    continue
 
             short = _shorten_event_name(summary)
             key = short.lower()
@@ -511,6 +548,14 @@ def fetch_week_calendar_notes(monday: date, sunday: date, creds) -> str | None:
                 continue
             seen.add(first_word)
             seen.add(key)
+
+            # Keep at most ONE trip line — earlier ones win (usually the
+            # top-level "Travel: X" event, orderBy=startTime).
+            if is_trip_event:
+                if trip_line_added:
+                    continue
+                trip_line_added = True
+
             kept.append(short)
 
         if monthly_habit_count >= 2:
