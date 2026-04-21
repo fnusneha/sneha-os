@@ -33,24 +33,38 @@ body {
 }
 .w { width:100%; max-width:440px; margin:0 auto; padding:0 16px; }
 
-/* ── GLASSMORPHISM CARDS ── */
+/* ── GLASSMORPHISM CARDS ── shared with Ride Atlas for visual continuity */
 .card {
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.08);
   border-radius: 16px;
-  padding: 20px;
+  padding: 16px;
   margin-bottom: 12px;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
+/* Interactive/active card titles (Daily Quest, Season Pass, Pillars,
+   Pins). Serif for personality. Short captions/eyebrows use
+   .section-label / .sum-eyebrow instead (small DM Mono). */
 .card-title {
   font-family: 'Fraunces', serif;
   font-size: 14px;
   font-weight: 600;
-  color: var(--muted);
-  letter-spacing: 0.08em;
+  color: var(--text);
+  letter-spacing: -0.01em;
+  margin-bottom: 12px;
+}
+
+/* Shared with Ride Atlas — small eyebrow label above a card/section.
+   Use this for top-level zone headings ("All-Time", "Crowning"). */
+.section-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--dim);
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  margin-bottom: 14px;
+  margin: 24px 0 10px;
 }
 
 /* ── 1. HERO BAR (sticky, minimal) ── */

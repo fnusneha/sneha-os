@@ -30,10 +30,11 @@ body {
   font-family: 'DM Mono', monospace;
   min-height: 100vh;
   padding: 0 0 80px;
-  background-image: radial-gradient(ellipse 70% 35% at 50% 0%, rgba(125,211,252,0.07) 0%, transparent 70%);
+  /* Match Quest Hub's ambient mint glow so both tabs feel like one app */
+  background-image: radial-gradient(ellipse 70% 35% at 50% 0%, rgba(110,231,183,0.07) 0%, transparent 70%);
   -webkit-font-smoothing: antialiased;
 }
-.w { width:100%; max-width:540px; margin:0 auto; padding:0 16px; }
+.w { width:100%; max-width:440px; margin:0 auto; padding:0 16px; }
 
 /* ── HERO BAR ── */
 .hero {
@@ -67,36 +68,36 @@ body {
 }
 .hero-date { color: var(--muted); }
 .hero-sep { color: var(--dim); }
-.hero-status { color: var(--sky); font-size: 10px; font-weight: 500; }
+.hero-status { color: var(--mint); font-size: 10px; font-weight: 500; }
 
-/* ── TAB BAR ── */
+/* ── TAB BAR ── identical pattern to Quest Hub for visual continuity */
 .tab-bar {
   display: flex;
-  margin: 14px 0 18px;
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 14px;
-  padding: 4px;
+  gap: 6px;
+  padding: 6px 0 8px;
+  position: sticky;
+  top: 47px;
+  z-index: 99;
+  background: rgba(13,27,46,0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  margin: 0 0 4px;
 }
 .tab {
-  flex: 1;
-  padding: 10px 8px;
-  border-radius: 11px;
+  padding: 6px 14px;
+  border-radius: 20px;
   font-size: 11px;
   color: var(--muted);
   text-decoration: none;
-  text-align: center;
   border: 1px solid transparent;
   transition: all 0.2s;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  font-weight: 500;
+  letter-spacing: 0.02em;
 }
-.tab:hover { color: var(--text); }
+.tab:hover { color: var(--text); background: rgba(255,255,255,0.04); }
 .tab.active {
-  background: rgba(125,211,252,0.08);
-  color: var(--sky);
-  border-color: rgba(125,211,252,0.2);
+  background: rgba(13,27,46,0.85);
+  color: var(--mint);
+  border-color: rgba(110,231,183,0.2);
 }
 
 /* ── SECTION LABEL ── */
@@ -499,16 +500,18 @@ body {
   border: 1px solid rgba(255,255,255,0.08);
   border-radius: 16px;
   padding: 16px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
+/* Matches Quest Hub .card-title — serif 14px. Short uppercase eyebrow
+   captions go to .section-label or .sum-eyebrow instead. */
 .card-title {
-  font-family: 'DM Mono', monospace;
-  font-size: 10px;
-  font-weight: 500;
-  color: var(--dim);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-family: 'Fraunces', serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.01em;
   margin-bottom: 12px;
 }
 .year-table {
@@ -598,21 +601,21 @@ body {
 .insight em { font-style: normal; color: var(--gold); }
 .insight strong { color: var(--text); font-weight: 500; }
 
-/* ── SYNC BUTTON ── */
+/* ── SYNC BUTTON ── styled to match Quest Hub's sync pill */
 .sync-btn {
   padding: 4px 10px;
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 12px;
-  background: rgba(255,255,255,0.04);
-  color: var(--muted);
+  border: 1px solid rgba(110,231,183,0.22);
+  border-radius: 999px;
+  background: rgba(110,231,183,0.08);
+  color: var(--mint);
   font-family: 'DM Mono', monospace;
-  font-size: 9px;
+  font-size: 10px;
   cursor: pointer;
   transition: all 0.3s;
   letter-spacing: 0.03em;
   margin-left: 8px;
 }
-.sync-btn:hover { border-color: rgba(125,211,252,0.3); color: var(--sky); background: rgba(125,211,252,0.08); }
+.sync-btn:hover { background: rgba(110,231,183,0.14); }
 .sync-btn.syncing { opacity: 0.5; pointer-events: none; }
 
 /* ── CALIFORNIA COVERAGE MAP ── */
