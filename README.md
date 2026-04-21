@@ -96,6 +96,12 @@ on both. No duplicate code to maintain.
 - **Graceful degradation.** If Oura / Garmin / Strava / Google flakes,
   the dashboard still renders — stale fields stay stale instead of
   blank.
+- **Two layers of cold-start defence.** Render free tier naps after
+  15 min of no traffic. A GitHub Actions keep-warm job pings
+  `/healthz` every 10 min between 7am–11pm Pacific so the container
+  stays awake during waking hours, and the Android WebView auto-retries
+  failed loads (10/20/30/30 s backoff, ~90 s budget) so a cold start
+  never lands the user on a permanent error page.
 
 ### Tech stack
 
@@ -177,6 +183,7 @@ from Postgres rows.
 │   └── …
 ├── .github/workflows/
 │   ├── sync.yml                        # 4×/day Oura/Garmin/Strava pull
+│   ├── keepwarm.yml                    # ping /healthz during active hours
 │   └── android.yml                     # auto-build APK on push to main
 ├── scripts/smoke.sh                    # End-to-end smoke
 ├── render.yaml · Procfile · requirements.txt
@@ -261,13 +268,14 @@ Both paths are fully hands-off. Bookmark the APK URL on your phone and
 opening it always pulls the newest build — you can never be "stuck on
 an old version" while filing bugs against a newer web UI.
 
-| Piece         | Where                                           | Trigger             |
-| ------------- | ----------------------------------------------- | ------------------- |
-| Web app       | Render (free tier) via `render.yaml`            | push to `main`      |
-| Cron          | GitHub Actions `.github/workflows/sync.yml`     | schedule + manual   |
-| Android APK   | GitHub Actions `.github/workflows/android.yml`  | push to `main/android/**` |
-| APK hosting   | GitHub Release tagged `android-latest`          | overwritten per build |
-| Database      | Neon free Postgres (`us-west-2`)                | always-on           |
+| Piece         | Where                                            | Trigger                      |
+| ------------- | ------------------------------------------------ | ---------------------------- |
+| Web app       | Render (free tier) via `render.yaml`             | push to `main`               |
+| Data sync     | GitHub Actions `.github/workflows/sync.yml`      | 4×/day + manual              |
+| Keep-warm     | GitHub Actions `.github/workflows/keepwarm.yml`  | every 10 min, 7am–11pm PT    |
+| Android APK   | GitHub Actions `.github/workflows/android.yml`   | push to `main` (android/\*\*) |
+| APK hosting   | GitHub Release tagged `android-latest`           | overwritten per build        |
+| Database      | Neon free Postgres (`us-west-2`)                 | always-on                    |
 
 All secrets live in Render env + GitHub Actions secrets. **Nothing**
 sensitive is in the repo — `.env`, `token.json`, `credentials.json`,
