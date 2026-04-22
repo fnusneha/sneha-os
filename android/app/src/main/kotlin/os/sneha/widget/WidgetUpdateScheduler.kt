@@ -28,6 +28,23 @@ object WidgetUpdateScheduler {
     private const val INTERVAL_MIN = 15L
     private const val TAG = "SnehaOSWidget"
 
+    /**
+     * Enqueue a single immediate widget refresh, replacing any
+     * in-flight one-shot. Called from Glance's provideGlance and the
+     * tap-refresh ActionCallback — both places where we can't do
+     * network I/O directly because of short timeouts on those call
+     * paths. REPLACE policy guarantees the latest tap always wins.
+     */
+    fun triggerOneShot(context: Context) {
+        val req = OneTimeWorkRequestBuilder<WidgetUpdateWorker>().build()
+        WorkManager.getInstance(context).enqueueUniqueWork(
+            WORK_NAME_IMMEDIATE,
+            ExistingWorkPolicy.REPLACE,
+            req,
+        )
+        Log.i(TAG, "triggerOneShot enqueued")
+    }
+
     fun schedule(context: Context) {
         val wm = WorkManager.getInstance(context)
 

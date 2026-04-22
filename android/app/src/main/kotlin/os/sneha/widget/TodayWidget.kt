@@ -54,13 +54,17 @@ class TodayWidget : GlanceAppWidget() {
         PreferencesGlanceStateDefinition
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        // Self-populate on every render — we know `id`, so refreshFor
-        // is narrower than refreshAll (no enumeration, no extra
-        // update() call because we're already in a composition).
+        // IMPORTANT: do NOT do network I/O here. provideGlance has a
+        // ~10s timeout but our backend can take 60s on a Render cold
+        // start, so a direct OkHttp call would be cancelled mid-flight
+        // and the state would never be written (the "never refreshed"
+        // symptom). Instead enqueue a WorkManager job — it runs with
+        // the real timeout budget and updates state when done. Glance
+        // will re-render automatically when the DataStore changes.
         try {
-            WidgetRefresh.refreshFor(context, id)
+            WidgetUpdateScheduler.triggerOneShot(context)
         } catch (t: Throwable) {
-            android.util.Log.w("SnehaOSWidget", "provideGlance refresh failed: ${t.message}")
+            android.util.Log.w("SnehaOSWidget", "provideGlance trigger failed: ${t.message}")
         }
         provideContent {
             GlanceTheme { Body() }
@@ -183,65 +187,51 @@ object Keys {
 object WidgetRefresh {
     private const val TAG = "SnehaOSWidget"
 
-    /** Write fresh data to a single GlanceId's state. */
-    private suspend fun writeState(
-        context: android.content.Context,
-        id: GlanceId,
-        today: os.sneha.data.TodayDto,
-    ) {
-        val coreEarned = today.coreDone >= today.coreThreshold
-        val now = System.currentTimeMillis()
-        updateAppWidgetState(context, PreferencesGlanceStateDefinition, id) { prefs ->
-            prefs.toMutablePreferences().apply {
-                this[Keys.STEPS] = today.steps
-                this[Keys.STEPS_LEFT] = today.stepsLeft
-                this[Keys.STARS_TODAY] = today.starsToday
-                this[Keys.STARS_WEEK] = today.starsWeek
-                this[Keys.MORNING] = today.morningStar
-                this[Keys.CORE] = coreEarned
-                this[Keys.NIGHT] = today.nightStar
-                this[Keys.CYCLE] =
-                    if (today.cyclePhase.isBlank()) ""
-                    else today.cyclePhase + (today.cycleDay?.let { " D$it" } ?: "")
-                this[Keys.LAST_REFRESH] = now
-            }
-        }
-    }
-
     /**
-     * Fetch and write state for a SINGLE GlanceId. Called from
-     * TodayWidget.provideGlance — we already know which widget is
-     * being composed, no need to enumerate. Does NOT call update()
-     * because we're already inside a composition.
+     * Mark a refresh attempt on every placed widget — even if the
+     * network call failed. Guarantees the "updated HH:mm" footer
+     * always ticks forward so we can distinguish "code path never
+     * ran" from "code path ran but network returned nothing".
      */
-    suspend fun refreshFor(context: android.content.Context, id: GlanceId): Boolean {
-        val today = SnehaApi(BuildConfig.BASE_URL).fetchToday(force = true).getOrNull()
-        if (today == null) {
-            android.util.Log.w(TAG, "refreshFor($id): fetchToday null")
-            return false
+    suspend fun stampAttempt(context: android.content.Context) {
+        val manager = androidx.glance.appwidget.GlanceAppWidgetManager(context)
+        val ids = manager.getGlanceIds(TodayWidget::class.java)
+        val now = System.currentTimeMillis()
+        ids.forEach { id ->
+            updateAppWidgetState(context, PreferencesGlanceStateDefinition, id) { prefs ->
+                prefs.toMutablePreferences().apply { this[Keys.LAST_REFRESH] = now }
+            }
+            TodayWidget().update(context, id)
         }
-        android.util.Log.i(
-            TAG,
-            "refreshFor($id): steps=${today.steps} stars=${today.starsToday}/3 " +
-                "morning=${today.morningStar} cal=${today.calories ?: 0}"
-        )
-        writeState(context, id, today)
-        return true
     }
 
     /**
-     * Fetch once, write to EVERY placed widget instance, then ping
-     * update() so Glance re-renders them. Used by the tap-refresh
-     * ActionCallback and by the WorkManager worker.
+     * The ONLY place that hits the network. Called from the
+     * WorkManager worker so it gets the full 60s+ needed for Render
+     * cold-starts without the ~10s provideGlance timeout cancelling
+     * it mid-flight (which was the root cause of "never refreshed"
+     * staying up forever).
      */
     suspend fun refreshAll(context: android.content.Context): Boolean {
         val today = SnehaApi(BuildConfig.BASE_URL).fetchToday(force = true).getOrNull()
-        if (today == null) {
-            android.util.Log.w(TAG, "refreshAll: fetchToday null")
-            return false
-        }
         val manager = androidx.glance.appwidget.GlanceAppWidgetManager(context)
         val ids = manager.getGlanceIds(TodayWidget::class.java)
+        val now = System.currentTimeMillis()
+
+        if (today == null) {
+            android.util.Log.w(TAG, "refreshAll: fetchToday null (stamping attempt on ${ids.size} widget(s))")
+            // Still stamp LAST_REFRESH so the tile shows the attempt
+            // time and the user knows the path fired.
+            ids.forEach { id ->
+                updateAppWidgetState(context, PreferencesGlanceStateDefinition, id) { prefs ->
+                    prefs.toMutablePreferences().apply { this[Keys.LAST_REFRESH] = now }
+                }
+                TodayWidget().update(context, id)
+            }
+            return false
+        }
+
+        val coreEarned = today.coreDone >= today.coreThreshold
         android.util.Log.i(
             TAG,
             "refreshAll: widgets=${ids.size} steps=${today.steps} " +
@@ -249,20 +239,47 @@ object WidgetRefresh {
                 "cal=${today.calories ?: 0}"
         )
         ids.forEach { id ->
-            writeState(context, id, today)
+            updateAppWidgetState(context, PreferencesGlanceStateDefinition, id) { prefs ->
+                prefs.toMutablePreferences().apply {
+                    this[Keys.STEPS] = today.steps
+                    this[Keys.STEPS_LEFT] = today.stepsLeft
+                    this[Keys.STARS_TODAY] = today.starsToday
+                    this[Keys.STARS_WEEK] = today.starsWeek
+                    this[Keys.MORNING] = today.morningStar
+                    this[Keys.CORE] = coreEarned
+                    this[Keys.NIGHT] = today.nightStar
+                    this[Keys.CYCLE] =
+                        if (today.cyclePhase.isBlank()) ""
+                        else today.cyclePhase + (today.cycleDay?.let { " D$it" } ?: "")
+                    this[Keys.LAST_REFRESH] = now
+                }
+            }
             TodayWidget().update(context, id)
         }
         return true
     }
 }
 
-/** Tap-to-refresh: fetch /api/today and update widget state. */
+/**
+ * Tap-to-refresh: we can't do network here either (Action callbacks
+ * inherit the same timeout constraints). Instead stamp an immediate
+ * attempt timestamp so the UI gives feedback ("updated HH:mm" ticks)
+ * and enqueue a WorkManager job that will replace any in-flight work.
+ * The worker does the real fetch + state write.
+ */
 class RefreshTodayAction : ActionCallback {
     override suspend fun onAction(
         context: Context,
         glanceId: GlanceId,
         parameters: androidx.glance.action.ActionParameters,
     ) {
-        withContext(Dispatchers.IO) { WidgetRefresh.refreshAll(context) }
+        withContext(Dispatchers.IO) {
+            // Give immediate user feedback even before the network
+            // call completes — the "updated HH:mm" footer ticks to
+            // the tap time instantly. Fresh numbers follow ~1s later
+            // when the worker finishes.
+            WidgetRefresh.stampAttempt(context)
+            WidgetUpdateScheduler.triggerOneShot(context)
+        }
     }
 }
