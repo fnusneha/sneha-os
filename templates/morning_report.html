@@ -31,10 +31,11 @@ body {
   background-image: radial-gradient(ellipse 70% 35% at 50% 0%, rgba(110,231,183,0.07) 0%, transparent 70%);
   -webkit-font-smoothing: antialiased;
 }
-/* Global content gutters — 20px on phones so the cards don't run to
-   the screen edge (Android system default is ~16-24px). Top padding
-   creates breathing room between the status bar and the hero. */
-.w { width:100%; max-width:440px; margin:0 auto; padding:0 20px; }
+/* Global content gutters. 24px matches the Android Material Design
+   "keyline 2" for a 412 dp phone (Pixel 6 class) — any tighter and
+   cards read as flush with the screen edge, any wider and the card
+   content gets cramped at the same internal 16px padding. */
+.w { width:100%; max-width:440px; margin:0 auto; padding:0 24px; }
 
 /* ── GLASSMORPHISM CARDS ── shared with Ride Atlas for visual continuity */
 .card {
