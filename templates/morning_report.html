@@ -31,7 +31,10 @@ body {
   background-image: radial-gradient(ellipse 70% 35% at 50% 0%, rgba(110,231,183,0.07) 0%, transparent 70%);
   -webkit-font-smoothing: antialiased;
 }
-.w { width:100%; max-width:440px; margin:0 auto; padding:0 16px; }
+/* Global content gutters — 20px on phones so the cards don't run to
+   the screen edge (Android system default is ~16-24px). Top padding
+   creates breathing room between the status bar and the hero. */
+.w { width:100%; max-width:440px; margin:0 auto; padding:0 20px; }
 
 /* ── GLASSMORPHISM CARDS ── shared with Ride Atlas for visual continuity */
 .card {
@@ -361,37 +364,9 @@ body {
   filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));
 }
 /* Single-line highlight under the day bubbles: "🏆 Mon · 3⭐ · Ride" */
-.wp-best {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 10px 4px 0;
-  padding: 8px 12px;
-  border-radius: 10px;
-  background: linear-gradient(135deg,
-    rgba(245,200,66,0.08),
-    rgba(168,139,250,0.04));
-  border: 1px solid rgba(245,200,66,0.16);
-  font-size: 11.5px;
-  color: var(--text);
-  font-family: 'DM Mono', monospace;
-}
-.wp-best-crown { font-size: 14px; line-height: 1; }
-.wp-best-day {
-  color: var(--gold);
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  font-size: 10px;
-}
-.wp-best-detail {
-  color: var(--muted);
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+/* (The former .wp-best textual strip lived here. It now returns empty
+   from _build_best_day_html — the 🏆 badge on the winning day bubble
+   carries the signal on its own, saving a row of height.) */
 /* Clickable affordance for past + today bubbles */
 .wp-day-clickable { cursor: pointer; transition: transform 0.15s, border-color 0.15s, background 0.15s; }
 .wp-day-clickable:hover, .wp-day-clickable:focus {
@@ -640,7 +615,10 @@ body {
    timescales (body-state vs. calendar), but the divider keeps them
    perceptually separate. */
 .context-card {
-  margin: 0 16px 14px;
+  /* Horizontal margin is 0 — the outer `.w` already provides the 20px
+     screen-edge gutter. Stacking margins here would make the card
+     narrower than neighbouring cards. */
+  margin: 0 0 14px;
   padding: 14px 16px;
   border-radius: 14px;
   background: linear-gradient(135deg,
@@ -708,12 +686,17 @@ body {
     rgba(255,255,255,0) 100%);
 }
 
-/* ── Bottom half: This Week's events ── */
+/* ── Bottom half: This Week's events ──
+   Text-flow rather than chip-cluster: when items vary a lot in length
+   (a 9-char "Lip Blush" next to a 25-char trip name), pills leave
+   awkward trailing whitespace on short rows. Flowing text with a
+   middle-dot separator packs every row edge-to-edge and wraps at word
+   boundaries naturally. */
 .ctx-week-head {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   font-size: 10px;
   font-family: 'DM Mono', monospace;
   font-weight: 700;
@@ -721,31 +704,13 @@ body {
   color: var(--gold);
   text-transform: uppercase;
 }
-.ctx-chips {
-  display: flex;
-  flex-wrap: wrap;
-  column-gap: 6px;
-  row-gap: 5px;
-  align-items: center;
-}
-.ctx-chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 3px 10px;
-  border-radius: 999px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
+.ctx-week-flow {
+  font-size: 12.5px;
+  line-height: 1.55;
   color: var(--text);
-  font-size: 12px;
-  line-height: 1.3;
-  white-space: nowrap;
-  /* shrink long chips before forcing a new row */
-  min-width: 0;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  flex: 0 1 auto;
+  word-spacing: 0.01em;
 }
+.ctx-sep { color: var(--dim); font-weight: 400; }
 .stage {
   background: rgba(255,255,255,0.03);
   border: 1px solid rgba(255,255,255,0.06);

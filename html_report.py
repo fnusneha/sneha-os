@@ -347,29 +347,16 @@ def _pick_best_day(data: dict, weekday: int) -> tuple[int, dict] | None:
 
 
 def _build_best_day_html(data: dict, weekday: int) -> str:
-    """Small strip under the weekly-stars number highlighting the best
-    day this week. Empty if the week hasn't produced anything yet.
+    """Previously returned a textual "🏆 MON · 3⭐ · <activity>" strip
+    below the day bubbles. The trophy badge on the winning day bubble
+    itself now carries the same meaning without adding a row of height,
+    so this returns an empty string.
 
-    Format: "🏆 Mon · 3⭐ · Levi's GranFondo 46mi"
+    Kept as a function so the template placeholder `{{BEST_DAY_HTML}}`
+    can stay wired — if we ever want to bring the strip back (e.g. with
+    tap-to-explain), this is the single place to populate.
     """
-    best = _pick_best_day(data, weekday)
-    if best is None:
-        return ""
-    wd, info = best
-    stars = info["stars"]
-    why = info["why"]
-
-    bits = [f"{stars}\u2B50"]
-    if why:
-        bits.append(_esc(why))
-    detail = " \u00B7 ".join(bits)
-    return (
-        '<div class="wp-best">'
-        f'<span class="wp-best-crown">\U0001F3C6</span>'
-        f'<span class="wp-best-day">{DAY_LABELS[wd]}</span>'
-        f'<span class="wp-best-detail">{detail}</span>'
-        '</div>'
-    )
+    return ""
 
 
 def _build_pulse_days(data: dict, weekday: int, best_wd: int | None = None) -> str:
@@ -612,11 +599,18 @@ def _build_context_card(
         )
 
     if agenda_items:
-        chips = "".join(f'<span class="ctx-chip">{_esc(s)}</span>' for s in agenda_items)
+        # Inline text-flow with middle-dot separators. When items vary
+        # in length (a 9-char "Lip Blush" next to a 25-char
+        # "Santa Rosa Levi's GranFondo"), chip-per-item leaves awkward
+        # trailing whitespace on short rows. Flowing text packs every
+        # row tight and wraps naturally at word boundaries.
+        items_html = '<span class="ctx-sep"> \u00b7 </span>'.join(
+            f'<span class="ctx-week-item">{_esc(s)}</span>' for s in agenda_items
+        )
         sections.append(
             '<div class="ctx-week">'
             '<div class="ctx-week-head">\U0001f4c5 This Week</div>'
-            f'<div class="ctx-chips">{chips}</div>'
+            f'<div class="ctx-week-flow">{items_html}</div>'
             '</div>'
         )
 
@@ -1116,11 +1110,15 @@ def generate_html_report(data: dict) -> str:
     pins_html           = _build_pins_html(data)
 
     # Cycle label comes next — the context card (below) consumes it.
+    # DB stores short "Luteal-EM D20" form; UI shows the friendly phase
+    # name + "Day 20" so "D21" doesn't confuse a first-time reader.
     raw_cycle = data.get("latest_cycle_str") or ""
     if phase_name and raw_cycle:
         friendly = PHASE_DISPLAY.get(phase_name, phase_name)
         day_part = raw_cycle.rsplit(" ", 1)[-1] if " D" in raw_cycle else ""
-        cycle_label = f"{friendly} · {day_part}" if day_part else friendly
+        day_num = day_part.lstrip("D") if day_part else ""
+        pretty_day = f"Day {day_num}" if day_num else ""
+        cycle_label = f"{friendly} · {pretty_day}" if pretty_day else friendly
         cycle_pill_cls = "today-ctx-pill"
     else:
         cycle_icon = ""
