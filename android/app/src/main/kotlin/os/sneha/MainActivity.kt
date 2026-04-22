@@ -131,6 +131,11 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         webView.onResume()
+        // Re-enqueue the widget refresh so every foreground visit
+        // triggers an immediate one-shot (see WidgetUpdateScheduler).
+        // Application.onCreate only runs once per process lifetime —
+        // we need a hook that fires every time the user opens the app.
+        os.sneha.widget.WidgetUpdateScheduler.schedule(applicationContext)
     }
 
     override fun onDestroy() {

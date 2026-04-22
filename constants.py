@@ -49,8 +49,13 @@ WEEKLY_CARDIO_GOAL = 1
 # ═══════════════════════════════════════════════════════════════════
 # Scoring thresholds
 # ═══════════════════════════════════════════════════════════════════
-SLEEP_STAR_THRESHOLD_DEFAULT = 7.0
-SLEEP_STAR_THRESHOLD_LOW_ENERGY = 6.0   # Luteal-PMS + Menstrual phases
+# Sleep star threshold is a uniform 6h across all cycle phases — the
+# old "7h default, 6h during low-energy phases" split created confusing
+# "why did I get the star this week but not last week at the same 6.5h"
+# moments. The low-energy phase set is kept so the coach line can still
+# tailor advice, but it no longer changes the star bar.
+SLEEP_STAR_THRESHOLD_DEFAULT = 6.0
+SLEEP_STAR_THRESHOLD_LOW_ENERGY = 6.0
 LOW_ENERGY_PHASES = {"Menstrual", "Luteal-PMS"}
 
 # Core Missions star: earned when at least this many of 7 items are done.

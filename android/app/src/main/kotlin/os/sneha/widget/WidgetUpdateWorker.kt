@@ -1,6 +1,7 @@
 package os.sneha.widget
 
 import android.content.Context
+import android.util.Log
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.state.updateAppWidgetState
 import androidx.glance.state.PreferencesGlanceStateDefinition
@@ -11,27 +12,45 @@ import os.sneha.data.SnehaApi
 
 /**
  * Periodic worker that refreshes the home-screen Today widget from
- * `/api/today`. Scheduled by `WidgetUpdateScheduler` on app start.
+ * `/api/today?force=1`. Scheduled by `WidgetUpdateScheduler`.
  *
- * Why: without this, the widget only updates when the user taps the
- * refresh glyph or reopens the app — so opening the phone at 3pm
- * still shows the morning's snapshot. Running this every 30 min keeps
- * it roughly current without draining the battery.
+ * Why `force=1`: the backend has a 60s in-memory cache on live Oura
+ * + Garmin fetches. Without force, two widget refreshes within the
+ * same minute would see the same numbers. Force bypasses it so every
+ * widget update genuinely pulls from upstream.
  */
 class WidgetUpdateWorker(
     context: Context,
     params: WorkerParameters
 ) : CoroutineWorker(context, params) {
 
+    companion object {
+        private const val TAG = "SnehaOSWidget"
+    }
+
     override suspend fun doWork(): Result {
-        val today = SnehaApi(BuildConfig.BASE_URL).fetchToday().getOrNull()
-            ?: return Result.retry()
+        val api = SnehaApi(BuildConfig.BASE_URL)
+        val today = api.fetchToday(force = true).getOrNull()
+            ?: run {
+                Log.w(TAG, "fetchToday returned null — will retry")
+                return Result.retry()
+            }
 
         val manager = GlanceAppWidgetManager(applicationContext)
         val glanceIds = manager.getGlanceIds(TodayWidget::class.java)
-        if (glanceIds.isEmpty()) return Result.success()  // no widget placed
+        if (glanceIds.isEmpty()) {
+            Log.i(TAG, "no widget instances placed — skipping update")
+            return Result.success()
+        }
 
         val coreEarned = today.coreDone >= today.coreThreshold
+        Log.i(
+            TAG,
+            "update: steps=${today.steps} left=${today.stepsLeft} " +
+                "stars=${today.starsToday}/3 week=${today.starsWeek} " +
+                "cal=${today.calories ?: 0}/${today.calorieGoal} " +
+                "widgets=${glanceIds.size}"
+        )
 
         glanceIds.forEach { id ->
             updateAppWidgetState(

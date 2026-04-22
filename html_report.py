@@ -34,6 +34,7 @@ log = logging.getLogger(__name__)
 
 from constants import (
     CORE_STAR_THRESHOLD, DAILY_STEPS_GOAL, MEDAL_GOOD, MEDAL_PERFECT,
+    SLEEP_STAR_THRESHOLD_DEFAULT,
     WEEKLY_CARDIO_GOAL, WEEKLY_STRENGTH_GOAL,
 )
 
@@ -447,15 +448,15 @@ def _build_core_missions(data: dict, weekday: int) -> str:
     last_sleep = data.get("last_sleep")
     sleep_done = bool(daily.get("sleep"))
     if last_sleep is not None:
-        # Threshold is 7 in non-low-energy phases, 8 otherwise. Use the
-        # daily score bool for truth, just show the delta either way.
-        target = 7
+        # Threshold comes from constants (6h uniform) so the hint stays
+        # in sync if it ever changes again.
+        target = SLEEP_STAR_THRESHOLD_DEFAULT
+        target_str = f"{target:.0f}h" if target == int(target) else f"{target}h"
         delta = target - last_sleep
         if sleep_done:
-            sleep_hint = f"Done \u2713  \u00b7  {last_sleep}h / {target}h"
+            sleep_hint = f"Done \u2713  \u00b7  {last_sleep}h / {target_str}"
         elif delta > 0:
-            # e.g. "0.1h short · 6.9h / 7h"
-            sleep_hint = f"{delta:.1f}h short  \u00b7  {last_sleep}h / {target}h"
+            sleep_hint = f"{delta:.1f}h short  \u00b7  {last_sleep}h / {target_str}"
         else:
             sleep_hint = f"{last_sleep}h logged"
     else:
@@ -496,7 +497,7 @@ def _build_core_missions(data: dict, weekday: int) -> str:
     # most days to cross the 4-of-7 threshold for the ⭐.
     easy_three = [
         ("\U0001f45f",    "8,000 Steps",    steps_hint, steps_done),
-        ("\U0001f634",    "Sleep 7h+",      sleep_hint, sleep_done),
+        ("\U0001f634",    "Sleep 6h+",      sleep_hint, sleep_done),
         ("\U0001f357",    "Calories Logged", cal_hint,  cal_done),
     ]
     active_four = [
@@ -634,7 +635,7 @@ def _build_coach_line(phase_name: str, last_sleep: float | None) -> str:
     if tip:
         energy, advice = tip
         parts.append(f"<em>{_esc(energy)}.</em> {_esc(advice)}")
-    if last_sleep is not None and last_sleep < 7:
+    if last_sleep is not None and last_sleep < SLEEP_STAR_THRESHOLD_DEFAULT:
         parts.append("Sleep was a touch short &mdash; keep cardio conversational.")
     return " ".join(parts)
 
@@ -649,7 +650,7 @@ def _build_pillars_html(data: dict) -> str:
         Strength → workout sessions vs weekly goal (Garmin)
         Finance  → calorie tracking consistency (Garmin/MFP) as discipline proxy
         Travel   → booked/completed trips vs total planned (Travel Sheet)
-        Mental   → sleep quality nights ≥7h + cycle awareness (Oura + Calendar)
+        Mental   → sleep quality nights ≥ SLEEP_STAR_THRESHOLD_DEFAULT + cycle awareness (Oura + Calendar)
     """
     avg_sleep = data.get("avg_sleep") or 0
     pct_steps = data.get("pct_steps", 0)
@@ -704,8 +705,8 @@ def _build_pillars_html(data: dict) -> str:
         travel_pct = 0
         travel_reason = "No travel data"
 
-    # ── Mental: good sleep nights (≥7h) + cycle tracking active ──
-    good_nights = sum(1 for s in sleep_values if s >= 7) if sleep_values else 0
+    # ── Mental: good sleep nights (≥ SLEEP_STAR_THRESHOLD_DEFAULT) + cycle tracking active ──
+    good_nights = sum(1 for s in sleep_values if s >= SLEEP_STAR_THRESHOLD_DEFAULT) if sleep_values else 0
     total_nights = len(sleep_values) if sleep_values else 0
     sleep_quality_pct = int((good_nights / total_nights) * 100) if total_nights else 0
     cycle_bonus = 10 if phase_name else 0  # +10% for actively tracking cycle
@@ -1055,7 +1056,7 @@ def generate_html_report(data: dict) -> str:
 
     # ── Header pills ───────────────────────────────────────────
     sleep_label = f"{last_sleep}h" if last_sleep is not None else "\u2013"
-    sleep_emoji = "\U0001f634" if last_sleep and last_sleep >= 7 else "\U0001f62a"
+    sleep_emoji = "\U0001f634" if last_sleep and last_sleep >= SLEEP_STAR_THRESHOLD_DEFAULT else "\U0001f62a"
     cycle_icon = CYCLE_ICONS.get(phase_name, "\U0001f534")
 
     # ── Today's calories ───────────────────────────────────────

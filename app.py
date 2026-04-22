@@ -84,8 +84,13 @@ def index():
 
 @app.get("/dashboard")
 def dashboard():
+    # Pull-to-refresh in the Android WebView appends ?force=1. When
+    # present we bypass the 60-second live-fetch caches for steps +
+    # nutrition so the user actually sees fresh Oura/Garmin numbers
+    # instead of the cached snapshot from a minute ago.
+    force = request.args.get("force") == "1"
     try:
-        data = gather_dashboard_data(live_steps=True)
+        data = gather_dashboard_data(live_steps=True, force=force)
         html = generate_html_report(data)
     except Exception as exc:
         log.exception("dashboard render failed")
@@ -267,7 +272,10 @@ def api_today():
           "last_sync": "2026-04-21"
         }
     """
-    from constants import CORE_STAR_THRESHOLD, DAILY_STEPS_GOAL
+    from constants import (
+        CORE_STAR_THRESHOLD, DAILY_STEPS_GOAL,
+        SLEEP_STAR_THRESHOLD_DEFAULT as SLEEP_STAR_THRESHOLD,
+    )
     from datetime import timedelta
     try:
         db = _db()
@@ -281,15 +289,24 @@ def api_today():
         week = [by_date.get(monday + timedelta(days=i)) for i in range(7)]
         today_row = week[weekday]
 
-        # Live steps (same cached helper as the dashboard)
-        from data_gather import _cached_fetch_steps
+        # Live steps + calories (same cached helpers as the dashboard)
+        # so the Android widget reflects fresh Oura + Garmin numbers
+        # instead of the last sync-snapshot. `force=1` bypasses the 60s
+        # in-memory cache for instant refresh when the widget's ⟳ is
+        # tapped or pull-to-refresh fires in the app.
+        from data_gather import _cached_fetch_steps, _cached_fetch_nutrition
+        force = request.args.get("force") == "1"
         steps_db = (today_row or {}).get("steps") or 0
-        steps_live = _cached_fetch_steps(today.isoformat())
+        steps_live = _cached_fetch_steps(today.isoformat(), force=force)
         steps = max(steps_db, steps_live or 0) or 0
 
+        live_nutrition = _cached_fetch_nutrition(today, force=force)
+        cal_db  = (today_row or {}).get("calories") or 0
+        cal_live = (live_nutrition or {}).get("calories") or 0
+        calories = max(cal_db, cal_live)
+        cal_goal = (live_nutrition or {}).get("goal") or (today_row or {}).get("calorie_goal") or 0
+
         sleep = (today_row or {}).get("sleep_hours")
-        calories = (today_row or {}).get("calories")
-        cal_goal = (today_row or {}).get("calorie_goal") or 0
         morning_done = bool((today_row or {}).get("morning_star"))
         night_done   = bool((today_row or {}).get("night_star"))
         sauna_done   = bool((today_row or {}).get("sauna"))
@@ -300,7 +317,7 @@ def api_today():
         STEPS_GOAL = DAILY_STEPS_GOAL
         core_done = 0
         if steps >= STEPS_GOAL: core_done += 1
-        if sleep and float(sleep) >= 7.0: core_done += 1
+        if sleep and float(sleep) >= SLEEP_STAR_THRESHOLD: core_done += 1
         if calories and calories > 0: core_done += 1
         if (today_row or {}).get("strength_note"): core_done += 1
         if (today_row or {}).get("cardio_note"):   core_done += 1

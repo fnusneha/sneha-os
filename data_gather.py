@@ -21,7 +21,7 @@ from datetime import date, timedelta
 from db import Db
 from constants import WEEKLY_STEPS_GOAL
 from scoring import calculate_challenge_score
-from api_clients import fetch_steps
+from api_clients import fetch_nutrition, fetch_steps
 from tz import local_today
 
 log = logging.getLogger(__name__)
@@ -33,16 +33,43 @@ _live_steps_cache: dict[str, tuple[float, int | None]] = {}
 _LIVE_STEPS_TTL = 60.0
 
 
-def _cached_fetch_steps(iso_day: str) -> int | None:
-    hit = _live_steps_cache.get(iso_day)
-    if hit and time.time() - hit[0] < _LIVE_STEPS_TTL:
-        return hit[1]
+def _cached_fetch_steps(iso_day: str, *, force: bool = False) -> int | None:
+    """Live Oura step-count fetch with a 60s in-memory cache.
+
+    `force=True` bypasses the cache (used by pull-to-refresh) so the
+    user isn't staring at a cached value until the TTL expires.
+    """
+    if not force:
+        hit = _live_steps_cache.get(iso_day)
+        if hit and time.time() - hit[0] < _LIVE_STEPS_TTL:
+            return hit[1]
     try:
         val = fetch_steps(iso_day)
     except Exception as exc:
         log.warning("live steps fetch failed: %s", exc)
         val = None
     _live_steps_cache[iso_day] = (time.time(), val)
+    return val
+
+
+# Live Garmin nutrition fetch (calories + goal). Same shape as steps:
+# cached in-memory so rapid reloads don't each hit Garmin.
+_live_nutrition_cache: dict[str, tuple[float, dict | None]] = {}
+_LIVE_NUTRITION_TTL = 60.0
+
+
+def _cached_fetch_nutrition(day: date, *, force: bool = False) -> dict | None:
+    iso_day = day.isoformat()
+    if not force:
+        hit = _live_nutrition_cache.get(iso_day)
+        if hit and time.time() - hit[0] < _LIVE_NUTRITION_TTL:
+            return hit[1]
+    try:
+        val = fetch_nutrition(day)
+    except Exception as exc:
+        log.warning("live nutrition fetch failed: %s", exc)
+        val = None
+    _live_nutrition_cache[iso_day] = (time.time(), val)
     return val
 
 
@@ -81,6 +108,7 @@ def gather_dashboard_data(
     today: date | None = None,
     *,
     live_steps: bool = True,
+    force: bool = False,
 ) -> dict:
     """Build the `report_data` dict that html_report.generate_html_report wants.
 
@@ -122,11 +150,34 @@ def gather_dashboard_data(
 
     # Fetch today's steps fresh from Oura so the "X steps left" hint
     # always reflects current activity, even between scheduled syncs.
+    # `force` is set on pull-to-refresh and bypasses the 60s cache.
     today_steps = today_steps_db
     if live_steps:
-        fresh = _cached_fetch_steps(today.isoformat())
+        fresh = _cached_fetch_steps(today.isoformat(), force=force)
         if fresh:
             today_steps = fresh
+
+    # Same deal for Garmin calories — the DB only gets updated by
+    # sync.py's 4x/day cron, so between slots the number is stale.
+    # Live-fetch here means the Calories Logged Core Mission reflects
+    # whatever MyFitnessPal shows right now.
+    live_nutrition = _cached_fetch_nutrition(today, force=force) if live_steps else None
+    if live_nutrition:
+        db_cal = (today_row or {}).get("calories") or 0
+        live_cal = live_nutrition.get("calories") or 0
+        if live_cal > db_cal:
+            # Patch today's row in memory so downstream builders see the fresh
+            # value (cal_values list + today_row reads both flow from `week`).
+            if today_row is None:
+                today_row = {}
+                week[weekday] = today_row
+            today_row["calories"] = live_cal
+        # Goal sometimes changes in Garmin too; pick the fresher one.
+        live_goal = live_nutrition.get("goal") or 0
+        if live_goal and live_goal != today_cal_goal:
+            today_cal_goal = live_goal
+            if today_row is not None:
+                today_row["calorie_goal"] = live_goal
 
     # Weekly totals.
     total_steps = 0

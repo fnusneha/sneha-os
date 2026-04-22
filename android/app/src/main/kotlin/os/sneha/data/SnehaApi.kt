@@ -26,9 +26,16 @@ class SnehaApi(
     private val moshi: Moshi = Moshi.Builder().build()
     private val todayAdapter = moshi.adapter(TodayDto::class.java)
 
-    fun fetchToday(): Result<TodayDto> = runCatching {
+    /**
+     * Fetch `/api/today`. Pass `force=true` to append `?force=1` and
+     * bypass the server's 60-second live-data cache — the widget
+     * always wants the freshest possible snapshot since it only runs
+     * every ~15 minutes.
+     */
+    fun fetchToday(force: Boolean = false): Result<TodayDto> = runCatching {
+        val url = if (force) "$baseUrl/api/today?force=1" else "$baseUrl/api/today"
         val req = Request.Builder()
-            .url("$baseUrl/api/today")
+            .url(url)
             .header("User-Agent", "Sneha.OS-android/0.1")
             .build()
         http.newCall(req).execute().use { resp ->

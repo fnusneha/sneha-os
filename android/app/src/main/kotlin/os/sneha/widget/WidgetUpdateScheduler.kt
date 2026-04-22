@@ -1,44 +1,63 @@
 package os.sneha.widget
 
 import android.content.Context
+import android.util.Log
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import java.util.concurrent.TimeUnit
 
 /**
- * Enqueues a periodic WorkManager job that refreshes the Today widget
- * from `/api/today` every 30 min while the device has network.
+ * Two-tier widget refresh:
  *
- * 30 min is WorkManager's minimum for periodic work (anything shorter
- * gets coalesced to 15 min by the system). It balances freshness
- * against battery — the widget tile will lag at most half an hour
- * behind reality, and the user can always tap ⟳ for an instant update.
+ *   • An immediate one-shot when the app starts so the tile is fresh
+ *     the moment the user returns to the home screen from the app.
+ *   • A 15 min periodic job (WorkManager's floor) while the device has
+ *     network, so the tile stays current while the app is closed.
+ *
+ * Everything is deduped by work name — calling this repeatedly is
+ * safe and cheap.
  */
 object WidgetUpdateScheduler {
-    private const val WORK_NAME = "today_widget_refresh"
-    private const val INTERVAL_MIN = 30L
+    private const val WORK_NAME_PERIODIC = "today_widget_refresh"
+    private const val WORK_NAME_IMMEDIATE = "today_widget_refresh_now"
+    private const val INTERVAL_MIN = 15L
+    private const val TAG = "SnehaOSWidget"
 
     fun schedule(context: Context) {
+        val wm = WorkManager.getInstance(context)
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .build()
 
-        val request = PeriodicWorkRequestBuilder<WidgetUpdateWorker>(
+        // 1. Immediate one-off — fires right away (battery-optimised apps
+        //    still get this under a minute). Doesn't wait for the 15-min
+        //    periodic floor so the user's first look at the home-screen
+        //    after opening the app is guaranteed fresh.
+        val immediate = OneTimeWorkRequestBuilder<WidgetUpdateWorker>()
+            .setConstraints(constraints)
+            .build()
+        wm.enqueueUniqueWork(
+            WORK_NAME_IMMEDIATE,
+            ExistingWorkPolicy.REPLACE,
+            immediate,
+        )
+
+        // 2. Periodic every 15 min (the WorkManager minimum).
+        val periodic = PeriodicWorkRequestBuilder<WidgetUpdateWorker>(
             INTERVAL_MIN, TimeUnit.MINUTES
         )
             .setConstraints(constraints)
-            // Tiny initial delay so we don't hammer Render right at app
-            // cold-start; the first RefreshTodayAction already covers that.
-            .setInitialDelay(2, TimeUnit.MINUTES)
             .build()
-
-        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-            WORK_NAME,
+        wm.enqueueUniquePeriodicWork(
+            WORK_NAME_PERIODIC,
             ExistingPeriodicWorkPolicy.UPDATE,
-            request,
+            periodic,
         )
+        Log.i(TAG, "widget refresh scheduled (immediate + ${INTERVAL_MIN}min periodic)")
     }
 }
