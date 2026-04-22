@@ -30,28 +30,29 @@ object WidgetUpdateScheduler {
 
     fun schedule(context: Context) {
         val wm = WorkManager.getInstance(context)
-        val constraints = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)
-            .build()
 
-        // 1. Immediate one-off — fires right away (battery-optimised apps
-        //    still get this under a minute). Doesn't wait for the 15-min
-        //    periodic floor so the user's first look at the home-screen
-        //    after opening the app is guaranteed fresh.
-        val immediate = OneTimeWorkRequestBuilder<WidgetUpdateWorker>()
-            .setConstraints(constraints)
-            .build()
+        // Immediate one-off — fires right away. Intentionally has NO
+        // network constraint so it runs immediately and lets the
+        // worker's own retry-on-failure handle flaky network. KEEP
+        // (not REPLACE) so an in-flight immediate request isn't
+        // cancelled when the user opens & closes the app quickly.
+        val immediate = OneTimeWorkRequestBuilder<WidgetUpdateWorker>().build()
         wm.enqueueUniqueWork(
             WORK_NAME_IMMEDIATE,
-            ExistingWorkPolicy.REPLACE,
+            ExistingWorkPolicy.KEEP,
             immediate,
         )
 
-        // 2. Periodic every 15 min (the WorkManager minimum).
+        // Periodic every 15 min (the WorkManager floor). Keeps the
+        // network constraint because running every 15 min with no
+        // network would waste battery retrying.
+        val periodicConstraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
         val periodic = PeriodicWorkRequestBuilder<WidgetUpdateWorker>(
             INTERVAL_MIN, TimeUnit.MINUTES
         )
-            .setConstraints(constraints)
+            .setConstraints(periodicConstraints)
             .build()
         wm.enqueueUniquePeriodicWork(
             WORK_NAME_PERIODIC,

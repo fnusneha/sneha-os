@@ -38,13 +38,19 @@ def _cached_fetch_steps(iso_day: str, *, force: bool = False) -> int | None:
 
     `force=True` bypasses the cache (used by pull-to-refresh) so the
     user isn't staring at a cached value until the TTL expires.
+
+    Logs the result at INFO so Render logs show exactly what Oura
+    returned for each request — critical for debugging "I pulled to
+    refresh but steps didn't update" reports.
     """
     if not force:
         hit = _live_steps_cache.get(iso_day)
         if hit and time.time() - hit[0] < _LIVE_STEPS_TTL:
+            log.info("live steps: cache hit day=%s steps=%s", iso_day, hit[1])
             return hit[1]
     try:
         val = fetch_steps(iso_day)
+        log.info("live steps: Oura fetch day=%s steps=%s force=%s", iso_day, val, force)
     except Exception as exc:
         log.warning("live steps fetch failed: %s", exc)
         val = None
@@ -63,9 +69,11 @@ def _cached_fetch_nutrition(day: date, *, force: bool = False) -> dict | None:
     if not force:
         hit = _live_nutrition_cache.get(iso_day)
         if hit and time.time() - hit[0] < _LIVE_NUTRITION_TTL:
+            log.info("live nutrition: cache hit day=%s val=%s", iso_day, hit[1])
             return hit[1]
     try:
         val = fetch_nutrition(day)
+        log.info("live nutrition: Garmin fetch day=%s val=%s force=%s", iso_day, val, force)
     except Exception as exc:
         log.warning("live nutrition fetch failed: %s", exc)
         val = None

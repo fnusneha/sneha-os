@@ -26,6 +26,9 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.launch
 
 /**
  * The whole UI is the Flask dashboard served by the backend — so the
@@ -131,11 +134,15 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         webView.onResume()
-        // Re-enqueue the widget refresh so every foreground visit
-        // triggers an immediate one-shot (see WidgetUpdateScheduler).
-        // Application.onCreate only runs once per process lifetime —
-        // we need a hook that fires every time the user opens the app.
+        // Two paths to freshness, belt-and-suspenders:
+        //   1. WorkManager — handles periodic refresh + offline retry
+        //   2. Direct coroutine — runs immediately, doesn't rely on
+        //      WorkManager's scheduler honouring our intent in real time
+        // Either succeeding is enough to make the widget show fresh data.
         os.sneha.widget.WidgetUpdateScheduler.schedule(applicationContext)
+        MainScope().launch(Dispatchers.IO) {
+            os.sneha.widget.WidgetRefresh.refreshAll(applicationContext)
+        }
     }
 
     override fun onDestroy() {

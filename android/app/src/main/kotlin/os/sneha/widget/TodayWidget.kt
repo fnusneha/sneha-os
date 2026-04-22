@@ -138,6 +138,63 @@ object Keys {
     val CYCLE = stringPreferencesKey("cycle")
 }
 
+/**
+ * Single source of truth for "fetch /api/today and push into widget
+ * state". Used by three call sites:
+ *   • RefreshTodayAction  (user taps the ⟳ glyph on the tile)
+ *   • WidgetUpdateWorker   (WorkManager periodic / one-shot)
+ *   • MainActivity.onResume (direct refresh whenever app foregrounds,
+ *                            bypassing WorkManager flakiness)
+ *
+ * Always calls /api/today?force=1 so the backend's 60s live-fetch
+ * cache doesn't serve a near-stale snapshot to the widget.
+ */
+object WidgetRefresh {
+    private const val TAG = "SnehaOSWidget"
+
+    suspend fun refreshAll(context: Context): Boolean {
+        val today = SnehaApi(BuildConfig.BASE_URL).fetchToday(force = true).getOrNull()
+        if (today == null) {
+            android.util.Log.w(TAG, "refreshAll: /api/today returned null")
+            return false
+        }
+
+        val manager = androidx.glance.appwidget.GlanceAppWidgetManager(context)
+        val ids = manager.getGlanceIds(TodayWidget::class.java)
+        if (ids.isEmpty()) {
+            android.util.Log.i(TAG, "refreshAll: no widget placed, skipping")
+            return true
+        }
+
+        val coreEarned = today.coreDone >= today.coreThreshold
+        android.util.Log.i(
+            TAG,
+            "refreshAll: steps=${today.steps} stars=${today.starsToday}/3 " +
+                "week=${today.starsWeek} morning=${today.morningStar} " +
+                "night=${today.nightStar} cal=${today.calories ?: 0}/${today.calorieGoal}"
+        )
+
+        ids.forEach { id ->
+            updateAppWidgetState(context, PreferencesGlanceStateDefinition, id) { prefs ->
+                prefs.toMutablePreferences().apply {
+                    this[Keys.STEPS] = today.steps
+                    this[Keys.STEPS_LEFT] = today.stepsLeft
+                    this[Keys.STARS_TODAY] = today.starsToday
+                    this[Keys.STARS_WEEK] = today.starsWeek
+                    this[Keys.MORNING] = today.morningStar
+                    this[Keys.CORE] = coreEarned
+                    this[Keys.NIGHT] = today.nightStar
+                    this[Keys.CYCLE] =
+                        if (today.cyclePhase.isBlank()) ""
+                        else today.cyclePhase + (today.cycleDay?.let { " D$it" } ?: "")
+                }
+            }
+            TodayWidget().update(context, id)
+        }
+        return true
+    }
+}
+
 /** Tap-to-refresh: fetch /api/today and update widget state. */
 class RefreshTodayAction : ActionCallback {
     override suspend fun onAction(
@@ -145,24 +202,6 @@ class RefreshTodayAction : ActionCallback {
         glanceId: GlanceId,
         parameters: androidx.glance.action.ActionParameters,
     ) {
-        val api = SnehaApi(BuildConfig.BASE_URL)
-        val today = withContext(Dispatchers.IO) { api.fetchToday() }.getOrNull() ?: return
-        val coreEarned = today.coreDone >= today.coreThreshold
-
-        updateAppWidgetState(context, PreferencesGlanceStateDefinition, glanceId) { prefs ->
-            prefs.toMutablePreferences().apply {
-                this[Keys.STEPS] = today.steps
-                this[Keys.STEPS_LEFT] = today.stepsLeft
-                this[Keys.STARS_TODAY] = today.starsToday
-                this[Keys.STARS_WEEK] = today.starsWeek
-                this[Keys.MORNING] = today.morningStar
-                this[Keys.CORE] = coreEarned
-                this[Keys.NIGHT] = today.nightStar
-                this[Keys.CYCLE] =
-                    if (today.cyclePhase.isBlank()) ""
-                    else today.cyclePhase + (today.cycleDay?.let { " D$it" } ?: "")
-            }
-        }
-        TodayWidget().update(context, glanceId)
+        withContext(Dispatchers.IO) { WidgetRefresh.refreshAll(context) }
     }
 }

@@ -2339,17 +2339,43 @@ body {
   updateSyncAge();
   setInterval(updateSyncAge, 30 * 1000);
 
-  // Tap to refresh: hits /dashboard?force=1 which re-runs Oura+Garmin+Sheet
-  // sync, writes fresh data, then reloads the page so new numbers show up.
+  // Tap to refresh: hits /api/today?force=1 first so we can show the
+  // user proof of what Oura + Garmin just returned (as a toast), THEN
+  // full-reload /dashboard?force=1 so the rest of the page picks up
+  // the fresh snapshot. Without the toast, a hit-Oura-that-also-had-
+  // stale-data cycle is indistinguishable from a no-op refresh.
   window.refreshNow = function(btn) {
     if (!btn) return;
     btn.classList.add('syncing');
     const lbl = btn.querySelector('.sync-lbl');
     if (lbl) lbl.innerHTML = 'fetching fresh data\u2026';
-    // Full-page reload with force=1 is the simplest correct thing — server
-    // blocks the response until regen completes (up to 60s), so when the
-    // page comes back it has the new numbers.
-    window.location.href = '/dashboard?force=1';
+
+    // Cache-buster on /api/today so no HTTP cache hands us a stale copy
+    const url = '/api/today?force=1&t=' + Date.now();
+    fetch(url, { cache: 'no-store' })
+      .then(r => r.json())
+      .then(d => {
+        // Show a brief toast with the raw numbers the server just saw —
+        // so you know refresh actually did something even if the numbers
+        // are "still low". (If Oura's cloud is lagging behind your ring,
+        // the number will be low here and that's upstream, not us.)
+        const toast = document.createElement('div');
+        toast.textContent =
+          '\u2713 fresh: ' + d.steps.toLocaleString() + ' steps \u00b7 ' +
+          (d.calories || 0).toLocaleString() + ' kcal';
+        toast.style.cssText =
+          'position:fixed;top:60px;left:50%;transform:translateX(-50%);' +
+          'background:rgba(110,231,183,0.96);color:#0d1b2e;padding:8px 16px;' +
+          'border-radius:10px;font-family:DM Mono,monospace;font-size:12px;' +
+          'font-weight:600;z-index:99999;box-shadow:0 4px 14px rgba(0,0,0,0.4)';
+        document.body.appendChild(toast);
+        setTimeout(() => { window.location.href = '/dashboard?force=1'; }, 450);
+      })
+      .catch(() => {
+        // On failure, fall back to the simple full-reload — user at
+        // least gets an attempt at fresh numbers.
+        window.location.href = '/dashboard?force=1';
+      });
   };
 
   // ── Pull-to-refresh (mobile gesture) ──
