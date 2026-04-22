@@ -550,25 +550,18 @@ def _build_night_ritual(data: dict) -> str:
 
 # ── Coach Line ───────────────────────────────────────────────────
 
-def _build_week_agenda(data: dict) -> str:
-    """Build the Week Agenda card from calendar notes.
+def _parse_agenda_items(data: dict) -> list[str]:
+    """Pull the cleaned list of calendar-event labels for this week.
 
-    `notes_row` contains at most one string, written by sync.py from
-    Google Calendar events for Monday–Sunday of the current week (see
-    api_clients.fetch_week_calendar_notes). The raw string uses ``+`` as
-    a separator and may contain duplicates/empties, so we split, clean,
-    and render each entry as a chip.
-
-    Returns an empty string when there is nothing to show so the UI
-    gracefully collapses.
+    `notes_row` is written by `sync.py` on Mondays from Google Calendar
+    (see `api_clients.fetch_week_calendar_notes`). Raw string uses ``+``
+    as a separator; we split, trim, drop blanks + duplicates.
     """
     notes_row = data.get("notes_row") or []
     raw = notes_row[0] if notes_row else ""
     if not raw or not raw.strip():
-        return ""
+        return []
 
-    # Split on '+' and clean: strip whitespace, drop empties and the
-    # em-dash filler that sometimes appears after a trimmed event name.
     items: list[str] = []
     seen: set[str] = set()
     for piece in raw.split("+"):
@@ -580,39 +573,75 @@ def _build_week_agenda(data: dict) -> str:
             continue
         seen.add(key)
         items.append(s)
+    return items
 
-    if not items:
+
+def _build_context_card(
+    data: dict,
+    cycle_icon: str,
+    cycle_label: str,
+    cycle_pill_cls: str,
+    coach_line: str,
+) -> str:
+    """Unified "where am I right now" card.
+
+    Surfaces two different timescales of context that both feed into
+    how Sneha should tackle the Daily Quest below:
+
+        • TODAY     — menstrual cycle phase + one-line coach advice
+        • THIS WEEK — notable Google Calendar events (travel, appts)
+
+    Collapses sections individually: if cycle data is missing the top
+    half hides; if no events this week the bottom half hides; if both
+    are empty the entire card disappears.
+    """
+    show_today = bool(coach_line) or bool(cycle_label and cycle_label != "No cycle data yet")
+    agenda_items = _parse_agenda_items(data)
+
+    if not show_today and not agenda_items:
         return ""
 
-    chips = "".join(f'<span class="week-chip">{_esc(s)}</span>' for s in items)
-    return (
-        '<div class="week-agenda">'
-        '<div class="week-agenda-head">'
-        '\U0001f4c5 This Week'
-        '</div>'
-        f'<div class="week-agenda-chips">{chips}</div>'
-        '</div>'
-    )
+    sections: list[str] = []
+
+    if show_today or cycle_label:
+        sections.append(
+            '<div class="ctx-today">'
+            f'<span class="{cycle_pill_cls}">{cycle_icon} {_esc(cycle_label)}</span>'
+            + (f'<div class="ctx-coach">{coach_line}</div>' if coach_line else "")
+            + '</div>'
+        )
+
+    if agenda_items:
+        chips = "".join(f'<span class="ctx-chip">{_esc(s)}</span>' for s in agenda_items)
+        sections.append(
+            '<div class="ctx-week">'
+            '<div class="ctx-week-head">\U0001f4c5 This Week</div>'
+            f'<div class="ctx-chips">{chips}</div>'
+            '</div>'
+        )
+
+    divider = '<div class="ctx-divider" aria-hidden="true"></div>'
+    joined = divider.join(sections)
+
+    return f'<div class="context-card">{joined}</div>'
 
 
 def _build_coach_line(phase_name: str, last_sleep: float | None) -> str:
     """One-liner coaching advice based on cycle phase and sleep quality.
 
-    Uses PHASE_DISPLAY so the friendly name ("Luteal · Early-Mid") shows
-    up in the coach line instead of the short DB code ("Luteal-EM").
-    The chip above already prints the phase, so we open with "Phase:"
-    and go straight to the energy/advice copy.
+    The phase chip above already prints the phase name, so the coach
+    line opens straight with the energy descriptor + advice. A short
+    sleep warning is appended only when the user actually slept under
+    7 h; generic nudges that duplicate the Core Missions column have
+    been removed to keep this strip focused.
     """
     parts = []
     tip = PHASE_TIPS.get(phase_name)
     if tip:
         energy, advice = tip
-        parts.append(
-            f"<em>{_esc(energy)}.</em> {_esc(advice)}"
-        )
+        parts.append(f"<em>{_esc(energy)}.</em> {_esc(advice)}")
     if last_sleep is not None and last_sleep < 7:
         parts.append("Sleep was a touch short &mdash; keep cardio conversational.")
-    parts.append("Log food early so you\u2019re not playing catch-up tonight.")
     return " ".join(parts)
 
 
@@ -1085,24 +1114,8 @@ def generate_html_report(data: dict) -> str:
     coach_line          = _build_coach_line(phase_name, last_sleep)
     pillars_html        = _build_pillars_html(data)
     pins_html           = _build_pins_html(data)
-    week_agenda_html    = _build_week_agenda(data)
 
-    # Season pass (returns tuple)
-    season_month, season_done, season_total, season_items_html = _build_season_pass(data)
-    season_pct = _pct(season_done, season_total)
-    if season_done == season_total:
-        season_badge_cls, season_badge_text = "badge-complete", "Complete"
-    elif season_done >= season_total // 2:
-        season_badge_cls, season_badge_text = "badge-track", "On Track"
-    else:
-        season_badge_cls, season_badge_text = "badge-behind", "Behind"
-
-    # ── Cycle label: map short DB code to readable name + day count.
-    # e.g. DB says "Luteal-EM D19" → UI shows "Luteal · Early-Mid · D19".
-    # When phase is missing entirely (e.g. early-morning before first sync
-    # slot fills today's row), we drop the icon and show a clear "No
-    # cycle data" placeholder so the user knows it's a data gap, not a
-    # broken pill.
+    # Cycle label comes next — the context card (below) consumes it.
     raw_cycle = data.get("latest_cycle_str") or ""
     if phase_name and raw_cycle:
         friendly = PHASE_DISPLAY.get(phase_name, phase_name)
@@ -1114,15 +1127,31 @@ def generate_html_report(data: dict) -> str:
         cycle_label = "No cycle data yet"
         cycle_pill_cls = "today-ctx-pill empty"
 
+    # One card, two sections: today's phase/coach + this week's events.
+    context_card_html = _build_context_card(
+        data, cycle_icon, cycle_label, cycle_pill_cls, coach_line
+    )
+
+    # Season pass (returns tuple)
+    season_month, season_done, season_total, season_items_html = _build_season_pass(data)
+    season_pct = _pct(season_done, season_total)
+    if season_done == season_total:
+        season_badge_cls, season_badge_text = "badge-complete", "Complete"
+    elif season_done >= season_total // 2:
+        season_badge_cls, season_badge_text = "badge-track", "On Track"
+    else:
+        season_badge_cls, season_badge_text = "badge-behind", "Behind"
+
     # ── Fill template ──────────────────────────────────────────
     template = _load_template()
     html = _fill_template(template, {
         # Hero bar
         "SLEEP_EMOJI":         sleep_emoji,
         "SLEEP_LABEL":         sleep_label,
-        "CYCLE_ICON":          cycle_icon,
-        "CYCLE_LABEL":         cycle_label,
-        "CYCLE_PILL_CLS":      cycle_pill_cls,
+        # Unified "today + this week" context card (replaces the
+        # separate cycle chip inside Daily Quest and the stand-alone
+        # Week Agenda strip).
+        "CONTEXT_CARD_HTML":   context_card_html,
         # Weekly Pulse card
         "WEEKLY_STARS":        str(weekly_stars),
         "BEST_DAY_HTML":       best_day_html,
@@ -1159,8 +1188,8 @@ def generate_html_report(data: dict) -> str:
         "TODAY_CAL":           str(today_cal),
         "CAL_BAR_PCT":         str(_pct(today_cal, cal_goal)),
         "CAL_GOAL":            f"{cal_goal:,}",
-        # Coach
-        "COACH_LINE":          coach_line,
+        # (coach_line is consumed inside context_card_html, not as a
+        # top-level template placeholder)
         # Pillar health
         "PILLARS_HTML":        pillars_html,
         # Season pass
@@ -1173,8 +1202,6 @@ def generate_html_report(data: dict) -> str:
         "SEASON_ITEMS_HTML":   season_items_html,
         # Pins
         "PINS_HTML":           pins_html,
-        # Week Agenda (calendar events for Mon–Sun)
-        "WEEK_AGENDA_HTML":    week_agenda_html,
         # Footer
         "TAB_NAME":            data.get("tab_name", ""),
         "BUILD_DATE":          today.strftime("%Y.%m.%d"),

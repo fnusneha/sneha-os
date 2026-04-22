@@ -630,24 +630,38 @@ body {
 }
 .core-divider-label { white-space: nowrap; }
 
-/* Compact context strip — one line with today's cycle phase + a
-   short coaching note. Sits above the Daily Quest stages. */
-.today-context {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  padding: 12px 14px;
-  margin: 0 4px 12px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, rgba(168,139,250,0.10), rgba(125,211,252,0.04));
-  border: 1px solid rgba(168,139,250,0.22);
+/* ═══ CONTEXT CARD ═══
+   One card, two stacked sections. Top: "where I am today" — cycle phase
+   chip + phase-specific coach advice. Bottom: "what's on my plate this
+   week" — calendar event chips. Both are context, not actions; actions
+   live in Daily Quest below.
+
+   Subtle gradient left-lavender → right-gold visually spans the two
+   timescales (body-state vs. calendar), but the divider keeps them
+   perceptually separate. */
+.context-card {
+  margin: 0 16px 14px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: linear-gradient(135deg,
+    rgba(168,139,250,0.08) 0%,
+    rgba(125,211,252,0.04) 55%,
+    rgba(245,200,66,0.05) 100%);
+  border: 1px solid rgba(168,139,250,0.18);
 }
-/* Cycle phase chip — bumped up so the phase name is clearly readable
-   (it used to disappear as a tiny "Luteal-EM" string; now it reads
-   "🌗 LUTEAL · EARLY-MID · D19"). */
+
+/* ── Top half: Today's phase + coach line ── */
+.ctx-today {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Cycle phase chip — the pill format carries the phase name AND day
+   count ("🌗 Luteal · Early-Mid · D20") at a size that actually reads. */
 .today-ctx-pill {
   display: inline-flex;
+  align-self: flex-start;
   align-items: center;
   gap: 6px;
   padding: 5px 12px;
@@ -659,30 +673,47 @@ body {
   font-family: 'DM Mono', monospace;
   font-weight: 700;
   letter-spacing: 0.02em;
-  flex-shrink: 0;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .today-ctx-pill.empty {
   background: rgba(125,211,252,0.05);
   border-style: dashed;
   color: var(--dim);
 }
-/* Week Agenda — notable calendar events for the current week,
-   pulled from Google Calendar by sync.py and stashed in daily_entries.notes.
-   Chips pack left-to-right and wrap only when they can't fit. Vertical
-   row-gap is intentionally tighter than the horizontal column-gap so
-   wrapped rows feel like one grouped block rather than separate lines. */
-.week-agenda {
-  margin: 0 4px 12px;
-  padding: 10px 14px 12px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, rgba(245,200,66,0.06), rgba(168,139,250,0.04));
-  border: 1px solid rgba(245,200,66,0.15);
+
+/* Coach line — phase-specific advice, reads like a short coaching note.
+   <em> renders the energy descriptor in mint; the rest is muted body. */
+.ctx-coach {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--muted);
 }
-.week-agenda-head {
+.ctx-coach em {
+  color: var(--mint);
+  font-style: normal;
+  font-weight: 600;
+}
+.ctx-coach strong { color: var(--text); font-weight: 600; }
+
+/* ── Divider between the two halves ── */
+.ctx-divider {
+  height: 1px;
+  margin: 14px -2px;
+  background: linear-gradient(90deg,
+    rgba(255,255,255,0) 0%,
+    rgba(255,255,255,0.10) 50%,
+    rgba(255,255,255,0) 100%);
+}
+
+/* ── Bottom half: This Week's events ── */
+.ctx-week-head {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
   font-size: 10px;
   font-family: 'DM Mono', monospace;
   font-weight: 700;
@@ -690,46 +721,31 @@ body {
   color: var(--gold);
   text-transform: uppercase;
 }
-.week-agenda-chips {
+.ctx-chips {
   display: flex;
   flex-wrap: wrap;
   column-gap: 6px;
   row-gap: 5px;
   align-items: center;
 }
-.week-chip {
+.ctx-chip {
   display: inline-flex;
   align-items: center;
-  /* Tighter vertical padding so adjacent rows don't look floaty. */
   padding: 3px 10px;
   border-radius: 999px;
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.08);
   color: var(--text);
   font-size: 12px;
-  line-height: 1.25;
+  line-height: 1.3;
   white-space: nowrap;
-  /* Allow a long chip to shrink instead of forcing its own empty row.
-     Overflow is still ellipsised if it genuinely can't fit. */
+  /* shrink long chips before forcing a new row */
   min-width: 0;
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   flex: 0 1 auto;
 }
-.today-ctx-note {
-  font-size: 11px;
-  color: var(--muted);
-  flex: 1;
-  min-width: 0;
-  line-height: 1.4;
-}
-.today-ctx-note strong {
-  color: var(--text);
-  font-weight: 600;
-}
-.today-ctx-note em { color: var(--mint); font-style: normal; }
-
 .stage {
   background: rgba(255,255,255,0.03);
   border: 1px solid rgba(255,255,255,0.06);
@@ -1470,21 +1486,16 @@ body {
     {{BEST_DAY_HTML}}
   </div>
 
-  <!-- ═══ 2½. WEEK AGENDA ═══ (calendar notes / big events / travel) -->
-  {{WEEK_AGENDA_HTML}}
+  <!-- ═══ 2½. CONTEXT CARD ═══
+       One card, two halves: today's cycle phase + coach line at the top,
+       this week's notable calendar events (travel, appointments) at the
+       bottom. Merges what used to be two smaller strips into a single
+       "what do I need to know before tackling the Daily Quest?" block. -->
+  {{CONTEXT_CARD_HTML}}
 
   <!-- ═══ 3. DAILY QUEST ═══ -->
   <div class="quest-section">
     <div class="card-title">&#x2B50; Daily Quest</div>
-
-    <!-- Today's context strip: cycle phase + coaching note.
-         (Was previously in the "Daily Intelligence" card, which duplicated
-         the Core Missions data. That card is now gone — these two bits are
-         the only non-redundant info it had, shown compactly here.) -->
-    <div class="today-context">
-      <span class="{{CYCLE_PILL_CLS}}">{{CYCLE_ICON}} {{CYCLE_LABEL}}</span>
-      <span class="today-ctx-note">{{COACH_LINE}}</span>
-    </div>
 
     <!-- Morning Ritual (expanded by default) -->
     <div class="stage amber-stage stage-active" id="stage-morning">
