@@ -54,6 +54,16 @@ class TodayWidget : GlanceAppWidget() {
         PreferencesGlanceStateDefinition
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
+        // CRITICAL: kick off a refresh every time the widget is asked
+        // to render. Glance re-renders when state changes, so this
+        // self-populates on first install (when DataStore is empty)
+        // and stays fresh on every subsequent rebind. Wrapped in
+        // try/catch because widget render must never fail.
+        try {
+            WidgetRefresh.refreshAll(context)
+        } catch (t: Throwable) {
+            android.util.Log.w("SnehaOSWidget", "provideGlance refresh failed: ${t.message}")
+        }
         provideContent {
             GlanceTheme { Body() }
         }
@@ -81,12 +91,16 @@ class TodayWidget : GlanceAppWidget() {
             ) {
                 Text("TODAY", style = labelStyle(muted))
                 Spacer(GlanceModifier.defaultWeight())
+                // Larger clickable target (padding around the glyph)
+                // — 14sp text with no padding was a ~6dp hit area, too
+                // small for a reliable tap. padding(6dp) roughly
+                // doubles the hit box.
                 Text(
                     "\u27f3",
-                    style = labelStyle(mint, size = 14f),
-                    modifier = GlanceModifier.clickable(
-                        actionRunCallback<RefreshTodayAction>()
-                    )
+                    style = labelStyle(mint, size = 18f),
+                    modifier = GlanceModifier
+                        .padding(6.dp)
+                        .clickable(actionRunCallback<RefreshTodayAction>())
                 )
             }
             Spacer(GlanceModifier.height(6.dp))
