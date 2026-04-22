@@ -658,10 +658,13 @@ body {
   flex-shrink: 0;
 }
 /* Week Agenda — notable calendar events for the current week,
-   pulled from Google Calendar by sync.py and stashed in daily_entries.notes. */
+   pulled from Google Calendar by sync.py and stashed in daily_entries.notes.
+   Chips pack left-to-right and wrap only when they can't fit. Vertical
+   row-gap is intentionally tighter than the horizontal column-gap so
+   wrapped rows feel like one grouped block rather than separate lines. */
 .week-agenda {
   margin: 0 4px 12px;
-  padding: 12px 14px;
+  padding: 10px 14px 12px;
   border-radius: 12px;
   background: linear-gradient(135deg, rgba(245,200,66,0.06), rgba(168,139,250,0.04));
   border: 1px solid rgba(245,200,66,0.15);
@@ -670,7 +673,7 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   font-size: 10px;
   font-family: 'DM Mono', monospace;
   font-weight: 700;
@@ -681,22 +684,29 @@ body {
 .week-agenda-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  column-gap: 6px;
+  row-gap: 5px;
+  align-items: center;
 }
 .week-chip {
   display: inline-flex;
   align-items: center;
-  padding: 4px 10px;
+  /* Tighter vertical padding so adjacent rows don't look floaty. */
+  padding: 3px 10px;
   border-radius: 999px;
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.08);
   color: var(--text);
-  font-size: 11.5px;
-  line-height: 1.4;
+  font-size: 12px;
+  line-height: 1.25;
   white-space: nowrap;
+  /* Allow a long chip to shrink instead of forcing its own empty row.
+     Overflow is still ellipsised if it genuinely can't fit. */
+  min-width: 0;
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex: 0 1 auto;
 }
 .today-ctx-note {
   font-size: 11px;
