@@ -165,11 +165,14 @@ def gather_dashboard_data(
         if fresh:
             today_steps = fresh
 
-    # Same deal for Garmin calories — the DB only gets updated by
-    # sync.py's 4x/day cron, so between slots the number is stale.
-    # Live-fetch here means the Calories Logged Core Mission reflects
-    # whatever MyFitnessPal shows right now.
-    live_nutrition = _cached_fetch_nutrition(today, force=force) if live_steps else None
+    # Live Garmin nutrition is ONLY fetched on an explicit pull-to-
+    # refresh (force=True). Every regular tab switch back to Quest Hub
+    # would otherwise spend 500ms–2s on a synchronous Garmin call,
+    # which made the dashboard feel noticeably sluggish. For regular
+    # loads we trust the DB (populated by sync.py 4x/day); for
+    # pull-to-refresh the user has explicitly asked for fresh data and
+    # the extra latency is expected.
+    live_nutrition = _cached_fetch_nutrition(today, force=force) if (live_steps and force) else None
     if live_nutrition:
         db_cal = (today_row or {}).get("calories") or 0
         live_cal = live_nutrition.get("calories") or 0
