@@ -160,9 +160,36 @@ def gather_dashboard_data(
                 cal_goal = int(r["calorie_goal"])
                 break
 
-    # Cycle phase (name only, for coach line — "Luteal-EM" etc.)
+    # Cycle phase for the header chip + coach line ("Luteal-EM", "D19").
+    # sync.py only writes cycle_phase when it runs — and cron fires 4×/day,
+    # so between midnight and the first morning slot, today's row has a
+    # NULL cycle_phase. Fall back to the most recent past day that did
+    # get populated, advancing the day counter forward so the chip still
+    # reads "Luteal-EM · D20" at 6am instead of showing yesterday's
+    # D19 or (worse) a blank.
     phase_name = (today_row or {}).get("cycle_phase") or ""
+    today_cycle_day = (today_row or {}).get("cycle_day")
     latest_cycle_str = _cycle_cell(today_row)
+
+    if not phase_name:
+        from cycle import get_cycle_phase  # local import to keep sync lean
+        for offset in range(1, 8):  # look back up to a week
+            idx = weekday - offset
+            if idx < 0:
+                break
+            prev = week[idx]
+            if prev and prev.get("cycle_phase") and prev.get("cycle_day"):
+                advanced_day = int(prev["cycle_day"]) + offset
+                phase_name = get_cycle_phase(advanced_day) or prev["cycle_phase"]
+                today_cycle_day = advanced_day
+                latest_cycle_str = (
+                    f"{phase_name} D{advanced_day}" if advanced_day else phase_name
+                )
+                log.debug(
+                    "Cycle phase back-filled from %d days ago: %s D%d",
+                    offset, phase_name, advanced_day,
+                )
+                break
 
     # Strength / cardio counts (used by text report, not HTML directly).
     strength_count = sum(1 for r in week if r and r.get("strength_note"))

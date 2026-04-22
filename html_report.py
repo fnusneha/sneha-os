@@ -1099,13 +1099,20 @@ def generate_html_report(data: dict) -> str:
 
     # ── Cycle label: map short DB code to readable name + day count.
     # e.g. DB says "Luteal-EM D19" → UI shows "Luteal · Early-Mid · D19".
+    # When phase is missing entirely (e.g. early-morning before first sync
+    # slot fills today's row), we drop the icon and show a clear "No
+    # cycle data" placeholder so the user knows it's a data gap, not a
+    # broken pill.
     raw_cycle = data.get("latest_cycle_str") or ""
     if phase_name and raw_cycle:
         friendly = PHASE_DISPLAY.get(phase_name, phase_name)
         day_part = raw_cycle.rsplit(" ", 1)[-1] if " D" in raw_cycle else ""
         cycle_label = f"{friendly} · {day_part}" if day_part else friendly
+        cycle_pill_cls = "today-ctx-pill"
     else:
-        cycle_label = raw_cycle or "\u2013"
+        cycle_icon = ""
+        cycle_label = "No cycle data yet"
+        cycle_pill_cls = "today-ctx-pill empty"
 
     # ── Fill template ──────────────────────────────────────────
     template = _load_template()
@@ -1115,6 +1122,7 @@ def generate_html_report(data: dict) -> str:
         "SLEEP_LABEL":         sleep_label,
         "CYCLE_ICON":          cycle_icon,
         "CYCLE_LABEL":         cycle_label,
+        "CYCLE_PILL_CLS":      cycle_pill_cls,
         # Weekly Pulse card
         "WEEKLY_STARS":        str(weekly_stars),
         "BEST_DAY_HTML":       best_day_html,

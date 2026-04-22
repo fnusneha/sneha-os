@@ -637,25 +637,34 @@ body {
   align-items: center;
   flex-wrap: wrap;
   gap: 10px;
-  padding: 10px 14px;
+  padding: 12px 14px;
   margin: 0 4px 12px;
   border-radius: 10px;
-  background: rgba(168,139,250,0.06);
-  border: 1px solid rgba(168,139,250,0.15);
+  background: linear-gradient(135deg, rgba(168,139,250,0.10), rgba(125,211,252,0.04));
+  border: 1px solid rgba(168,139,250,0.22);
 }
+/* Cycle phase chip — bumped up so the phase name is clearly readable
+   (it used to disappear as a tiny "Luteal-EM" string; now it reads
+   "🌗 LUTEAL · EARLY-MID · D19"). */
 .today-ctx-pill {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px;
+  padding: 5px 12px;
   border-radius: 999px;
-  background: rgba(125,211,252,0.12);
-  border: 1px solid rgba(125,211,252,0.24);
+  background: rgba(125,211,252,0.14);
+  border: 1px solid rgba(125,211,252,0.32);
   color: var(--sky);
-  font-size: 11px;
+  font-size: 12px;
   font-family: 'DM Mono', monospace;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: 0.02em;
   flex-shrink: 0;
+}
+.today-ctx-pill.empty {
+  background: rgba(125,211,252,0.05);
+  border-style: dashed;
+  color: var(--dim);
 }
 /* Week Agenda — notable calendar events for the current week,
    pulled from Google Calendar by sync.py and stashed in daily_entries.notes.
@@ -1473,7 +1482,7 @@ body {
          the Core Missions data. That card is now gone — these two bits are
          the only non-redundant info it had, shown compactly here.) -->
     <div class="today-context">
-      <span class="today-ctx-pill">{{CYCLE_ICON}} {{CYCLE_LABEL}}</span>
+      <span class="{{CYCLE_PILL_CLS}}">{{CYCLE_ICON}} {{CYCLE_LABEL}}</span>
       <span class="today-ctx-note">{{COACH_LINE}}</span>
     </div>
 
