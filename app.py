@@ -205,6 +205,36 @@ def api_season_get():
     return jsonify(ok=True, month=month, indices=_db().get_season_pass(month))
 
 
+@app.post("/api/refresh-travel")
+def api_refresh_travel():
+    """Force-refresh the travel + library caches from Google Sheets.
+
+    `travel_source` normally caches sheet reads for 6 hours to keep
+    dashboard loads snappy — but when Sneha edits the Master Planner
+    or Library sheet directly, the new rows aren't visible until the
+    cache expires (up to 6 h). This endpoint bypasses the cache and
+    writes a fresh pull to disk, so the next `/dashboard` render
+    picks up the new rows immediately.
+
+    Intentionally POST-only so browser pre-fetch / crawlers can't
+    trigger a Google Sheets round-trip.
+    """
+    try:
+        from google_auth import get_google_creds
+        from travel_source import fetch_travel_pins, fetch_library_cycling
+        creds = get_google_creds()
+        pins = fetch_travel_pins(creds, force_refresh=True)
+        wish = fetch_library_cycling(creds, force_refresh=True)
+        return jsonify(
+            ok=True,
+            travel_pins=len(pins),
+            library_wishlist=len(wish),
+        )
+    except Exception as exc:
+        log.exception("travel refresh failed")
+        return jsonify(ok=False, error=str(exc)), 500
+
+
 @app.get("/api/today")
 def api_today():
     """Compact JSON snapshot of today's numbers. Used by the Android
