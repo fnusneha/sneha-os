@@ -21,7 +21,10 @@ import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.core.app.ActivityCompat
+import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 
 /**
@@ -53,7 +56,13 @@ class MainActivity : AppCompatActivity() {
             "time=${BuildConfig.BUILD_TIME} " +
             "base=${BuildConfig.BASE_URL}"
         )
-        WindowCompat.setDecorFitsSystemWindows(window, true)
+        // Android 15 (targetSdk 35) forces edge-to-edge by default —
+        // the deprecated `setDecorFitsSystemWindows(true)` no longer
+        // pushes content below the status bar, so the WebView was
+        // rendering its hero text under the system clock/icons.
+        // Tell the system the window goes edge-to-edge and we'll
+        // handle insets ourselves on the SwipeRefreshLayout root.
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         window.statusBarColor = Color.parseColor("#0d1b2e")
         window.navigationBarColor = Color.parseColor("#0d1b2e")
         setTheme(R.style.Theme_SnehaOS)
@@ -67,6 +76,21 @@ class MainActivity : AppCompatActivity() {
             Color.parseColor("#7dd3fc"), // sky
         )
         refreshLayout.setProgressBackgroundColorSchemeColor(Color.parseColor("#1a2644"))
+
+        // Apply system-bar insets as padding on the root view so the
+        // WebView sits between the status bar (top) and the nav bar
+        // (bottom) instead of behind them. Uses system-bars insets
+        // rather than just status-bar so a 3-button nav also clears.
+        ViewCompat.setOnApplyWindowInsetsListener(refreshLayout) { view, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            view.updatePadding(
+                left = bars.left,
+                top = bars.top,
+                right = bars.right,
+                bottom = bars.bottom,
+            )
+            WindowInsetsCompat.CONSUMED
+        }
 
         configureWebView(webView)
         refreshLayout.setOnRefreshListener {
