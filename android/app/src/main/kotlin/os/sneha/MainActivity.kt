@@ -26,8 +26,8 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 
 /**
@@ -82,17 +82,23 @@ class MainActivity : AppCompatActivity() {
 
         // Apply system-bar insets as padding on the root view so the
         // WebView sits between the status bar (top) and the nav bar
-        // (bottom) instead of behind them. Uses system-bars insets
-        // rather than just status-bar so a 3-button nav also clears.
-        ViewCompat.setOnApplyWindowInsetsListener(refreshLayout) { view, insets ->
-            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            view.updatePadding(
-                left = bars.left,
-                top = bars.top,
-                right = bars.right,
-                bottom = bars.bottom,
-            )
-            WindowInsetsCompat.CONSUMED
+        // (bottom) instead of behind them. Wrapped in try/catch because
+        // the androidx WindowInsets API has historically been fragile
+        // on odd device configurations — a missing status bar shouldn't
+        // block the dashboard from loading.
+        try {
+            ViewCompat.setOnApplyWindowInsetsListener(refreshLayout) { view, insets ->
+                val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+                view.updatePadding(
+                    left = bars.left,
+                    top = bars.top,
+                    right = bars.right,
+                    bottom = bars.bottom,
+                )
+                WindowInsetsCompat.CONSUMED
+            }
+        } catch (t: Throwable) {
+            Log.w("SnehaOS", "window insets setup failed: ${t.message}")
         }
 
         configureWebView(webView)
@@ -134,14 +140,24 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         webView.onResume()
-        // Two paths to freshness, belt-and-suspenders:
-        //   1. WorkManager — handles periodic refresh + offline retry
-        //   2. Direct coroutine — runs immediately, doesn't rely on
-        //      WorkManager's scheduler honouring our intent in real time
-        // Either succeeding is enough to make the widget show fresh data.
-        os.sneha.widget.WidgetUpdateScheduler.schedule(applicationContext)
-        MainScope().launch(Dispatchers.IO) {
-            os.sneha.widget.WidgetRefresh.refreshAll(applicationContext)
+        // Widget refresh is best-effort — if anything throws (DataStore
+        // init, Glance state write, OkHttp bootstrap, WorkManager) we
+        // MUST NOT crash the activity. The dashboard itself doesn't
+        // depend on any of this working.
+        try {
+            os.sneha.widget.WidgetUpdateScheduler.schedule(applicationContext)
+        } catch (t: Throwable) {
+            Log.w("SnehaOS", "widget scheduler failed: ${t.message}")
+        }
+        // Direct refresh on lifecycleScope so it cancels cleanly if the
+        // activity dies. Wrapped in try/catch for the same reason — a
+        // refresh hiccup never takes the app down.
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                os.sneha.widget.WidgetRefresh.refreshAll(applicationContext)
+            } catch (t: Throwable) {
+                Log.w("SnehaOS", "widget direct refresh failed: ${t.message}")
+            }
         }
     }
 
