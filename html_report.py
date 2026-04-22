@@ -43,7 +43,8 @@ TEMPLATE_FILE = TEMPLATE_DIR / "morning_report.html"
 # 3 stars/day × 7 days. Used by the weekly XP bar.
 MAX_WEEKLY_STARS = 21
 
-# Cycle phase → (energy level, coaching advice)
+# Cycle phase → (energy level, coaching advice).
+# Keys match `cycle_phase` values in daily_entries (see cycle.py).
 PHASE_TIPS = {
     "Menstrual":  ("low energy", "Go easy — yoga, stretching, gentle walks."),
     "Follicular": ("energy rising", "Good day for heavier lifts."),
@@ -52,13 +53,23 @@ PHASE_TIPS = {
     "Luteal-PMS": ("energy winding down", "Keep it light — stretch, recover."),
 }
 
-# Cycle phase → header pill emoji
+# Cycle phase → header pill emoji.
 CYCLE_ICONS = {
     "Follicular": "\U0001f331",  # 🌱
     "Ovulation":  "\U0001f315",  # 🌕
     "Luteal-EM":  "\U0001f317",  # 🌗
     "Luteal-PMS": "\U0001f317",  # 🌗
     "Menstrual":  "\U0001f534",  # 🔴
+}
+
+# Cycle phase → user-facing full name. The DB stores short codes so
+# legacy rows stay valid; UI displays the readable version.
+PHASE_DISPLAY = {
+    "Follicular": "Follicular",
+    "Ovulation":  "Ovulation",
+    "Luteal-EM":  "Luteal · Early-Mid",
+    "Luteal-PMS": "Luteal · PMS",
+    "Menstrual":  "Menstrual",
 }
 
 DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
@@ -284,48 +295,114 @@ def _build_day_details_payload(data: dict, weekday: int) -> dict:
     return details
 
 
-def _build_pulse_days(data: dict, weekday: int) -> str:
+def _compute_day_stars(data: dict, wd: int) -> int:
+    """Return total stars earned on weekday `wd` (0=Mon, 6=Sun)."""
+    morning_star_row = data.get("morning_star_row", [])
+    night_star_row = data.get("night_star_row", [])
+    s = 0
+    if wd < len(morning_star_row) and str(morning_star_row[wd]).strip() == "\u2713":
+        s += 1
+    if _count_core_items(data, wd) >= CORE_STAR_THRESHOLD:
+        s += 1
+    if wd < len(night_star_row) and str(night_star_row[wd]).strip() == "\u2713":
+        s += 1
+    return s
+
+
+def _pick_best_day(data: dict, weekday: int) -> tuple[int, dict] | None:
+    """Pick the "best" day of the week so far for the highlight strip.
+
+    Ranking (highest wins):
+      1. Most stars earned
+      2. Tiebreak: any strength/cardio/stretch session logged that day
+
+    Returns (wd, info) where info has 'stars' and 'why' (one-line reason),
+    or None if nothing noteworthy has happened yet this week.
+    """
+
+    def activity_note(wd: int) -> str:
+        for key in ("cardio_row", "strength_row", "stretch_row"):
+            row = data.get(key, [])
+            if wd < len(row) and str(row[wd]).strip():
+                return str(row[wd]).strip()
+        return ""
+
+    best_wd: int | None = None
+    best_stars = 0
+    best_note = ""
+
+    for wd in range(weekday + 1):  # only past + today
+        s = _compute_day_stars(data, wd)
+        note = activity_note(wd)
+        # Prefer higher stars; on tie, prefer the day with a note.
+        if s > best_stars or (s == best_stars and note and not best_note):
+            if s > 0 or note:
+                best_wd = wd
+                best_stars = s
+                best_note = note
+
+    if best_wd is None:
+        return None
+    return best_wd, {"stars": best_stars, "why": best_note}
+
+
+def _build_best_day_html(data: dict, weekday: int) -> str:
+    """Small strip under the weekly-stars number highlighting the best
+    day this week. Empty if the week hasn't produced anything yet.
+
+    Format: "🏆 Mon · 3⭐ · Levi's GranFondo 46mi"
+    """
+    best = _pick_best_day(data, weekday)
+    if best is None:
+        return ""
+    wd, info = best
+    stars = info["stars"]
+    why = info["why"]
+
+    bits = [f"{stars}\u2B50"]
+    if why:
+        bits.append(_esc(why))
+    detail = " \u00B7 ".join(bits)
+    return (
+        '<div class="wp-best">'
+        f'<span class="wp-best-crown">\U0001F3C6</span>'
+        f'<span class="wp-best-day">{DAY_LABELS[wd]}</span>'
+        f'<span class="wp-best-detail">{detail}</span>'
+        '</div>'
+    )
+
+
+def _build_pulse_days(data: dict, weekday: int, best_wd: int | None = None) -> str:
     """Build the 7-day bubble strip for the Weekly Pulse card.
 
     Past/today bubbles are clickable → open a modal with that day's breakdown.
-    Future bubbles are faded and inert.
+    Future bubbles are faded and inert. `best_wd`, if provided, gets an
+    extra ``is-best`` class so the winning day glows subtly.
     """
-    morning_star_row = data.get("morning_star_row", [])
-    night_star_row = data.get("night_star_row", [])
-
     bubbles = []
     for wd in range(7):
         is_today = (wd == weekday)
         is_future = (wd > weekday)
+        day_stars = 0 if is_future else _compute_day_stars(data, wd)
 
+        classes = ["wp-day"]
         if is_future:
-            day_stars = 0
-        else:
-            day_stars = 0
-            # Morning star
-            if wd < len(morning_star_row) and str(morning_star_row[wd]).strip() == "\u2713":
-                day_stars += 1
-            # Core star
-            if _count_core_items(data, wd) >= CORE_STAR_THRESHOLD:
-                day_stars += 1
-            # Night star
-            if wd < len(night_star_row) and str(night_star_row[wd]).strip() == "\u2713":
-                day_stars += 1
-
-        if is_future:
-            cls = "wp-day is-future"
+            classes.append("is-future")
             num_html = ""
         elif is_today:
-            cls = "wp-day is-today wp-day-clickable"
+            classes.extend(["is-today", "wp-day-clickable"])
             num_html = f'<span class="wp-day-num" data-day="{wd}">{day_stars}</span>'
         elif day_stars > 0:
-            cls = "wp-day has-stars wp-day-clickable"
+            classes.extend(["has-stars", "wp-day-clickable"])
             num_html = f'<span class="wp-day-num" data-day="{wd}">{day_stars}</span>'
         else:
-            cls = "wp-day zero-stars wp-day-clickable"
+            classes.extend(["zero-stars", "wp-day-clickable"])
             num_html = f'<span class="wp-day-num" data-day="{wd}">0</span>'
 
-        # data-wd attribute lets JS know which day to open on click
+        if best_wd is not None and wd == best_wd:
+            classes.append("is-best")
+
+        cls = " ".join(classes)
         data_attr = f' data-wd="{wd}" onclick="showDayDetails({wd})" tabindex="0"' if not is_future else ""
         bubbles.append(
             f'<div class="{cls}"{data_attr}>'
@@ -425,19 +502,34 @@ def _build_core_missions(data: dict, weekday: int) -> str:
     stretch_hint  = f"Logged: {stretch_v}"  if stretch_v  else "Yoga / mobility needed"
     sauna_hint    = f"Logged: {sauna_v}"    if sauna_v    else "Heat recovery needed"
 
-    missions = [
+    # Ordered so the three "easy daily three" habits sit at the top of
+    # the card — at least one of these should land every day and makes
+    # the visual signal of "I'm on track" immediate. The four below the
+    # divider are the optional/rotating activities; only one is needed
+    # most days to cross the 4-of-7 threshold for the ⭐.
+    easy_three = [
+        ("\U0001f45f",    "8,000 Steps",    steps_hint, steps_done),
+        ("\U0001f634",    "Sleep 7h+",      sleep_hint, sleep_done),
+        ("\U0001f357",    "Calories Logged", cal_hint,  cal_done),
+    ]
+    active_four = [
         ("\U0001f4aa",    "Strength",       strength_hint, bool(strength_v)),
         ("\U0001f6b4",    "Cardio",         cardio_hint,   bool(cardio_v)),
-        ("\U0001f45f",    "8,000 Steps",    steps_hint,    steps_done),
-        ("\U0001f357",    "Calories Logged", cal_hint,     cal_done),
-        ("\U0001f634",    "Sleep 7h+",      sleep_hint,    sleep_done),
         ("\U0001f9d8",    "Stretch",        stretch_hint,  bool(stretch_v)),
         ("\u2668\ufe0f",  "Sauna / Steam",  sauna_hint,    bool(sauna_v)),
     ]
-    return "\n".join(
-        _quest_item("core", i, icon, name, hint, done)
-        for i, (icon, name, hint, done) in enumerate(missions)
+
+    parts: list[str] = []
+    for i, (icon, name, hint, done) in enumerate(easy_three):
+        parts.append(_quest_item("core", i, icon, name, hint, done))
+    parts.append(
+        '<div class="core-divider">'
+        '<span class="core-divider-label">Pick one activity</span>'
+        '</div>'
     )
+    for i, (icon, name, hint, done) in enumerate(active_four, start=len(easy_three)):
+        parts.append(_quest_item("core", i, icon, name, hint, done))
+    return "\n".join(parts)
 
 
 # ── Night Ritual (4 items, no API data — localStorage only) ──────
@@ -504,13 +596,18 @@ def _build_week_agenda(data: dict) -> str:
 
 
 def _build_coach_line(phase_name: str, last_sleep: float | None) -> str:
-    """One-liner coaching advice based on cycle phase and sleep quality."""
+    """One-liner coaching advice based on cycle phase and sleep quality.
+
+    Uses PHASE_DISPLAY so the friendly name ("Luteal · Early-Mid") shows
+    up in the coach line instead of the short DB code ("Luteal-EM").
+    The chip above already prints the phase, so we open with "Phase:"
+    and go straight to the energy/advice copy.
+    """
     parts = []
     tip = PHASE_TIPS.get(phase_name)
     if tip:
         energy, advice = tip
         parts.append(
-            f"<strong>{_esc(phase_name)}</strong> &mdash; "
             f"<em>{_esc(energy)}.</em> {_esc(advice)}"
         )
     if last_sleep is not None and last_sleep < 7:
@@ -798,8 +895,18 @@ def _build_pins_html(data: dict = None) -> str:
             trip_year,
         ))
 
-    # Annual habit pins belong to the current year
-    habit_pins_with_year = [(p + (current_year,)) for p in habit_pins]
+    # Annual habits repeat every year — stamp each one with the current
+    # year AND the next year so the "2027 · roadmap" section on the
+    # Quest Hub pins timeline actually shows the habits, not only the
+    # Potential travel trips. Pin IDs get a year suffix so the dedupe
+    # pass doesn't collapse 2026-physical into 2027-physical.
+    years_to_show = [current_year, current_year + 1]
+    habit_pins_with_year = []
+    for p in habit_pins:
+        pid = p[0]
+        for y in years_to_show:
+            year_suffixed = (f"{pid}-{y}",) + p[1:] + (y,)
+            habit_pins_with_year.append(year_suffixed)
 
     # Combine: doc habit pins + live travel pins
     all_pins = habit_pins_with_year + cal_pins
@@ -967,7 +1074,10 @@ def generate_html_report(data: dict) -> str:
     medal_perfect_cls = "wp-medal-marker lit" if weekly_stars >= MEDAL_PERFECT else "wp-medal-marker dim"
 
     # ── Build all HTML sections ────────────────────────────────
-    pulse_days_html    = _build_pulse_days(data, weekday)
+    best = _pick_best_day(data, weekday)
+    best_wd_for_pulse = best[0] if best else None
+    pulse_days_html     = _build_pulse_days(data, weekday, best_wd=best_wd_for_pulse)
+    best_day_html       = _build_best_day_html(data, weekday)
     day_details_payload = _build_day_details_payload(data, weekday)
     morning_ritual_html = _build_morning_ritual(data)
     core_missions_html  = _build_core_missions(data, weekday)
@@ -987,6 +1097,16 @@ def generate_html_report(data: dict) -> str:
     else:
         season_badge_cls, season_badge_text = "badge-behind", "Behind"
 
+    # ── Cycle label: map short DB code to readable name + day count.
+    # e.g. DB says "Luteal-EM D19" → UI shows "Luteal · Early-Mid · D19".
+    raw_cycle = data.get("latest_cycle_str") or ""
+    if phase_name and raw_cycle:
+        friendly = PHASE_DISPLAY.get(phase_name, phase_name)
+        day_part = raw_cycle.rsplit(" ", 1)[-1] if " D" in raw_cycle else ""
+        cycle_label = f"{friendly} · {day_part}" if day_part else friendly
+    else:
+        cycle_label = raw_cycle or "\u2013"
+
     # ── Fill template ──────────────────────────────────────────
     template = _load_template()
     html = _fill_template(template, {
@@ -994,9 +1114,10 @@ def generate_html_report(data: dict) -> str:
         "SLEEP_EMOJI":         sleep_emoji,
         "SLEEP_LABEL":         sleep_label,
         "CYCLE_ICON":          cycle_icon,
-        "CYCLE_LABEL":         data.get("latest_cycle_str") or "\u2013",
+        "CYCLE_LABEL":         cycle_label,
         # Weekly Pulse card
         "WEEKLY_STARS":        str(weekly_stars),
+        "BEST_DAY_HTML":       best_day_html,
         "PULSE_DAYS_HTML":     pulse_days_html,
         "DAY_DETAILS_JSON":    json.dumps(day_details_payload, ensure_ascii=False),
         "SEASON_MONTH_SHORT":  today.strftime("%b"),
