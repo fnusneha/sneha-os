@@ -2994,14 +2994,81 @@ body.view-year  .month-only { display: none !important; }
     }
   }
 
-  // ── Update today's day bubble ──
-  function updateTodayBubble() {
+  // ── Update today's day bubble AND the Today hero ──
+  //
+  // Two separate UI surfaces reflect today's star count in real time:
+  //   1. The Today hero (server-rendered .today-hero block on /dashboard)
+  //   2. The day bubble (.wp-day.is-today on Week/Month pulse grids)
+  //
+  // Before: we only touched the bubble. Collecting a star on /dashboard
+  // updated nothing visible (the hero is on THIS view; the bubble lives
+  // on Week/Month which aren't shown). Fix: also bump the hero.
+  //
+  // `stage` is 'morning' or 'night' — lets us flip the matching
+  // hero-stage pill from "pending" to "done" in addition to the
+  // aggregate count/star glyphs.
+  function updateTodayBubble(stage) {
+    // (1) Week/Month day bubble — harmless no-op when those views
+    //     aren't currently rendered.
     const todayBubble = document.querySelector('.wp-day.is-today');
-    if (!todayBubble) return;
-    const numEl = todayBubble.querySelector('.wp-day-num');
+    if (todayBubble) {
+      const numEl = todayBubble.querySelector('.wp-day-num');
+      if (numEl) {
+        const current = parseInt(numEl.textContent) || 0;
+        numEl.textContent = current + 1;
+      }
+    }
+
+    // (2) Today hero — only present on the Today view, but we still
+    //     try-update unconditionally so the user sees the reward on
+    //     the tab where they actually tapped Collect.
+    const hero = document.querySelector('.today-hero');
+    if (!hero) return;
+
+    // Bump the numeric count.
+    const numEl = hero.querySelector('.hero-count-num');
     if (numEl) {
       const current = parseInt(numEl.textContent) || 0;
-      numEl.textContent = current + 1;
+      const next = current + 1;
+      numEl.textContent = next;
+
+      // Update the "X to go" caption + nudge so it stays in sync.
+      const MAX = 5;
+      const toGo = Math.max(0, MAX - next);
+      const caption = hero.querySelector('.hero-caption');
+      if (caption) caption.textContent = 'Stars earned \u00b7 ' + toGo + ' to go';
+      const nudge = hero.querySelector('.hero-nudge');
+      if (nudge) {
+        if (next >= MAX) {
+          nudge.className = 'hero-nudge perfect';
+          nudge.innerHTML = '\u2728 Perfect Day. You hit every star \ud83c\udf1f';
+        } else {
+          nudge.className = 'hero-nudge';
+          nudge.innerHTML = '<strong>' + toGo + '</strong> more for a Perfect Day \u2728';
+        }
+      }
+    }
+
+    // Light up the next dim star glyph.
+    const firstDim = hero.querySelector('.hero-star.dim');
+    if (firstDim) {
+      firstDim.classList.remove('dim');
+      firstDim.classList.add('lit');
+    }
+
+    // Flip the matching stage pill (Morning / Night) from pending to done.
+    if (stage === 'morning' || stage === 'night') {
+      const label = stage.toUpperCase();
+      const stageCells = hero.querySelectorAll('.hero-stage');
+      stageCells.forEach(cell => {
+        const nameEl = cell.querySelector('.hero-stage-name');
+        if (nameEl && nameEl.textContent.trim().toUpperCase() === label) {
+          cell.classList.remove('pending');
+          cell.classList.add('done');
+          const checkEl = cell.querySelector('.hero-stage-check');
+          if (checkEl) checkEl.textContent = '\u2713';
+        }
+      });
     }
   }
 
@@ -3045,7 +3112,7 @@ body.view-year  .month-only { display: none !important; }
       if (stage === 'morning' || stage === 'night') {
         fillSlot('slot-' + stage);
         updateWeeklyPulse(1);
-        updateTodayBubble();
+        updateTodayBubble(stage);
         postCollect(stage, todayDate).catch(err => {
           showError('Star NOT saved (' + err.message + '). Refresh and retry.');
         });
