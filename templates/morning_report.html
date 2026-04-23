@@ -1769,8 +1769,8 @@ body {
   <div class="quest-section">
     <div class="card-title">&#x2B50; Daily Quest</div>
 
-    <!-- Morning Ritual (expanded by default) -->
-    <div class="stage amber-stage stage-active" id="stage-morning">
+    <!-- Morning Ritual — expanded until the star is collected. -->
+    <div class="stage amber-stage stage-active {{MORNING_COLLAPSED}}" id="stage-morning">
       <div class="stage-header" onclick="toggleStage('stage-morning')">
         <span class="stage-icon">&#x2600;&#xFE0F;</span>
         <div class="stage-info">
@@ -1790,8 +1790,9 @@ body {
     <!-- ─── body · core ─── -->
     <div class="stage-divider">body &middot; core</div>
 
-    <!-- Base — steps + sleep + calories (all 3 required) -->
-    <div class="stage mint-stage stage-active collapsed {{BASE_STAGE_STATE}}" id="stage-base">
+    <!-- Base — steps + sleep + calories (all 3 required).
+         Expanded until all 3 are in; collapsed once the sub-star lights. -->
+    <div class="stage mint-stage stage-active {{BASE_STAGE_STATE}} {{BASE_COLLAPSED}}" id="stage-base">
       <div class="stage-header" onclick="toggleStage('stage-base')">
         <span class="stage-icon">&#x1F3D4;&#xFE0F;</span>
         <div class="stage-info">
@@ -1806,8 +1807,9 @@ body {
       </div>
     </div>
 
-    <!-- Burn — strength OR cardio (pick one) -->
-    <div class="stage mint-stage stage-active collapsed {{BURN_STAGE_STATE}}" id="stage-burn">
+    <!-- Burn — strength OR cardio (pick one).
+         Expanded until a session is logged; collapsed once earned. -->
+    <div class="stage mint-stage stage-active {{BURN_STAGE_STATE}} {{BURN_COLLAPSED}}" id="stage-burn">
       <div class="stage-header" onclick="toggleStage('stage-burn')">
         <span class="stage-icon">&#x1F525;</span>
         <div class="stage-info">
@@ -1822,8 +1824,9 @@ body {
       </div>
     </div>
 
-    <!-- Recover — stretch OR sauna / steam (pick one) -->
-    <div class="stage mint-stage stage-active collapsed {{RECOVER_STAGE_STATE}}" id="stage-recover">
+    <!-- Recover — stretch OR sauna / steam (pick one).
+         Expanded until earned; collapsed once any recovery is logged. -->
+    <div class="stage mint-stage stage-active {{RECOVER_STAGE_STATE}} {{RECOVER_COLLAPSED}}" id="stage-recover">
       <div class="stage-header" onclick="toggleStage('stage-recover')">
         <span class="stage-icon">&#x1F33F;</span>
         <div class="stage-info">
@@ -1856,8 +1859,8 @@ body {
     <!-- ─── wind down ─── -->
     <div class="stage-divider">wind down</div>
 
-    <!-- Night Ritual (collapsed by default) -->
-    <div class="stage violet-stage stage-active collapsed" id="stage-night">
+    <!-- Night Ritual — expanded until the star is collected. -->
+    <div class="stage violet-stage stage-active {{NIGHT_COLLAPSED}}" id="stage-night">
       <div class="stage-header" onclick="toggleStage('stage-night')">
         <span class="stage-icon">&#x1F319;</span>
         <div class="stage-info">
@@ -2202,6 +2205,11 @@ body {
       // collecting a star and the next sync that regenerates the HTML).
       const isCollected = serverState[stage] === 'true';
 
+      // Uniform rule across all 5 stage cards: earned → collapsed,
+      // not-earned → expanded. Python already rendered the correct
+      // collapsed class server-side, so this block only has to maintain
+      // invariants when localStorage / session state gets out of sync.
+      const stageEl = document.getElementById('stage-' + stage);
       if (isCollected) {
         setStageState(stage, 'complete');
         const starEl = document.getElementById('star-' + stage);
@@ -2210,16 +2218,15 @@ body {
           starEl.classList.remove('star-ready');
           starEl.classList.add('star-collected');
         }
+        if (stageEl && !stageEl.classList.contains('collapsed')) {
+          stageEl.classList.add('collapsed');
+        }
         showSummary(stage);
-        // Sync localStorage with server truth
         localState[stage + '_collected'] = true;
       } else {
         setStageState(stage, 'active');
-        if (stage !== 'morning') {
-          const el = document.getElementById('stage-' + stage);
-          if (el && !el.classList.contains('collapsed')) {
-            el.classList.add('collapsed');
-          }
+        if (stageEl && stageEl.classList.contains('collapsed')) {
+          stageEl.classList.remove('collapsed');
         }
       }
     });
@@ -2393,6 +2400,12 @@ body {
         setStageState(stage, 'complete');
         showSummary(stage);
         updateCompileStatus();
+        // Collapse the stage once collected — matches the auto-earned
+        // Base/Burn/Recover behaviour (done → get out of the way).
+        const stageEl = document.getElementById('stage-' + stage);
+        if (stageEl && !stageEl.classList.contains('collapsed')) {
+          stageEl.classList.add('collapsed');
+        }
       }, 350);
     }, 1800);
   };

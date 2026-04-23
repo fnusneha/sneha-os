@@ -1437,23 +1437,32 @@ def generate_html_report(data: dict) -> str:
         "MEDAL_SILVER_POS":    str(silver_pct),
         "MEDAL_GOLD_POS":      str(gold_pct),
         # Daily quest stages
+        # Stage collapse defaults: expanded when the star hasn't been
+        # earned yet (so the user sees what's left to do), collapsed
+        # when earned (already done → get out of the way). Uniform
+        # behaviour across all 5 stage cards.
+        "MORNING_COLLAPSED":   "collapsed" if today_morning_earned else "",
         "MORNING_RITUAL_HTML": morning_ritual_html,
         # Core 3: Base / Burn / Recover rendered as peer stage cards.
         "BASE_ITEMS_HTML":      core3["base"]["items_html"],
         "BASE_STAR_CLS":        "earned" if core3["base"]["earned"] else "",
         "BASE_STAR_GLYPH":      "\u2B50" if core3["base"]["earned"] else "\u2606",
-        "BASE_SUB":             f"Steps · Sleep · Calories · all 3 required",
+        "BASE_SUB":             "Steps · Sleep · Calories · all 3 required",
         "BASE_STAGE_STATE":     "earned" if core3["base"]["earned"] else "",
+        "BASE_COLLAPSED":       "collapsed" if core3["base"]["earned"] else "",
         "BURN_ITEMS_HTML":      core3["burn"]["items_html"],
         "BURN_STAR_CLS":        "earned" if core3["burn"]["earned"] else "",
         "BURN_STAR_GLYPH":      "\u2B50" if core3["burn"]["earned"] else "\u2606",
-        "BURN_SUB":             f"Strength or Cardio · pick one",
+        "BURN_SUB":             "Strength or Cardio · pick one",
         "BURN_STAGE_STATE":     "earned" if core3["burn"]["earned"] else "",
+        "BURN_COLLAPSED":       "collapsed" if core3["burn"]["earned"] else "",
         "RECOVER_ITEMS_HTML":   core3["recover"]["items_html"],
         "RECOVER_STAR_CLS":     "earned" if core3["recover"]["earned"] else "",
         "RECOVER_STAR_GLYPH":   "\u2B50" if core3["recover"]["earned"] else "\u2606",
-        "RECOVER_SUB":          f"Stretch or Sauna · pick one",
+        "RECOVER_SUB":          "Stretch or Sauna · pick one",
         "RECOVER_STAGE_STATE":  "earned" if core3["recover"]["earned"] else "",
+        "RECOVER_COLLAPSED":    "collapsed" if core3["recover"]["earned"] else "",
+        "NIGHT_COLLAPSED":     "collapsed" if today_night_earned else "",
         "NIGHT_RITUAL_HTML":   night_ritual_html,
         # Today's targets
         "TODAY_STEPS":         f"{today_steps:,}",
