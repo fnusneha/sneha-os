@@ -602,9 +602,13 @@ body {
   margin-top: 1px;
 }
 .wp-medal-marker.lit .wp-medal-val { color: var(--gold); }
+/* Week + Month grid containers share the same cell dimensions and
+   gaps so cells line up visually across the two views. Week is a
+   flex row (7 cells); Month is a CSS grid (7 columns × 4-6 rows).
+   Everything below is shared. */
 .wp-days {
   display: flex;
-  gap: 6px;
+  gap: 4px;
 }
 .wp-day {
   flex: 1;
@@ -614,29 +618,33 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 1px;
   transition: all 0.3s;
+  min-width: 0;
 }
+/* ── Shared cell typography — identical across Week and Month ── */
 .wp-day-num {
   font-family: 'Fraunces', serif;
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 500;
   line-height: 1;
 }
 .wp-day-date {
-  font-size: 9px;
+  font-size: 8px;
   color: var(--dim);
   font-family: 'DM Mono', monospace;
   font-weight: 500;
   letter-spacing: 0.02em;
+  line-height: 1;
   margin-top: 2px;
 }
 .wp-day-lbl {
-  font-size: 8px;
+  font-size: 7px;
   color: var(--dim);
   font-family: 'DM Mono', monospace;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  line-height: 1;
 }
 .wp-day.has-stars {
   background: rgba(110,231,183,0.12);
@@ -1617,6 +1625,58 @@ body {
 .si-status-due { background: rgba(125,211,252,0.1); color: var(--sky); }
 .si-status-overdue { background: rgba(251,113,133,0.1); color: var(--coral); }
 
+/* ── Section label used by rides_report (e.g. "By Region"). Ported
+   over with the California map so the region summary cards don't
+   render as raw text on the Year tab. */
+.section-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--dim);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin: 24px 0 10px;
+}
+
+/* ── Region summary grid (By Region section) ── */
+.reg-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.reg-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+}
+.reg-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #e05050;
+  flex-shrink: 0;
+}
+.reg-info { flex: 1; min-width: 0; }
+.reg-name { font-size: 0.68rem; font-weight: 500; color: var(--text); }
+.reg-sub  { font-size: 0.5rem;  color: var(--muted); }
+.reg-miles {
+  font-family: 'Fraunces', serif;
+  font-size: 1rem;
+  color: var(--sky);
+  flex-shrink: 0;
+  line-height: 1;
+}
+.reg-miles span {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.5rem;
+  color: var(--muted);
+}
+
 /* ── CALIFORNIA COVERAGE MAP (ported from rides.html for the Year tab) ── */
 .ca-coverage { padding: 16px; }
 .ca-header {
@@ -1962,11 +2022,10 @@ body {
 .rollup-row.done .rollup-value { color: var(--mint); }
 
 /* ─── Month tab: day grid ───
-   Reuses the SAME .wp-day* cells as Week so a day cell looks
-   identical in both views — stars on top, date, DOW label.
-   Container is a 7-column CSS grid with leading blanks so the 1st
-   lines up under the correct weekday. Each cell self-describes
-   (e.g. "2 · 22 · WED"), so we dropped the separate DOW header row. */
+   Uses the identical .wp-day* cells as Week — same typography,
+   same colour coding, same DOW label. Zero size / style overrides
+   here; the only thing Month adds is a 7-column grid container
+   and the leading-blank cell variant for week-1 alignment. */
 .month-pulse { padding: 14px 16px; margin-bottom: 14px; }
 .mo-days {
   display: grid;
@@ -1974,11 +2033,6 @@ body {
   gap: 4px;
   margin-top: 12px;
 }
-/* 30+ cells share the card width, so we down-shift the type one
-   notch vs Week's large row — but keep the same visual grammar. */
-.mo-days .wp-day-num  { font-size: 14px; }
-.mo-days .wp-day-date { font-size: 8px; margin-top: 1px; }
-.mo-days .wp-day-lbl  { font-size: 7px; letter-spacing: 0.05em; }
 /* Blank leading cell for the week-1 alignment (before day 1). */
 .wp-day.is-blank {
   background: transparent;
