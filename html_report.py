@@ -1290,11 +1290,299 @@ def _fill_template(template: str, placeholders: dict[str, str]) -> str:
 
 
 # ═══════════════════════════════════════════════════════════════════
+# WEEK-tab-specific builders
+# ═══════════════════════════════════════════════════════════════════
+
+def _build_cycle_strip(phase_name: str, cycle_label: str) -> str:
+    """Compact one-line cycle indicator for the Week tab.
+
+    Format: "🌗 Luteal · Day 22 · steady energy week"
+    Collapses when cycle data is missing.
+    """
+    if not phase_name or not cycle_label or cycle_label == "No cycle data yet":
+        return ""
+    icon = CYCLE_ICONS.get(phase_name, "\U0001f534")
+    tip = PHASE_TIPS.get(phase_name)
+    tail = f" \u00b7 {tip[0]} week" if tip else ""
+    return (
+        '<div class="cycle-strip">'
+        f'  <span class="cycle-strip-icon">{icon}</span>'
+        f'  <span class="cycle-strip-label">{_esc(cycle_label)}</span>'
+        f'  <span class="cycle-strip-tail">{_esc(tail)}</span>'
+        '</div>'
+    )
+
+
+# Heuristic keyword → icon mapping for agenda items.
+# Falls back to a neutral 📌 when nothing matches.
+_AGENDA_ICON_RULES: list[tuple[tuple[str, ...], str]] = [
+    (("bike", "cycling", "fondo", "ride", "cardio"),          "\U0001f6b4"),
+    (("travel", "flight", "airport", "trip"),                 "\u2708\ufe0f"),
+    (("christmas", "new year"),                               "\U0001f384"),
+    (("thanksgiving",),                                       "\U0001f983"),
+    (("appointment", "appt", "doctor", "dr.", "dentist",
+      "physical", "exam", "checkup", "lab"),                  "\U0001fa7a"),
+    (("massage", "facial", "spa", "beauty", "lip ", "blush",
+      "botox", "lash", "brow", "wax"),                        "\U0001f485"),
+    (("ssn", "social security", "passport", "visa", "irs",
+      "tax", "dmv", "license", "citizenship", "form"),        "\U0001f3db\ufe0f"),
+    (("habit", "month-end", "month end", "review"),           "\U0001f4cb"),
+    (("yoga", "stretch", "pilates"),                          "\U0001f9d8"),
+    (("sauna", "steam"),                                      "\u2668\ufe0f"),
+    (("birthday",),                                           "\U0001f382"),
+]
+
+
+def _agenda_icon(label: str) -> str:
+    lo = label.lower()
+    for keywords, icon in _AGENDA_ICON_RULES:
+        if any(k in lo for k in keywords):
+            return icon
+    return "\U0001f4cc"  # 📌 default pin
+
+
+def _build_agenda_card(data: dict) -> str:
+    """Rich "This Week's Agenda" card for the Week tab.
+
+    Per-item icons chosen by keyword heuristic (cycling, travel,
+    appointment, beauty, habit…). Falls back to a neutral 📌 pin.
+    Collapses cleanly if there are no agenda items.
+    """
+    items = _parse_agenda_items(data)
+    if not items:
+        return ""
+    rows = "".join(
+        f'<div class="agenda-row">'
+        f'  <span class="agenda-icon">{_agenda_icon(it)}</span>'
+        f'  <span class="agenda-label">{_esc(it)}</span>'
+        f'</div>'
+        for it in items
+    )
+    return (
+        '<div class="card agenda-card">'
+        '  <div class="card-title">\U0001f4cc This Week\u2019s Agenda</div>'
+        f'  <div class="agenda-list">{rows}</div>'
+        '</div>'
+    )
+
+
+def _build_weekly_rollups(data: dict) -> str:
+    """Weekly Rollups card: steps / sleep / strength / cardio tallies.
+
+    Shows the aggregate against a soft goal:
+      • Steps     → total / (DAILY_STEPS_GOAL × 7)
+      • Avg sleep → simple average of logged nights
+      • Strength  → count / WEEKLY_STRENGTH_GOAL
+      • Cardio    → count / WEEKLY_CARDIO_GOAL (mint ✓ when met)
+    """
+    total_steps    = data.get("total_steps") or 0
+    avg_sleep      = data.get("avg_sleep")
+    strength_count = data.get("strength_count") or 0
+    cardio_count   = data.get("cardio_count") or 0
+    week_steps_goal = DAILY_STEPS_GOAL * 7   # 56k on an 8k/day target
+
+    def _row(icon: str, label: str, value_html: str, done: bool) -> str:
+        done_cls = "done" if done else ""
+        return (
+            f'<div class="rollup-row {done_cls}">'
+            f'  <span class="rollup-icon">{icon}</span>'
+            f'  <span class="rollup-label">{_esc(label)}</span>'
+            f'  <span class="rollup-value">{value_html}</span>'
+            '</div>'
+        )
+
+    # Steps
+    steps_done = total_steps >= week_steps_goal
+    steps_goal_k = f"{week_steps_goal // 1000}k"
+    steps_val = f"{total_steps:,} / {steps_goal_k}"
+    # Sleep
+    sleep_val = f"{avg_sleep:.1f}h" if avg_sleep is not None else "—"
+    sleep_done = bool(avg_sleep and avg_sleep >= SLEEP_STAR_THRESHOLD_DEFAULT)
+    # Strength / Cardio
+    strength_done = strength_count >= WEEKLY_STRENGTH_GOAL
+    cardio_done   = cardio_count   >= WEEKLY_CARDIO_GOAL
+    strength_val = f"{strength_count} of {WEEKLY_STRENGTH_GOAL}"
+    cardio_prefix = "\u2713 " if cardio_done else ""
+    cardio_val = f"{cardio_prefix}{cardio_count} of {WEEKLY_CARDIO_GOAL}"
+
+    rows = "".join([
+        _row("\U0001f45f", "Steps",     steps_val,    steps_done),
+        _row("\U0001f634", "Avg sleep", sleep_val,    sleep_done),
+        _row("\U0001f4aa", "Strength",  strength_val, strength_done),
+        _row("\U0001f6b4", "Cardio",    cardio_val,   cardio_done),
+    ])
+    return (
+        '<div class="card rollups-card">'
+        '  <div class="card-title">\U0001f4ca Weekly Rollups</div>'
+        f'  <div class="rollups-list">{rows}</div>'
+        '</div>'
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════
+# MONTH-tab builders
+# ═══════════════════════════════════════════════════════════════════
+
+def _build_month_card(
+    today, month_stars_by_date: dict, month_stars_total: int,
+) -> str:
+    """Monthly progress card: mirrors the Week card aesthetic but
+    spans 30/31 days.
+
+    `month_stars_by_date` — dict mapping date → daily star count (0-5)
+                            for days up to today. Future days omitted.
+    """
+    import calendar
+    import datetime as _dt
+    year, month = today.year, today.month
+    days_in_month = calendar.monthrange(year, month)[1]
+    max_stars = days_in_month * MAX_DAILY_STARS
+    # Medal thresholds scale from weekly (21/28/33 of 35) to monthly.
+    # Use the same percentages so visual feel stays consistent.
+    bronze = round(MEDAL_BRONZE / MAX_WEEKLY_STARS * max_stars)
+    silver = round(MEDAL_SILVER / MAX_WEEKLY_STARS * max_stars)
+    gold   = round(MEDAL_GOLD   / MAX_WEEKLY_STARS * max_stars)
+    pct = min(100, round(month_stars_total / max_stars * 100)) if max_stars else 0
+
+    def _medal_cls(th: int) -> str:
+        return "wp-medal-marker lit" if month_stars_total >= th else "wp-medal-marker dim"
+
+    bronze_pos = round(bronze / max_stars * 100, 1)
+    silver_pos = round(silver / max_stars * 100, 1)
+    gold_pos   = round(gold   / max_stars * 100, 1)
+
+    # Day grid — 7 columns (Mon..Sun) × 4-6 rows. First row may lead
+    # with blanks depending on which weekday the 1st falls on.
+    first_weekday = _dt.date(year, month, 1).weekday()  # 0=Mon
+    cells: list[str] = []
+    # Leading blanks so the 1st lines up under its true weekday.
+    for _ in range(first_weekday):
+        cells.append('<div class="mo-day is-blank"></div>')
+    for d in range(1, days_in_month + 1):
+        dt = _dt.date(year, month, d)
+        is_today = (dt == today)
+        is_future = (dt > today)
+        stars = month_stars_by_date.get(dt, 0) if not is_future else 0
+
+        classes = ["mo-day"]
+        if is_future:
+            classes.append("is-future")
+            content = f'<span class="mo-day-num">{d}</span>'
+        elif is_today:
+            classes.append("is-today")
+            content = (
+                f'<span class="mo-day-stars">{stars}</span>'
+                f'<span class="mo-day-num">{d}</span>'
+            )
+        elif stars > 0:
+            classes.append("has-stars")
+            content = (
+                f'<span class="mo-day-stars">{stars}</span>'
+                f'<span class="mo-day-num">{d}</span>'
+            )
+        else:
+            classes.append("zero-stars")
+            content = (
+                f'<span class="mo-day-stars">0</span>'
+                f'<span class="mo-day-num">{d}</span>'
+            )
+        cells.append(f'<div class="{" ".join(classes)}">{content}</div>')
+
+    # Day-of-week header row (Mon → Sun)
+    dow_cells = "".join(
+        f'<div class="mo-dow">{d}</div>'
+        for d in ["M", "T", "W", "T", "F", "S", "S"]
+    )
+
+    # Forward-looking monthly comeback line — same pattern as week's.
+    days_left = days_in_month - today.day
+    max_remaining = days_left * MAX_DAILY_STARS
+    max_total = month_stars_total + max_remaining
+    if days_left <= 0:
+        comeback_html = ""
+    else:
+        if max_total >= gold:
+            target_icon, target_val = _MEDAL_ICONS["gold"], gold
+        elif max_total >= silver:
+            target_icon, target_val = _MEDAL_ICONS["silver"], silver
+        elif max_total >= bronze:
+            target_icon, target_val = _MEDAL_ICONS["bronze"], bronze
+        else:
+            target_icon, target_val = None, None
+        if target_icon:
+            comeback_html = (
+                '<div class="wp-comeback">'
+                f'<strong>{max_remaining}</strong> stars possible from here \u00b7 '
+                f'{days_left} days \u00d7 {MAX_DAILY_STARS} \u2014 still on track for {target_icon}'
+                '</div>'
+            )
+        else:
+            comeback_html = (
+                '<div class="wp-comeback soft">'
+                f'<strong>{max_remaining}</strong> stars possible from here \u00b7 '
+                f'{days_left} days \u00d7 {MAX_DAILY_STARS}'
+                '</div>'
+            )
+
+    month_name = today.strftime("%B %Y")
+    return (
+        '<div class="card weekly-pulse compact month-pulse">'
+        '  <div class="wp-eyebrow">'
+        '    <span class="wp-eyebrow-label">This Month</span>'
+        '    <span class="wp-eyebrow-sep">&middot;</span>'
+        f'    <span class="wp-eyebrow-range">{_esc(month_name.upper())}</span>'
+        '  </div>'
+        '  <div class="wp-hero-row compact">'
+        '    <div class="wp-num-block">'
+        f'      <div class="wp-stars-num">{month_stars_total}</div>'
+        f'      <div class="wp-stars-sub">/ {max_stars} stars</div>'
+        '    </div>'
+        '  </div>'
+        '  <div class="wp-bar-row">'
+        '    <div class="wp-week-track">'
+        f'      <div class="wp-week-fill" style="width:{pct}%;"></div>'
+        f'      <div class="{_medal_cls(bronze)}" style="left:{bronze_pos}%;">'
+        f'        <span class="wp-medal-icon">\U0001f949</span>'
+        f'        <span class="wp-medal-val">{bronze}</span>'
+        '      </div>'
+        f'      <div class="{_medal_cls(silver)}" style="left:{silver_pos}%;">'
+        f'        <span class="wp-medal-icon">\U0001f948</span>'
+        f'        <span class="wp-medal-val">{silver}</span>'
+        '      </div>'
+        f'      <div class="{_medal_cls(gold)}" style="left:{gold_pos}%;">'
+        f'        <span class="wp-medal-icon">\U0001f947</span>'
+        f'        <span class="wp-medal-val">{gold}</span>'
+        '      </div>'
+        '    </div>'
+        '  </div>'
+        f'  <div class="mo-dow-row">{dow_cells}</div>'
+        f'  <div class="mo-days">{"".join(cells)}</div>'
+        f'  {comeback_html}'
+        '</div>'
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════
 # PUBLIC API — called by Flask /dashboard handler in app.py
 # ═══════════════════════════════════════════════════════════════════
 
-def generate_html_report(data: dict) -> str:
+def generate_html_report(
+    data: dict,
+    *,
+    view: str = "today",
+    month_stars_by_date: dict | None = None,
+    month_stars_total: int = 0,
+) -> str:
     """Generate the Quest Hub dashboard HTML.
+
+    `view` selects which tab's content is visible:
+      - "today" (default) — Today Hero, Daily Quest, Pillars, Pins
+      - "week"            — Week card, cycle strip, agenda, rollups
+      - "month"           — Month card, Season Pass list
+
+    The template renders all three views; the body class shows only
+    the one for `view`. `month_stars_by_date` + `month_stars_total`
+    are optional and only meaningful for the Month view.
 
     Args:
         data: report_data dict shaped by `data_gather.gather_dashboard_data`.
@@ -1442,15 +1730,49 @@ def generate_html_report(data: dict) -> str:
     # cycle/coach moved up to the Today Hero where they belong.
     context_sections_html = _build_context_sections(data)
 
+    # Week-tab extras
+    cycle_strip_html     = _build_cycle_strip(phase_name, cycle_label)
+    agenda_card_html     = _build_agenda_card(data)
+    weekly_rollups_html  = _build_weekly_rollups(data)
+
+    # Month-tab extras (month_stars_* defaults are fine for non-month views;
+    # the month-only block will just be hidden by CSS).
+    month_card_html      = _build_month_card(
+        today,
+        month_stars_by_date or {},
+        month_stars_total or 0,
+    )
+
+    # View switching
+    view_cls = {
+        "today": "view-today",
+        "week":  "view-week",
+        "month": "view-month",
+    }.get(view, "view-today")
+    tab_today_cls = "active" if view == "today" else ""
+    tab_week_cls  = "active" if view == "week"  else ""
+    tab_month_cls = "active" if view == "month" else ""
+
     # ── Fill template ──────────────────────────────────────────
     template = _load_template()
     html = _fill_template(template, {
+        # View switching — body class + tab active states
+        "VIEW_CLS":            view_cls,
+        "TAB_TODAY_CLS":       tab_today_cls,
+        "TAB_WEEK_CLS":        tab_week_cls,
+        "TAB_MONTH_CLS":       tab_month_cls,
+        "TAB_RIDES_CLS":       "",  # /rides is a separate page
         # Hero bar
         "SLEEP_EMOJI":         sleep_emoji,
         "SLEEP_LABEL":         sleep_label,
-        # Unified "today + this week" context card (replaces the
-        # Cycle/coach/agenda now live INSIDE the Weekly Pulse card.
+        # Cycle/coach/agenda inline inside the Week card
         "CONTEXT_SECTIONS_HTML": context_sections_html,
+        # Week tab extras
+        "CYCLE_STRIP_HTML":    cycle_strip_html,
+        "AGENDA_CARD_HTML":    agenda_card_html,
+        "WEEKLY_ROLLUPS_HTML": weekly_rollups_html,
+        # Month tab
+        "MONTH_CARD_HTML":     month_card_html,
         # Today hero — the new top-of-page focus block
         "TODAY_HERO_HTML":     today_hero_html,
         # Weekly Pulse card — 5 stars/day × 7 days = 35 max

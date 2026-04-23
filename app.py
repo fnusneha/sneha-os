@@ -82,25 +82,99 @@ def index():
     return redirect("/dashboard", code=302)
 
 
-@app.get("/dashboard")
-def dashboard():
-    # Pull-to-refresh in the Android WebView appends ?force=1. When
-    # present we bypass the 60-second live-fetch caches for steps +
-    # nutrition so the user actually sees fresh Oura/Garmin numbers
-    # instead of the cached snapshot from a minute ago.
+def _render_quest_hub(view: str) -> "tuple[str, int]":
+    """Shared render path for the Today / Week / Month tabs.
+
+    All three views render from the same `morning_report.html`
+    template; the `view` arg flips a body class so CSS hides the
+    sections that don't belong. Month view also needs a per-day star
+    tally for the full month grid, which we compute from DB rows.
+    """
     force = request.args.get("force") == "1"
     try:
         data = gather_dashboard_data(live_steps=True, force=force)
-        html = generate_html_report(data)
-    except Exception as exc:
-        log.exception("dashboard render failed")
-        resp = app.response_class(
-            f"<h1>Dashboard unavailable</h1><pre>{exc}</pre>",
-            status=500,
-            content_type="text/html",
+        month_by_date: dict = {}
+        month_total = 0
+        if view == "month":
+            month_by_date, month_total = _gather_monthly_stars(data)
+        html = generate_html_report(
+            data,
+            view=view,
+            month_stars_by_date=month_by_date,
+            month_stars_total=month_total,
         )
-        return _no_cache(resp)
-    resp = app.response_class(html, content_type="text/html; charset=utf-8")
+        return html, 200
+    except Exception as exc:
+        log.exception("%s render failed", view)
+        return f"<h1>{view.title()} unavailable</h1><pre>{exc}</pre>", 500
+
+
+def _gather_monthly_stars(data: dict) -> "tuple[dict, int]":
+    """Compute per-day star counts for every day of the current month
+    (up to today). Returns (dict[date→int], total_sum)."""
+    import calendar as _cal
+    from datetime import date as _date, timedelta as _td
+
+    today = data["today"]
+    y, m = today.year, today.month
+    days_in_month = _cal.monthrange(y, m)[1]
+    month_start = _date(y, m, 1)
+    month_end = _date(y, m, days_in_month)
+
+    rows = _db().get_entries_in_range(month_start, month_end)
+    by_date = {r["date"]: r for r in rows}
+
+    # Build a synthetic per-day "data" mini-dict so we can reuse the
+    # existing _base/_burn/_recover/_compute_day_stars helpers. Those
+    # helpers read by weekday index from *_row lists, so we construct
+    # a one-off data where index 0 = this specific day.
+    from html_report import (
+        _base_earned, _burn_earned, _recover_earned,
+    )
+    stars_by_date: dict = {}
+    total = 0
+    for d in range(1, days_in_month + 1):
+        dt = _date(y, m, d)
+        if dt > today:
+            break
+        row = by_date.get(dt)
+        if not row:
+            continue
+        # Build a 1-slot data dict keyed at index 0.
+        from constants import SLEEP_STAR_THRESHOLD_DEFAULT as SLEEP_T, DAILY_STEPS_GOAL
+        steps_ok   = (row.get("steps") or 0) >= DAILY_STEPS_GOAL
+        sleep_hrs  = row.get("sleep_hours")
+        sleep_ok   = bool(sleep_hrs and float(sleep_hrs) >= SLEEP_T)
+        cal_ok     = bool((row.get("calories") or 0) > 0)
+        base_ok    = steps_ok and sleep_ok and cal_ok
+        burn_ok    = bool(row.get("strength_note") or row.get("cardio_note"))
+        recover_ok = bool(row.get("stretch_note") or row.get("sauna"))
+        morning_ok = bool(row.get("morning_star"))
+        night_ok   = bool(row.get("night_star"))
+        stars = sum(map(int, [morning_ok, base_ok, burn_ok, recover_ok, night_ok]))
+        stars_by_date[dt] = stars
+        total += stars
+    return stars_by_date, total
+
+
+@app.get("/dashboard")
+def dashboard():
+    html, status = _render_quest_hub("today")
+    resp = app.response_class(html, content_type="text/html; charset=utf-8", status=status)
+    return _no_cache(resp)
+
+
+@app.get("/week")
+def week():
+    html, status = _render_quest_hub("week")
+    resp = app.response_class(html, content_type="text/html; charset=utf-8", status=status)
+    return _no_cache(resp)
+
+
+@app.get("/month")
+def month():
+    html, status = _render_quest_hub("month")
+    resp = app.response_class(html, content_type="text/html; charset=utf-8", status=status)
     return _no_cache(resp)
 
 

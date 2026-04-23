@@ -1753,9 +1753,130 @@ body {
 }
 
 /* ── TAB BAR ── */
+/* ─── Week tab: compact cycle strip ─── */
+.cycle-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: rgba(125,211,252,0.08);
+  border: 1px solid rgba(125,211,252,0.18);
+  font-size: 12px;
+  font-family: 'DM Mono', monospace;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--sky);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cycle-strip-icon { font-size: 14px; }
+.cycle-strip-label { color: var(--sky); }
+.cycle-strip-tail { color: var(--muted); font-weight: 500; }
+
+/* ─── Week tab: rich agenda card ─── */
+.agenda-card { padding: 14px 16px; margin-bottom: 14px; }
+.agenda-card .card-title { margin-bottom: 10px; }
+.agenda-list { display: flex; flex-direction: column; gap: 2px; }
+.agenda-row {
+  display: grid;
+  grid-template-columns: 26px 1fr;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 4px;
+  border-bottom: 1px dashed rgba(255,255,255,0.05);
+}
+.agenda-row:last-child { border-bottom: none; }
+.agenda-icon { font-size: 16px; line-height: 1; opacity: 0.9; }
+.agenda-label { color: var(--text); font-size: 13px; line-height: 1.4; }
+
+/* ─── Week tab: rollups card ─── */
+.rollups-card { padding: 14px 16px; margin-bottom: 14px; }
+.rollups-card .card-title { margin-bottom: 10px; }
+.rollups-list { display: flex; flex-direction: column; gap: 2px; }
+.rollup-row {
+  display: grid;
+  grid-template-columns: 26px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 4px;
+  border-bottom: 1px dashed rgba(255,255,255,0.05);
+}
+.rollup-row:last-child { border-bottom: none; }
+.rollup-icon { font-size: 16px; }
+.rollup-label { color: var(--text); font-size: 13px; }
+.rollup-value {
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  color: var(--amber);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.rollup-row.done .rollup-value { color: var(--mint); }
+
+/* ─── Month tab: day grid ─── */
+.month-pulse { padding: 14px 16px; margin-bottom: 14px; }
+.mo-dow-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin: 10px 0 4px;
+}
+.mo-dow {
+  text-align: center;
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  color: var(--dim);
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+.mo-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+.mo-day {
+  aspect-ratio: 1;
+  border-radius: 7px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.04);
+  font-family: 'DM Mono', monospace;
+  min-width: 0;
+}
+.mo-day.is-blank { background: transparent; border: none; }
+.mo-day-num { font-size: 9px; color: var(--dim); font-weight: 500; }
+.mo-day-stars {
+  font-family: 'Fraunces', serif;
+  font-size: 13px;
+  line-height: 1;
+  font-weight: 500;
+  color: var(--mint);
+}
+.mo-day.has-stars { background: rgba(110,231,183,0.1); border-color: rgba(110,231,183,0.22); }
+.mo-day.has-stars .mo-day-num { color: var(--mint); opacity: 0.75; }
+.mo-day.zero-stars { background: rgba(251,113,133,0.06); border-color: rgba(251,113,133,0.12); }
+.mo-day.zero-stars .mo-day-stars { color: var(--coral); opacity: 0.8; }
+.mo-day.zero-stars .mo-day-num { color: var(--coral); opacity: 0.65; }
+.mo-day.is-today {
+  background: rgba(245,200,66,0.12);
+  border: 2px solid var(--gold);
+  box-shadow: 0 0 8px rgba(245,200,66,0.25);
+}
+.mo-day.is-today .mo-day-stars { color: var(--gold); }
+.mo-day.is-today .mo-day-num { color: var(--gold); }
+.mo-day.is-future { background: rgba(255,255,255,0.015); border-style: dashed; border-color: rgba(255,255,255,0.05); }
+.mo-day.is-future .mo-day-num { color: var(--dim); opacity: 0.4; }
+
 .tab-bar {
   display: flex;
-  gap: 6px;
+  gap: 5px;
   padding: 6px 0 8px;
   position: sticky;
   top: 47px;
@@ -1766,14 +1887,17 @@ body {
   margin: 0 0 4px;
 }
 .tab {
-  padding: 6px 14px;
+  flex: 1;
+  text-align: center;
+  padding: 6px 8px;
   border-radius: 20px;
   font-size: 11px;
   color: var(--muted);
   text-decoration: none;
   border: 1px solid transparent;
   transition: all 0.2s;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
 }
 .tab:hover { color: var(--text); background: rgba(255,255,255,0.04); }
 .tab.active {
@@ -1782,10 +1906,22 @@ body {
   border-color: rgba(110,231,183,0.2);
 }
 
+/* ═══ VIEW VISIBILITY (per-tab) ═══
+   Single template renders all three Quest Hub views (Today, Week,
+   Month). Body gets one of view-today / view-week / view-month and
+   we hide the sections that don't belong. Keeps CSS/JS in one place
+   and lets users tab without a full JS reload. */
+body.view-today .week-only,
+body.view-today .month-only,
+body.view-week  .today-only,
+body.view-week  .month-only,
+body.view-month .today-only,
+body.view-month .week-only { display: none !important; }
+
 .hidden { display: none !important; }
 </style>
 </head>
-<body>
+<body class="{{VIEW_CLS}}">
 
 <!-- MANTRA OVERLAY -->
 <div class="mantra-overlay" id="mantraOverlay">
@@ -1808,8 +1944,10 @@ body {
 
   <!-- TAB BAR -->
   <div class="tab-bar">
-    <a href="/dashboard" class="tab active">&#9889; Quest Hub</a>
-    <a href="/rides" class="tab">&#x1f6b4; Ride Atlas</a>
+    <a href="/dashboard" class="tab {{TAB_TODAY_CLS}}">&#9889; Today</a>
+    <a href="/week"      class="tab {{TAB_WEEK_CLS}}">&#x1F4C5; Week</a>
+    <a href="/month"     class="tab {{TAB_MONTH_CLS}}">&#x1F5D3;&#xFE0F; Month</a>
+    <a href="/rides"     class="tab {{TAB_RIDES_CLS}}">&#x1f6b4; Atlas</a>
   </div>
 
   <!-- Sync freshness pill + pull-to-refresh hint.
@@ -1824,18 +1962,12 @@ body {
     <span class="sync-hint">tap to pull new data</span>
   </div>
 
-  <!-- ═══ 2. TODAY HERO ═══
-       The main focus of the page. Bigger visual weight than the
-       week below. 5 big stars (lit/dim), big "X of 5" numeral, the
-       5-stage strip with mint ✓ for done / dim ○ for pending, and a
-       forward-looking nudge. Never shames. -->
+  <!-- ════════════ TODAY VIEW ════════════ -->
+  <div class="today-only">
+  <!-- ═══ TODAY HERO ═══ -->
   {{TODAY_HERO_HTML}}
 
-  <!-- ═══ 3. DAILY QUEST ═══
-       Sits directly under the Today Hero so the morning flow is
-       Today's stars (goal state) → Daily Quest (actions). The Week
-       card drops below the Night Ritual so the focus stays on
-       "what am I doing now", not "how am I doing this week". -->
+  <!-- ═══ DAILY QUEST ═══ -->
   <div class="quest-section">
     <div class="card-title">&#x2B50; Daily Quest</div>
 
@@ -1948,75 +2080,87 @@ body {
     </div>
   </div>
 
-  <!-- Divider that signals the context-switch from "today" to
-       "bigger picture". Now sits after Daily Quest so the morning
-       flow is: Today Hero → actions (Daily Quest) → "wait, how's
-       my week going?" → Week card. Keeps the focus tight up top. -->
-  <div class="section-divider"><span>The Bigger Picture</span></div>
-
-  <!-- ═══ 3½. WEEK CARD ═══
-       Stars count + progress bar + day bubbles + comeback line,
-       plus inline "today" (cycle + coach) and "agenda" (calendar
-       events) sections separated by lowercase labels. One card,
-       three sub-sections, no redundant "THIS WEEK" labels. -->
-  <div class="card weekly-pulse compact">
-    <div class="wp-eyebrow">
-      <span class="wp-eyebrow-label">This Week</span>
-      <span class="wp-eyebrow-sep">&middot;</span>
-      <span class="wp-eyebrow-range">{{TAB_NAME}}</span>
-    </div>
-    <div class="wp-hero-row compact">
-      <div class="wp-num-block">
-        <div class="wp-stars-num" id="wp-stars-num">{{WEEKLY_STARS}}</div>
-        <div class="wp-stars-sub">/ {{MAX_WEEKLY_STARS}} stars</div>
-      </div>
-      <div class="wp-season-block">
-        <span class="season-badge-compact" id="season-badge">&#x1F3AB; {{SEASON_MONTH_SHORT}}</span>
-      </div>
-    </div>
-    <div class="wp-bar-row">
-      <div class="wp-week-track">
-        <div class="wp-week-fill" id="wp-week-fill" style="width:{{XP_PCT}}%;"></div>
-        <div class="{{MEDAL_BRONZE_CLS}}" style="left:{{MEDAL_BRONZE_POS}}%;">
-          <span class="wp-medal-icon">&#x1F949;</span>
-          <span class="wp-medal-val">{{MEDAL_BRONZE_VAL}}</span>
-        </div>
-        <div class="{{MEDAL_SILVER_CLS}}" style="left:{{MEDAL_SILVER_POS}}%;">
-          <span class="wp-medal-icon">&#x1F948;</span>
-          <span class="wp-medal-val">{{MEDAL_SILVER_VAL}}</span>
-        </div>
-        <div class="{{MEDAL_GOLD_CLS}}" style="left:{{MEDAL_GOLD_POS}}%;">
-          <span class="wp-medal-icon">&#x1F947;</span>
-          <span class="wp-medal-val">{{MEDAL_GOLD_VAL}}</span>
-        </div>
-      </div>
-    </div>
-    <div class="wp-days">
-      {{PULSE_DAYS_HTML}}
-    </div>
-    {{WEEK_COMEBACK_HTML}}
-    {{BEST_DAY_HTML}}
-    {{CONTEXT_SECTIONS_HTML}}
   </div>
+  <!-- ════════════ /TODAY VIEW ════════════ -->
 
-  <!-- ═══ 4. SEASON PASS (accordion) ═══ -->
-  <div class="card accordion-section collapsed" id="section-season" data-section="season">
-    <div class="accordion-header" onclick="toggleAccordion('season')">
-      <div class="card-title">&#x1F4C5; Season Pass &mdash; {{SEASON_MONTH}}</div>
-      <span class="accordion-chevron">&#x25BC;</span>
+  <!-- ════════════ WEEK VIEW ════════════ -->
+  <div class="week-only">
+    <!-- Big week card: stars · progress · bubbles · comeback -->
+    <div class="card weekly-pulse compact">
+      <div class="wp-eyebrow">
+        <span class="wp-eyebrow-label">This Week</span>
+        <span class="wp-eyebrow-sep">&middot;</span>
+        <span class="wp-eyebrow-range">{{TAB_NAME}}</span>
+      </div>
+      <div class="wp-hero-row compact">
+        <div class="wp-num-block">
+          <div class="wp-stars-num" id="wp-stars-num">{{WEEKLY_STARS}}</div>
+          <div class="wp-stars-sub">/ {{MAX_WEEKLY_STARS}} stars</div>
+        </div>
+        <div class="wp-season-block">
+          <span class="season-badge-compact" id="season-badge">&#x1F3AB; {{SEASON_MONTH_SHORT}}</span>
+        </div>
+      </div>
+      <div class="wp-bar-row">
+        <div class="wp-week-track">
+          <div class="wp-week-fill" id="wp-week-fill" style="width:{{XP_PCT}}%;"></div>
+          <div class="{{MEDAL_BRONZE_CLS}}" style="left:{{MEDAL_BRONZE_POS}}%;">
+            <span class="wp-medal-icon">&#x1F949;</span>
+            <span class="wp-medal-val">{{MEDAL_BRONZE_VAL}}</span>
+          </div>
+          <div class="{{MEDAL_SILVER_CLS}}" style="left:{{MEDAL_SILVER_POS}}%;">
+            <span class="wp-medal-icon">&#x1F948;</span>
+            <span class="wp-medal-val">{{MEDAL_SILVER_VAL}}</span>
+          </div>
+          <div class="{{MEDAL_GOLD_CLS}}" style="left:{{MEDAL_GOLD_POS}}%;">
+            <span class="wp-medal-icon">&#x1F947;</span>
+            <span class="wp-medal-val">{{MEDAL_GOLD_VAL}}</span>
+          </div>
+        </div>
+      </div>
+      <div class="wp-days">
+        {{PULSE_DAYS_HTML}}
+      </div>
+      {{WEEK_COMEBACK_HTML}}
+      {{BEST_DAY_HTML}}
     </div>
-    <div class="accordion-body">
+
+    <!-- Compact cycle strip — one line; full cycle lives on Today. -->
+    {{CYCLE_STRIP_HTML}}
+
+    <!-- Rich agenda card with per-item icons -->
+    {{AGENDA_CARD_HTML}}
+
+    <!-- Weekly rollups: steps / sleep / strength / cardio -->
+    {{WEEKLY_ROLLUPS_HTML}}
+  </div>
+  <!-- ════════════ /WEEK VIEW ════════════ -->
+
+  <!-- ════════════ MONTH VIEW ════════════ -->
+  <div class="month-only">
+    {{MONTH_CARD_HTML}}
+
+    <!-- Season Pass moves here (chip stays on Today hero for quick
+         glance; the interactive list lives here where it has room). -->
+    <div class="card accordion-section" id="section-season-month" data-section="season-month">
+      <div class="card-title" style="margin-bottom:10px;">&#x1F4C5; Season Pass &mdash; {{SEASON_MONTH}}</div>
       <div class="season-progress">
         <div class="season-progress-label">
-          <span id="season-count-label">{{SEASON_DONE}} of {{SEASON_TOTAL}} complete</span>
-          <span id="season-pct-label">{{SEASON_PCT}}%</span>
+          <span>{{SEASON_DONE}} of {{SEASON_TOTAL}} complete</span>
+          <span>{{SEASON_PCT}}%</span>
         </div>
-        <div class="bar-bg"><div class="bar-fill" id="season-bar-fill" style="width:{{SEASON_PCT}}%;background:var(--mint);"></div></div>
-        <span class="season-badge {{SEASON_BADGE_CLS}}" id="season-status-badge">{{SEASON_BADGE_TEXT}}</span>
+        <div class="bar-bg"><div class="bar-fill" style="width:{{SEASON_PCT}}%;background:var(--mint);"></div></div>
+        <span class="season-badge {{SEASON_BADGE_CLS}}">{{SEASON_BADGE_TEXT}}</span>
       </div>
       {{SEASON_ITEMS_HTML}}
     </div>
   </div>
+  <!-- ════════════ /MONTH VIEW ════════════ -->
+
+  <!-- Pillars + Pins continue to live on Today — they're personal /
+       yearly context, not time-scoped. Wrap them in today-only so
+       they hide on Week/Month tabs. -->
+  <div class="today-only">
 
   <!-- ═══ 6. PILLAR HEALTH (accordion) ═══ -->
   <div class="card accordion-section collapsed" id="section-pillars" data-section="pillars">
@@ -2041,6 +2185,8 @@ body {
       {{PINS_HTML}}
     </div>
   </div>
+  </div>
+  <!-- ════════════ /TODAY VIEW ACCORDIONS ════════════ -->
 
   <!-- Server data for JS -->
   <div id="server-state" data-morning="{{MORNING_COLLECTED}}" data-core="{{CORE_COLLECTED}}" data-night="{{NIGHT_COLLECTED}}" data-season="{{SEASON_DONE_INDICES}}" class="hidden"></div>
