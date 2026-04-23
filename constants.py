@@ -58,12 +58,26 @@ SLEEP_STAR_THRESHOLD_DEFAULT = 6.0
 SLEEP_STAR_THRESHOLD_LOW_ENERGY = 6.0
 LOW_ENERGY_PHASES = {"Menstrual", "Luteal-PMS"}
 
-# Core Missions star: earned when at least this many of 7 items are done.
-CORE_STAR_THRESHOLD = 4
+# ═══════════════════════════════════════════════════════════════════
+# Daily star architecture (5 possible stars per day)
+# ═══════════════════════════════════════════════════════════════════
+#
+#   ☀ Morning    — ritual collected (manual tap)
+#   🏔 Base       — steps AND sleep AND calories (ALL 3)
+#   🔥 Burn       — strength OR cardio (pick one)
+#   🌿 Recover    — stretch OR sauna (pick one)
+#   🌙 Night      — ritual collected (manual tap)
+#
+# The 3 Core sub-stars (Base / Burn / Recover) auto-light when their
+# criteria are met. No manual collect needed — they're deterministic
+# from the logged data.
+MAX_DAILY_STARS = 5
+MAX_WEEKLY_STARS = 35     # 5 × 7
 
-# Weekly medal thresholds (max 3 stars/day × 7 days = 21).
-MEDAL_GOOD = 14     # 🥉 roughly 2 stars/day average
-MEDAL_PERFECT = 21  # 🥇 every star, every day
+# Weekly medal tiers (choose realistic targets; 35 is theoretical max).
+MEDAL_BRONZE = 21   # 🥉 ~3 stars/day average — solid baseline week
+MEDAL_SILVER = 28   # 🥈 ~4 stars/day average — good week
+MEDAL_GOLD   = 33   # 🥇 near-perfect (leave 2 stars of wiggle room)
 
 # ═══════════════════════════════════════════════════════════════════
 # Garmin activity type sets

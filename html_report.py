@@ -33,16 +33,14 @@ log = logging.getLogger(__name__)
 # ═══════════════════════════════════════════════════════════════════
 
 from constants import (
-    CORE_STAR_THRESHOLD, DAILY_STEPS_GOAL, MEDAL_GOOD, MEDAL_PERFECT,
+    DAILY_STEPS_GOAL, MAX_DAILY_STARS, MAX_WEEKLY_STARS,
+    MEDAL_BRONZE, MEDAL_SILVER, MEDAL_GOLD,
     SLEEP_STAR_THRESHOLD_DEFAULT,
     WEEKLY_CARDIO_GOAL, WEEKLY_STRENGTH_GOAL,
 )
 
 TEMPLATE_DIR = Path(__file__).resolve().parent / "templates"
 TEMPLATE_FILE = TEMPLATE_DIR / "morning_report.html"
-
-# 3 stars/day × 7 days. Used by the weekly XP bar.
-MAX_WEEKLY_STARS = 21
 
 # Cycle phase → (energy level, coaching advice).
 # Keys match `cycle_phase` values in daily_entries (see cycle.py).
@@ -140,27 +138,30 @@ def _quest_item(stage: str, index: int, icon: str, name: str,
 # STAR COUNTING
 # ═══════════════════════════════════════════════════════════════════
 
-def _count_core_items(data: dict, weekday: int) -> int:
-    """Count how many of the 7 Core Mission items were done on a given day.
-
-    Checks: steps, sleep, calories (from score dict) + strength,
-    cardio, sauna, stretch (from sheet rows).
-    """
+def _base_earned(data: dict, weekday: int) -> bool:
+    """🏔 Base star — steps AND sleep AND calories (all three)."""
     daily = data["score"].get("daily", {}).get(weekday, {})
-    return sum([
-        bool(daily.get("steps")),
-        bool(daily.get("sleep")),
-        bool(daily.get("cal")),
-        _row_has(data.get("strength_row", []), weekday),
-        _row_has(data.get("cardio_row", []), weekday),
-        _row_has(data.get("sauna_row", []), weekday),
-        _row_has(data.get("stretch_row", []), weekday),
-    ])
+    return (
+        bool(daily.get("steps"))
+        and bool(daily.get("sleep"))
+        and bool(daily.get("cal"))
+    )
 
 
-def _day_earned_core_star(data: dict, weekday: int) -> bool:
-    """Return True if ≥4 of 7 Core Mission items were done (earns 1 star)."""
-    return _count_core_items(data, weekday) >= CORE_STAR_THRESHOLD
+def _burn_earned(data: dict, weekday: int) -> bool:
+    """🔥 Burn star — strength OR cardio session logged."""
+    return (
+        _row_has(data.get("strength_row", []), weekday)
+        or _row_has(data.get("cardio_row", []), weekday)
+    )
+
+
+def _recover_earned(data: dict, weekday: int) -> bool:
+    """🌿 Recover star — stretch OR sauna / steam logged."""
+    return (
+        _row_has(data.get("stretch_row", []), weekday)
+        or _row_has(data.get("sauna_row", []), weekday)
+    )
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -215,32 +216,44 @@ def _build_day_details_payload(data: dict, weekday: int) -> dict:
             return v if v else ""
         return ""
 
+    # Target strings are read from shared constants so the modal can
+    # never drift from what the Core Missions section says.
+    sleep_target = f"\u2265 {SLEEP_STAR_THRESHOLD_DEFAULT:g}h"
+
     details = {}
     for wd in range(weekday + 1):  # only past + today (never future)
-        # Star counts
+        # Five-star breakdown for the day
         morning_done = _cell(morning_star_row, wd) == "\u2713"
         night_done = _cell(night_star_row, wd) == "\u2713"
-        core_count = _count_core_items(data, wd)
-        core_earned = core_count >= CORE_STAR_THRESHOLD
-        stars = int(morning_done) + int(core_earned) + int(night_done)
+        base_done = _base_earned(data, wd)
+        burn_done = _burn_earned(data, wd)
+        recover_done = _recover_earned(data, wd)
+        stars = sum([
+            int(morning_done),
+            int(base_done),
+            int(burn_done),
+            int(recover_done),
+            int(night_done),
+        ])
 
-        # Core item breakdown with the actual values
         daily = data["score"].get("daily", {}).get(wd, {})
         steps_val = _cell(steps_row, wd)
         sleep_val = _cell(sleep_row, wd)
         cal_val = cal_values[wd] if wd < len(cal_values) and cal_values[wd] else None
-        core_items = [
+
+        # Sub-items grouped by Base / Burn / Recover for the modal.
+        base_items = [
             {
                 "name": "🚶 Steps",
                 "done": bool(daily.get("steps")),
                 "value": f"{int(steps_val.replace(',','')):,}" if steps_val.replace(',','').isdigit() else (steps_val or "—"),
-                "target": "≥ 8,000",
+                "target": f"\u2265 {DAILY_STEPS_GOAL:,}",
             },
             {
                 "name": "😴 Sleep",
                 "done": bool(daily.get("sleep")),
                 "value": f"{sleep_val}h" if sleep_val else "—",
-                "target": "≥ 7h",
+                "target": sleep_target,
             },
             {
                 "name": "🍽️ Calories",
@@ -248,6 +261,8 @@ def _build_day_details_payload(data: dict, weekday: int) -> dict:
                 "value": f"{cal_val:,}" if cal_val else "—",
                 "target": "logged",
             },
+        ]
+        burn_items = [
             {
                 "name": "💪 Strength",
                 "done": _row_has(strength_row, wd),
@@ -260,6 +275,8 @@ def _build_day_details_payload(data: dict, weekday: int) -> dict:
                 "value": _cell(cardio_row, wd) or "—",
                 "target": "any session",
             },
+        ]
+        recover_items = [
             {
                 "name": "🧘 Stretch",
                 "done": _row_has(stretch_row, wd),
@@ -267,7 +284,7 @@ def _build_day_details_payload(data: dict, weekday: int) -> dict:
                 "target": "any session",
             },
             {
-                "name": "♨️ Sauna",
+                "name": "♨️ Sauna / Steam",
                 "done": _row_has(sauna_row, wd),
                 "value": _cell(sauna_row, wd) or "—",
                 "target": "any session",
@@ -285,25 +302,60 @@ def _build_day_details_payload(data: dict, weekday: int) -> dict:
             "date_str": date_str,
             "is_today": wd == weekday,
             "stars": stars,
+            "max_stars": MAX_DAILY_STARS,
+            # 5 slot booleans for the modal's star strip
             "morning_done": morning_done,
+            "base_done": base_done,
+            "burn_done": burn_done,
+            "recover_done": recover_done,
             "night_done": night_done,
-            "core_count": core_count,
-            "core_earned": core_earned,
-            "core_threshold": CORE_STAR_THRESHOLD,
-            "core_items": core_items,
+            # 3 groups with their member items
+            "core_groups": [
+                {
+                    "key": "base",
+                    "icon": "🏔️",
+                    "name": "Base",
+                    "earned": base_done,
+                    "rule": "all 3 required",
+                    "items": base_items,
+                },
+                {
+                    "key": "burn",
+                    "icon": "🔥",
+                    "name": "Burn",
+                    "earned": burn_done,
+                    "rule": "pick one",
+                    "items": burn_items,
+                },
+                {
+                    "key": "recover",
+                    "icon": "🌿",
+                    "name": "Recover",
+                    "earned": recover_done,
+                    "rule": "pick one",
+                    "items": recover_items,
+                },
+            ],
             "cycle": _cell(cycle_row, wd),
         }
     return details
 
 
 def _compute_day_stars(data: dict, wd: int) -> int:
-    """Return total stars earned on weekday `wd` (0=Mon, 6=Sun)."""
+    """Return total stars earned on weekday `wd` (0=Mon, 6=Sun).
+
+    Five possible stars: Morning, Base, Burn, Recover, Night.
+    """
     morning_star_row = data.get("morning_star_row", [])
     night_star_row = data.get("night_star_row", [])
     s = 0
     if wd < len(morning_star_row) and str(morning_star_row[wd]).strip() == "\u2713":
         s += 1
-    if _count_core_items(data, wd) >= CORE_STAR_THRESHOLD:
+    if _base_earned(data, wd):
+        s += 1
+    if _burn_earned(data, wd):
+        s += 1
+    if _recover_earned(data, wd):
         s += 1
     if wd < len(night_star_row) and str(night_star_row[wd]).strip() == "\u2713":
         s += 1
@@ -490,33 +542,62 @@ def _build_core_missions(data: dict, weekday: int) -> str:
     stretch_hint  = f"Logged: {stretch_v}"  if stretch_v  else "Yoga / mobility needed"
     sauna_hint    = f"Logged: {sauna_v}"    if sauna_v    else "Heat recovery needed"
 
-    # Ordered so the three "easy daily three" habits sit at the top of
-    # the card — at least one of these should land every day and makes
-    # the visual signal of "I'm on track" immediate. The four below the
-    # divider are the optional/rotating activities; only one is needed
-    # most days to cross the 4-of-7 threshold for the ⭐.
-    easy_three = [
+    # Core Missions is now three sub-stars, each with its own member
+    # habits. Base is "all of" (steps + sleep + calories); Burn and
+    # Recover are "pick one" (strength/cardio, stretch/sauna). A group
+    # header with a ⭐ / ○ indicator shows each sub-star's status.
+    base_items = [
         ("\U0001f45f",    "8,000 Steps",    steps_hint, steps_done),
-        ("\U0001f634",    "Sleep 6h+",      sleep_hint, sleep_done),
+        ("\U0001f634",    f"Sleep {SLEEP_STAR_THRESHOLD_DEFAULT:g}h+",
+         sleep_hint, sleep_done),
         ("\U0001f357",    "Calories Logged", cal_hint,  cal_done),
     ]
-    active_four = [
+    burn_items = [
         ("\U0001f4aa",    "Strength",       strength_hint, bool(strength_v)),
         ("\U0001f6b4",    "Cardio",         cardio_hint,   bool(cardio_v)),
+    ]
+    recover_items = [
         ("\U0001f9d8",    "Stretch",        stretch_hint,  bool(stretch_v)),
         ("\u2668\ufe0f",  "Sauna / Steam",  sauna_hint,    bool(sauna_v)),
     ]
 
-    parts: list[str] = []
-    for i, (icon, name, hint, done) in enumerate(easy_three):
-        parts.append(_quest_item("core", i, icon, name, hint, done))
-    parts.append(
-        '<div class="core-divider">'
-        '<span class="core-divider-label">Pick one activity</span>'
-        '</div>'
-    )
-    for i, (icon, name, hint, done) in enumerate(active_four, start=len(easy_three)):
-        parts.append(_quest_item("core", i, icon, name, hint, done))
+    base_earned = all(item[3] for item in base_items)
+    burn_earned = any(item[3] for item in burn_items)
+    recover_earned = any(item[3] for item in recover_items)
+
+    def _group(
+        group_key: str,
+        icon: str,
+        name: str,
+        rule: str,
+        earned: bool,
+        items: list,
+        item_offset: int,
+    ) -> str:
+        # Star indicator: filled ⭐ when earned, hollow ☆ otherwise.
+        star_cls = "core-group-star earned" if earned else "core-group-star empty"
+        star_glyph = "\u2B50" if earned else "\u2606"
+        header = (
+            f'<div class="core-group-head">'
+            f'  <span class="core-group-icon">{icon}</span>'
+            f'  <div class="core-group-meta">'
+            f'    <div class="core-group-name">{_esc(name)}</div>'
+            f'    <div class="core-group-rule">{_esc(rule)}</div>'
+            f'  </div>'
+            f'  <span class="{star_cls}">{star_glyph}</span>'
+            f'</div>'
+        )
+        body = "\n".join(
+            _quest_item(f"core-{group_key}", item_offset + i, *item)
+            for i, item in enumerate(items)
+        )
+        return f'<div class="core-group">{header}{body}</div>'
+
+    parts = [
+        _group("base",    "\U0001f3d4\ufe0f", "Base",    "all 3 required", base_earned,    base_items,    0),
+        _group("burn",    "\U0001f525",       "Burn",    "pick one",       burn_earned,    burn_items,    len(base_items)),
+        _group("recover", "\U0001f33f",       "Recover", "pick one",       recover_earned, recover_items, len(base_items) + len(burn_items)),
+    ]
     return "\n".join(parts)
 
 
@@ -1065,37 +1146,36 @@ def generate_html_report(data: dict) -> str:
     today_cal = cal_values[weekday] if weekday < len(cal_values) and cal_values[weekday] is not None else 0
     today_steps = data.get("today_steps", 0)
 
-    # ── Weekly stars (fully server-side from DB rows) ──
+    # ── Weekly stars (5/day: morning + base + burn + recover + night) ──
     morning_star_row = data.get("morning_star_row", [])
     night_star_row = data.get("night_star_row", [])
 
-    weekly_stars = 0
-    for wd in range(weekday + 1):
-        # Morning star — "✓" means the morning ritual was collected.
-        if wd < len(morning_star_row) and str(morning_star_row[wd]).strip() == "\u2713":
-            weekly_stars += 1
-        # Core star — at least CORE_STAR_THRESHOLD of 7 mission items hit.
-        if _day_earned_core_star(data, wd):
-            weekly_stars += 1
-        # Night star — "✓" means the night ritual was collected.
-        if wd < len(night_star_row) and str(night_star_row[wd]).strip() == "\u2713":
-            weekly_stars += 1
+    weekly_stars = sum(_compute_day_stars(data, wd) for wd in range(weekday + 1))
 
-    # Today's slot states (for the 3-circle hero)
-    today_core_items = _count_core_items(data, weekday)
-    today_core_earned = today_core_items >= CORE_STAR_THRESHOLD
+    # Today's slot states for the hero row (5 circles)
     today_morning_earned = (weekday < len(morning_star_row) and
                             str(morning_star_row[weekday]).strip() == "\u2713")
     today_night_earned = (weekday < len(night_star_row) and
                           str(night_star_row[weekday]).strip() == "\u2713")
+    today_base_earned    = _base_earned(data, weekday)
+    today_burn_earned    = _burn_earned(data, weekday)
+    today_recover_earned = _recover_earned(data, weekday)
+    today_core_earned    = today_base_earned and today_burn_earned and today_recover_earned
 
     # Season pass done indices (from season_pass.done_indices in DB)
     season_done_indices = data.get("season_done_indices", set())
 
-    # Week progress bar
+    # Week progress bar + 3 medal tiers (bronze/silver/gold)
     xp_pct = _pct(weekly_stars, MAX_WEEKLY_STARS)
-    medal_good_cls = "wp-medal-marker lit" if weekly_stars >= MEDAL_GOOD else "wp-medal-marker dim"
-    medal_perfect_cls = "wp-medal-marker lit" if weekly_stars >= MEDAL_PERFECT else "wp-medal-marker dim"
+    def _medal_cls(th: int) -> str:
+        return "wp-medal-marker lit" if weekly_stars >= th else "wp-medal-marker dim"
+    medal_bronze_cls = _medal_cls(MEDAL_BRONZE)
+    medal_silver_cls = _medal_cls(MEDAL_SILVER)
+    medal_gold_cls   = _medal_cls(MEDAL_GOLD)
+    # Fractional positions on the track — normalised to 0-1 of the bar.
+    bronze_pct = round(MEDAL_BRONZE / MAX_WEEKLY_STARS * 100, 1)
+    silver_pct = round(MEDAL_SILVER / MAX_WEEKLY_STARS * 100, 1)
+    gold_pct   = 100.0  # MEDAL_GOLD sits near-right even if not exactly 100%
 
     # ── Build all HTML sections ────────────────────────────────
     best = _pick_best_day(data, weekday)
@@ -1151,21 +1231,23 @@ def generate_html_report(data: dict) -> str:
         # separate cycle chip inside Daily Quest and the stand-alone
         # Week Agenda strip).
         "CONTEXT_CARD_HTML":   context_card_html,
-        # Weekly Pulse card
+        # Weekly Pulse card — 5 stars/day × 7 days = 35 max
         "WEEKLY_STARS":        str(weekly_stars),
+        "MAX_WEEKLY_STARS":    str(MAX_WEEKLY_STARS),
         "BEST_DAY_HTML":       best_day_html,
         "PULSE_DAYS_HTML":     pulse_days_html,
         "DAY_DETAILS_JSON":    json.dumps(day_details_payload, ensure_ascii=False),
         "SEASON_MONTH_SHORT":  today.strftime("%b"),
+        # Today's 5 slot states
         "TODAY_MORNING_CLS":   "slot-earned" if today_morning_earned else "slot-empty",
+        "TODAY_BASE_CLS":      "slot-earned" if today_base_earned    else "slot-empty",
+        "TODAY_BURN_CLS":      "slot-earned" if today_burn_earned    else "slot-empty",
+        "TODAY_RECOVER_CLS":   "slot-earned" if today_recover_earned else "slot-empty",
+        "TODAY_NIGHT_CLS":     "slot-earned" if today_night_earned   else "slot-empty",
+        # Back-compat placeholder for the unified "core star earned"
+        # state used elsewhere (e.g. showing the big ⚡ slot earned icon
+        # when all 3 sub-stars are in). Equals Base AND Burn AND Recover.
         "TODAY_CORE_CLS":      "slot-earned" if today_core_earned else "slot-empty",
-        "TODAY_CORE_COUNT":    str(today_core_items),
-        "TODAY_NIGHT_CLS":     "slot-earned" if today_night_earned else "slot-empty",
-        # Core progress banner: how many done vs. threshold (so the UI
-        # always answers "how many do I need to hit for the star?")
-        "CORE_DONE_COUNT":     str(today_core_items),
-        "CORE_NEEDED_COUNT":   str(max(0, CORE_STAR_THRESHOLD - today_core_items)),
-        "CORE_PROGRESS_PCT":   str(min(100, round((today_core_items / 7) * 100))),
         # Manual-log toggle: sauna today. Values: "done" class if ticked,
         # empty otherwise; sibling state text reflects either way.
         "SAUNA_CLS":           ("done" if _row_has(data.get("sauna_row", []), weekday) else ""),
@@ -1174,9 +1256,17 @@ def generate_html_report(data: dict) -> str:
         "NIGHT_COLLECTED":     "true" if today_night_earned else "false",
         "CORE_COLLECTED":      "true" if today_core_earned else "false",
         "SEASON_DONE_INDICES": ",".join(str(i) for i in sorted(season_done_indices)),
+        # Progress track
         "XP_PCT":              str(xp_pct),
-        "MEDAL_GOOD_CLS":     medal_good_cls,
-        "MEDAL_PERFECT_CLS":  medal_perfect_cls,
+        "MEDAL_BRONZE_CLS":    medal_bronze_cls,
+        "MEDAL_SILVER_CLS":    medal_silver_cls,
+        "MEDAL_GOLD_CLS":      medal_gold_cls,
+        "MEDAL_BRONZE_VAL":    str(MEDAL_BRONZE),
+        "MEDAL_SILVER_VAL":    str(MEDAL_SILVER),
+        "MEDAL_GOLD_VAL":      str(MEDAL_GOLD),
+        "MEDAL_BRONZE_POS":    str(bronze_pct),
+        "MEDAL_SILVER_POS":    str(silver_pct),
+        "MEDAL_GOLD_POS":      str(gold_pct),
         # Daily quest stages
         "MORNING_RITUAL_HTML": morning_ritual_html,
         "CORE_MISSIONS_HTML":  core_missions_html,

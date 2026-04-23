@@ -229,17 +229,19 @@ body {
 }
 .wp-slots {
   display: flex;
-  gap: 6px;
+  gap: 5px;
   margin-left: auto;
 }
+/* 5 circles in a row — slightly smaller than before so five fit comfortably
+   alongside the "12 / 35 stars this week" number block on a phone. */
 .wp-slot {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
+  font-size: 12px;
   border: 1.5px solid rgba(255,255,255,0.1);
   background: rgba(255,255,255,0.03);
   transition: all 0.4s;
@@ -289,15 +291,32 @@ body {
   box-shadow: 0 0 6px rgba(245,200,66,0.2);
   transition: width 0.6s ease;
 }
+/* Medal markers on the progress track. Icon sits on top of the line,
+   label with the star-count threshold sits just below so the user
+   always knows "🥉 = 21 stars". lit = you've reached it, dim = not yet. */
 .wp-medal-marker {
   position: absolute;
-  top: -8px;
+  top: -9px;
   transform: translateX(-50%);
-  font-size: 11px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
   transition: opacity 0.3s;
+  white-space: nowrap;
 }
-.wp-medal-marker.dim { opacity: 0.2; }
+.wp-medal-marker.dim { opacity: 0.28; }
 .wp-medal-marker.lit { opacity: 1; }
+.wp-medal-icon { font-size: 12px; line-height: 1; }
+.wp-medal-val {
+  font-size: 8px;
+  font-family: 'DM Mono', monospace;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  margin-top: 1px;
+}
+.wp-medal-marker.lit .wp-medal-val { color: var(--gold); }
 .wp-days {
   display: flex;
   gap: 6px;
@@ -518,9 +537,42 @@ body {
 .dm-core-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   margin-bottom: 16px;
 }
+/* Group header inside the day-details modal — Base/Burn/Recover. */
+.dm-group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px 6px;
+  margin-top: 4px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.04);
+}
+.dm-group-head.earned {
+  background: rgba(245,200,66,0.08);
+  border-color: rgba(245,200,66,0.22);
+}
+.dm-group-ico { font-size: 16px; line-height: 1; }
+.dm-group-name {
+  font-family: 'Fraunces', serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.dm-group-rule {
+  flex: 1;
+  font-size: 9px;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.dm-group-star { font-size: 14px; }
+.dm-group-head.earned .dm-group-star { filter: drop-shadow(0 0 4px rgba(245,200,66,0.4)); }
+.dm-group-head:not(.earned) .dm-group-star { opacity: 0.35; color: var(--dim); }
 .dm-core-item {
   display: grid;
   grid-template-columns: 22px 1fr auto;
@@ -579,32 +631,50 @@ body {
 .quest-section { padding: 0 16px; margin-bottom: 12px; }
 .quest-section .card-title { padding: 0 4px; margin-bottom: 10px; }
 
-/* Divider between the "daily three" (steps/sleep/calories) at the top
-   of Core Missions and the "pick one activity" group below.
-   Visual job: a muted label + a thin line so the grouping is obvious
-   without adding a whole second sub-card. */
-.core-divider {
+/* ── Core 3 groups (Base, Burn, Recover) ──
+   Each sub-star is a self-contained group card with its own header
+   (icon + name + rule + filled/hollow star) and its member items. */
+.core-group {
+  margin: 0 4px 12px;
+  padding: 10px 12px 4px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.025);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.core-group-head {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: 10px 4px 6px;
-  color: var(--muted);
+  margin-bottom: 6px;
+  padding: 0 2px;
+}
+.core-group-icon { font-size: 20px; line-height: 1; }
+.core-group-meta { flex: 1; min-width: 0; }
+.core-group-name {
+  font-family: 'Fraunces', serif;
+  font-size: 15px;
+  color: var(--text);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.core-group-rule {
   font-size: 10px;
+  color: var(--muted);
   font-family: 'DM Mono', monospace;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
+  margin-top: 1px;
 }
-.core-divider::before, .core-divider::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: linear-gradient(90deg,
-    rgba(255,255,255,0) 0%,
-    rgba(255,255,255,0.08) 50%,
-    rgba(255,255,255,0) 100%);
+.core-group-star {
+  font-size: 18px;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: all 0.3s;
 }
-.core-divider-label { white-space: nowrap; }
+.core-group-star.earned {
+  filter: drop-shadow(0 0 6px rgba(245,200,66,0.35));
+}
+.core-group-star.empty { opacity: 0.35; color: var(--dim); }
 
 /* ═══ CONTEXT CARD ═══
    One card, two stacked sections. Top: "where I am today" — cycle phase
@@ -1421,27 +1491,42 @@ body {
       <span class="wp-eyebrow-sep">&middot;</span>
       <span class="wp-eyebrow-range">{{TAB_NAME}}</span>
     </div>
-    <!-- Row 1: Stars count + today slots + season badge -->
+    <!-- Row 1: Stars count + today slots + season badge.
+         5 slots for the 5 possible daily stars: Morning, Base (🏔),
+         Burn (🔥), Recover (🌿), Night. Slot icon = earned state. -->
     <div class="wp-hero-row">
       <div class="wp-num-block">
         <div class="wp-stars-num" id="wp-stars-num">{{WEEKLY_STARS}}</div>
-        <div class="wp-stars-sub">stars<br>this week</div>
+        <div class="wp-stars-sub">/ {{MAX_WEEKLY_STARS}} stars<br>this week</div>
       </div>
       <div class="wp-slots">
-        <div class="wp-slot {{TODAY_MORNING_CLS}}" id="slot-morning">&#x2600;&#xFE0F;</div>
-        <div class="wp-slot {{TODAY_CORE_CLS}}" id="slot-core">&#x26A1;</div>
-        <div class="wp-slot {{TODAY_NIGHT_CLS}}" id="slot-night">&#x1F319;</div>
+        <div class="wp-slot {{TODAY_MORNING_CLS}}" id="slot-morning" title="Morning ritual">&#x2600;&#xFE0F;</div>
+        <div class="wp-slot {{TODAY_BASE_CLS}}"    id="slot-base"    title="Base: steps + sleep + calories">&#x1F3D4;&#xFE0F;</div>
+        <div class="wp-slot {{TODAY_BURN_CLS}}"    id="slot-burn"    title="Burn: strength or cardio">&#x1F525;</div>
+        <div class="wp-slot {{TODAY_RECOVER_CLS}}" id="slot-recover" title="Recover: stretch or sauna">&#x1F33F;</div>
+        <div class="wp-slot {{TODAY_NIGHT_CLS}}"   id="slot-night"   title="Night ritual">&#x1F319;</div>
       </div>
       <div class="wp-season-block">
         <span class="season-badge-compact" id="season-badge">&#x1F3AB; {{SEASON_MONTH_SHORT}}</span>
       </div>
     </div>
-    <!-- Row 2: Progress bar with medals -->
+    <!-- Row 2: Progress bar with 3 medal tiers, each labelled with
+         the star count needed to earn it. -->
     <div class="wp-bar-row">
       <div class="wp-week-track">
         <div class="wp-week-fill" id="wp-week-fill" style="width:{{XP_PCT}}%;"></div>
-        <div class="{{MEDAL_GOOD_CLS}}" style="left:66.7%;">&#x1F949;</div>
-        <div class="{{MEDAL_PERFECT_CLS}}" style="left:100%;">&#x1F947;</div>
+        <div class="{{MEDAL_BRONZE_CLS}}" style="left:{{MEDAL_BRONZE_POS}}%;">
+          <span class="wp-medal-icon">&#x1F949;</span>
+          <span class="wp-medal-val">{{MEDAL_BRONZE_VAL}}</span>
+        </div>
+        <div class="{{MEDAL_SILVER_CLS}}" style="left:{{MEDAL_SILVER_POS}}%;">
+          <span class="wp-medal-icon">&#x1F948;</span>
+          <span class="wp-medal-val">{{MEDAL_SILVER_VAL}}</span>
+        </div>
+        <div class="{{MEDAL_GOLD_CLS}}" style="left:{{MEDAL_GOLD_POS}}%;">
+          <span class="wp-medal-icon">&#x1F947;</span>
+          <span class="wp-medal-val">{{MEDAL_GOLD_VAL}}</span>
+        </div>
       </div>
     </div>
     <!-- Row 3: Day bubbles -->
@@ -1481,36 +1566,25 @@ body {
       </div>
     </div>
 
-    <!-- Core Missions (collapsed by default) -->
+    <!-- Core 3 — three auto-earned sub-stars: Base, Burn, Recover.
+         No manual collect because each group lights as soon as its
+         own criteria are met. The header counter shows x/3. -->
     <div class="stage mint-stage stage-active collapsed" id="stage-core">
       <div class="stage-header" onclick="toggleStage('stage-core')">
         <span class="stage-icon">&#x26A1;</span>
         <div class="stage-info">
-          <div class="stage-name">Core Missions</div>
-          <div class="stage-sub" id="sub-core"><span id="core-done-count">{{CORE_DONE_COUNT}}</span> of 4 needed for star &middot; 7 habits tracked</div>
+          <div class="stage-name">Core 3</div>
+          <div class="stage-sub" id="sub-core">Base &middot; Burn &middot; Recover &middot; 3 auto-stars</div>
         </div>
         <div class="stage-star" id="star-core">&#x2606;</div>
         <span class="stage-chevron">&#x25BC;</span>
       </div>
       <div class="stage-summary" id="summary-core"></div>
       <div class="stage-body">
-        <div class="core-progress-banner" id="core-progress-banner">
-          <span class="core-progress-text">
-            <strong id="core-banner-count">{{CORE_DONE_COUNT}}</strong>
-            <span class="core-progress-lbl"> of 7 done &middot; need </span>
-            <strong id="core-banner-needed">{{CORE_NEEDED_COUNT}}</strong>
-            <span class="core-progress-lbl"> more to earn &#x2B50;</span>
-          </span>
-          <div class="core-progress-bar">
-            <div class="core-progress-fill" id="core-progress-fill" style="width:{{CORE_PROGRESS_PCT}}%"></div>
-            <div class="core-progress-tick" style="left:57%" title="Threshold: 4 of 7"></div>
-          </div>
-        </div>
         {{CORE_MISSIONS_HTML}}
 
-        <!-- Manual toggles. Sauna isn't auto-tracked anywhere, so the user
-             logs it from the phone. Toggling flips daily_entries.sauna
-             via /api/manual — no page reload; frontend updates in place. -->
+        <!-- Manual toggle for sauna/steam (not auto-tracked anywhere).
+             Counts toward the Recover sub-star. -->
         <div class="manual-log-card">
           <div class="manual-log-head">
             <span class="manual-log-title">Log manual</span>
@@ -1523,8 +1597,6 @@ body {
             <span class="manual-state" id="sauna-state">{{SAUNA_STATE_TEXT}}</span>
           </button>
         </div>
-
-        <button class="collect-btn mint-btn" id="collect-core" onclick="collectStar('core','mint')">&#x2B50; Collect Day Star</button>
       </div>
     </div>
 
@@ -1606,30 +1678,41 @@ body {
           <div class="dm-day-date" id="dm-date">—</div>
         </div>
         <div class="dm-stars-big">
-          <span id="dm-stars">0</span><span class="dm-stars-max">/3</span>
+          <span id="dm-stars">0</span><span class="dm-stars-max">/5</span>
           <div class="dm-stars-lbl">stars earned</div>
         </div>
       </div>
 
+      <!-- 5-slot breakdown: Morning · Base · Burn · Recover · Night -->
       <div class="dm-stages">
         <div class="dm-stage" id="dm-stage-morning">
           <span class="dm-stage-ico">☀️</span>
-          <span class="dm-stage-name">Morning Ritual</span>
+          <span class="dm-stage-name">Morning</span>
           <span class="dm-stage-state" id="dm-morning-state">—</span>
         </div>
-        <div class="dm-stage" id="dm-stage-core">
-          <span class="dm-stage-ico">⚡</span>
-          <span class="dm-stage-name">Core Missions</span>
-          <span class="dm-stage-state" id="dm-core-state">—</span>
+        <div class="dm-stage" id="dm-stage-base">
+          <span class="dm-stage-ico">🏔️</span>
+          <span class="dm-stage-name">Base</span>
+          <span class="dm-stage-state" id="dm-base-state">—</span>
+        </div>
+        <div class="dm-stage" id="dm-stage-burn">
+          <span class="dm-stage-ico">🔥</span>
+          <span class="dm-stage-name">Burn</span>
+          <span class="dm-stage-state" id="dm-burn-state">—</span>
+        </div>
+        <div class="dm-stage" id="dm-stage-recover">
+          <span class="dm-stage-ico">🌿</span>
+          <span class="dm-stage-name">Recover</span>
+          <span class="dm-stage-state" id="dm-recover-state">—</span>
         </div>
         <div class="dm-stage" id="dm-stage-night">
           <span class="dm-stage-ico">🌙</span>
-          <span class="dm-stage-name">Night Ritual</span>
+          <span class="dm-stage-name">Night</span>
           <span class="dm-stage-state" id="dm-night-state">—</span>
         </div>
       </div>
 
-      <div class="dm-section-label">Core items — <span id="dm-core-count">0</span> of <span id="dm-core-total">7</span></div>
+      <!-- Per-group item breakdown (Base + Burn + Recover) -->
       <div class="dm-core-list" id="dm-core-list"></div>
 
       <div class="dm-cycle-row" id="dm-cycle-row">
@@ -2249,34 +2332,45 @@ body {
     document.getElementById('dm-date').textContent = d.date_str || '';
     document.getElementById('dm-stars').textContent = d.stars;
 
-    // Stage chips
+    // 5 stage chips (was 3)
     function setStage(id, done, doneText, notDoneText) {
       const el = document.getElementById('dm-stage-' + id);
       const st = document.getElementById('dm-' + id + '-state');
+      if (!el || !st) return;
       if (done) { el.classList.add('earned'); st.textContent = doneText; }
       else       { el.classList.remove('earned'); st.textContent = notDoneText; }
     }
-    setStage('morning', d.morning_done, '⭐ Earned', 'Not collected');
-    setStage('core', d.core_earned,
-      '⭐ Earned · ' + d.core_count + '/7',
-      d.core_count + '/7 · need ' + d.core_threshold);
-    setStage('night', d.night_done, '⭐ Earned', 'Not collected');
+    setStage('morning', d.morning_done, '⭐ Earned',  'Not collected');
+    setStage('base',    d.base_done,    '⭐ Earned',  'Incomplete');
+    setStage('burn',    d.burn_done,    '⭐ Earned',  'Pick strength or cardio');
+    setStage('recover', d.recover_done, '⭐ Earned',  'Pick stretch or sauna');
+    setStage('night',   d.night_done,   '⭐ Earned',  'Not collected');
 
-    // Core item list
-    document.getElementById('dm-core-count').textContent = d.core_count;
-    document.getElementById('dm-core-total').textContent = '7';
+    // Per-group item breakdown. Each group (Base, Burn, Recover) gets
+    // its own subheader with the group's earn state, then its member
+    // rows underneath.
     const list = document.getElementById('dm-core-list');
     list.innerHTML = '';
-    (d.core_items || []).forEach(item => {
-      const row = document.createElement('div');
-      row.className = 'dm-core-item ' + (item.done ? 'done' : 'not-done');
-      row.innerHTML =
-        '<div class="dm-core-check">' + (item.done ? '\u2713' : '\u2022') + '</div>' +
-        '<div class="dm-core-name">' + item.name +
-          '<span class="dm-core-target">' + (item.target || '') + '</span>' +
-        '</div>' +
-        '<div class="dm-core-val">' + (item.value || '—') + '</div>';
-      list.appendChild(row);
+    (d.core_groups || []).forEach(group => {
+      const header = document.createElement('div');
+      header.className = 'dm-group-head' + (group.earned ? ' earned' : '');
+      header.innerHTML =
+        '<span class="dm-group-ico">' + group.icon + '</span>' +
+        '<span class="dm-group-name">' + group.name + '</span>' +
+        '<span class="dm-group-rule">' + (group.rule || '') + '</span>' +
+        '<span class="dm-group-star">' + (group.earned ? '\u2B50' : '\u2606') + '</span>';
+      list.appendChild(header);
+      (group.items || []).forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'dm-core-item ' + (item.done ? 'done' : 'not-done');
+        row.innerHTML =
+          '<div class="dm-core-check">' + (item.done ? '\u2713' : '\u2022') + '</div>' +
+          '<div class="dm-core-name">' + item.name +
+            '<span class="dm-core-target">' + (item.target || '') + '</span>' +
+          '</div>' +
+          '<div class="dm-core-val">' + (item.value || '—') + '</div>';
+        list.appendChild(row);
+      });
     });
 
     // Cycle row

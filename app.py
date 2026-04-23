@@ -265,15 +265,23 @@ def api_today():
           "morning_star": true,
           "night_star": false,
           "sauna": true,
-          "core_done": 2,
-          "core_threshold": 4,
-          "stars_today": 1,
-          "stars_week": 3,
+          "base_earned": true,      # steps AND sleep AND calories
+          "base_done":   3,          # 0–3 count toward Base sub-star
+          "burn_earned": false,     # strength OR cardio
+          "burn_done":   0,
+          "recover_earned": true,   # stretch OR sauna
+          "recover_done":   1,
+          "core_done": 2,            # number of earned sub-stars (0–3)
+          "core_threshold": 3,
+          "stars_today": 3,          # 0–5 max: morning + base + burn + recover + night
+          "stars_week": 12,          # 0–35 max
+          "max_daily_stars": 5,
+          "max_weekly_stars": 35,
           "last_sync": "2026-04-21"
         }
     """
     from constants import (
-        CORE_STAR_THRESHOLD, DAILY_STEPS_GOAL,
+        DAILY_STEPS_GOAL, MAX_DAILY_STARS, MAX_WEEKLY_STARS,
         SLEEP_STAR_THRESHOLD_DEFAULT as SLEEP_STAR_THRESHOLD,
     )
     from datetime import timedelta
@@ -290,10 +298,9 @@ def api_today():
         today_row = week[weekday]
 
         # Live steps + calories (same cached helpers as the dashboard)
-        # so the Android widget reflects fresh Oura + Garmin numbers
-        # instead of the last sync-snapshot. `force=1` bypasses the 60s
-        # in-memory cache for instant refresh when the widget's ⟳ is
-        # tapped or pull-to-refresh fires in the app.
+        # so consumers see fresh Oura + Garmin numbers instead of the
+        # last sync-snapshot. `force=1` bypasses the 60s in-memory
+        # cache for instant refresh.
         from data_gather import _cached_fetch_steps, _cached_fetch_nutrition
         force = request.args.get("force") == "1"
         steps_db = (today_row or {}).get("steps") or 0
@@ -313,39 +320,36 @@ def api_today():
         cycle_phase  = (today_row or {}).get("cycle_phase") or ""
         cycle_day    = (today_row or {}).get("cycle_day")
 
-        # Core items count for today (steps/sleep/cal + strength/cardio/stretch/sauna)
-        STEPS_GOAL = DAILY_STEPS_GOAL
-        core_done = 0
-        if steps >= STEPS_GOAL: core_done += 1
-        if sleep and float(sleep) >= SLEEP_STAR_THRESHOLD: core_done += 1
-        if calories and calories > 0: core_done += 1
-        if (today_row or {}).get("strength_note"): core_done += 1
-        if (today_row or {}).get("cardio_note"):   core_done += 1
-        if (today_row or {}).get("stretch_note"):  core_done += 1
-        if sauna_done: core_done += 1
+        # ── Today's Core 3 sub-stars ───────────────────────────
+        steps_ok   = steps >= DAILY_STEPS_GOAL
+        sleep_ok   = bool(sleep and float(sleep) >= SLEEP_STAR_THRESHOLD)
+        cal_ok     = bool(calories and calories > 0)
+        base_ok    = steps_ok and sleep_ok and cal_ok
+        burn_ok    = bool((today_row or {}).get("strength_note") or (today_row or {}).get("cardio_note"))
+        recover_ok = bool((today_row or {}).get("stretch_note") or sauna_done)
+        core_done  = int(base_ok) + int(burn_ok) + int(recover_ok)
+        stars_today = (
+            int(morning_done) + int(base_ok) + int(burn_ok)
+            + int(recover_ok) + int(night_done)
+        )
 
-        core_earned = core_done >= CORE_STAR_THRESHOLD
-        stars_today = int(morning_done) + int(core_earned) + int(night_done)
-
-        # Weekly stars: same logic across each weekday row in the week
+        # ── Weekly stars across Mon..today ─────────────────────
         stars_week = 0
-        for i, row in enumerate(week[: weekday + 1]):
-            if not row: continue
-            stars_week += int(bool(row.get("morning_star")))
-            stars_week += int(bool(row.get("night_star")))
-            # core star for that day
-            s = row.get("steps") or 0
+        for row in week[: weekday + 1]:
+            if not row:
+                continue
+            s  = row.get("steps") or 0
             sl = row.get("sleep_hours")
             cal_i = row.get("calories") or 0
-            c = 0
-            if s >= STEPS_GOAL: c += 1
-            if sl and float(sl) >= 7.0: c += 1
-            if cal_i > 0: c += 1
-            for k in ("strength_note","cardio_note","stretch_note"):
-                if row.get(k): c += 1
-            if row.get("sauna"): c += 1
-            if c >= CORE_STAR_THRESHOLD:
-                stars_week += 1
+            d_base    = (s >= DAILY_STEPS_GOAL and sl is not None
+                         and float(sl) >= SLEEP_STAR_THRESHOLD and cal_i > 0)
+            d_burn    = bool(row.get("strength_note") or row.get("cardio_note"))
+            d_recover = bool(row.get("stretch_note") or row.get("sauna"))
+            stars_week += (
+                int(bool(row.get("morning_star")))
+                + int(d_base) + int(d_burn) + int(d_recover)
+                + int(bool(row.get("night_star")))
+            )
 
         return jsonify({
             "ok": True,
@@ -362,10 +366,16 @@ def api_today():
             "morning_star": morning_done,
             "night_star": night_done,
             "sauna": sauna_done,
-            "core_done": core_done,
-            "core_threshold": CORE_STAR_THRESHOLD,
-            "stars_today": stars_today,
-            "stars_week": stars_week,
+            # New star structure
+            "base_earned": base_ok,
+            "burn_earned": burn_ok,
+            "recover_earned": recover_ok,
+            "core_done": core_done,              # 0–3 sub-stars earned
+            "core_threshold": 3,                 # all 3 for full Core
+            "stars_today": stars_today,          # 0–5
+            "stars_week":  stars_week,           # 0–35
+            "max_daily_stars":  MAX_DAILY_STARS,
+            "max_weekly_stars": MAX_WEEKLY_STARS,
             "last_sync": db.get_state("last_sync_date"),
         })
     except Exception as exc:
