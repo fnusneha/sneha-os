@@ -83,25 +83,36 @@ def index():
 
 
 def _render_quest_hub(view: str) -> "tuple[str, int]":
-    """Shared render path for the Today / Week / Month tabs.
+    """Shared render path for the Today / Week / Month / Year tabs.
 
-    All three views render from the same `morning_report.html`
-    template; the `view` arg flips a body class so CSS hides the
-    sections that don't belong. Month view also needs a per-day star
-    tally for the full month grid, which we compute from DB rows.
+    All four views render from the same `morning_report.html` template;
+    the `view` arg flips a body class so CSS hides the sections that
+    don't belong. Month view needs a per-day star tally; Year view
+    needs the California coverage map built from rides.
     """
     force = request.args.get("force") == "1"
     try:
         data = gather_dashboard_data(live_steps=True, force=force)
         month_by_date: dict = {}
         month_total = 0
+        ca_html = ""
         if view == "month":
             month_by_date, month_total = _gather_monthly_stars(data)
+        elif view == "year":
+            # California coverage map needs rides data. Import lazily
+            # so a Strava / rides_report hiccup can't break the other tabs.
+            try:
+                from rides_report import _load_rides, _ca_coverage_html
+                rides = _load_rides()
+                ca_html = _ca_coverage_html(rides)
+            except Exception as exc:
+                log.warning("year: CA map render failed: %s", exc)
         html = generate_html_report(
             data,
             view=view,
             month_stars_by_date=month_by_date,
             month_stars_total=month_total,
+            ca_coverage_html=ca_html,
         )
         return html, 200
     except Exception as exc:
@@ -174,6 +185,13 @@ def week():
 @app.get("/month")
 def month():
     html, status = _render_quest_hub("month")
+    resp = app.response_class(html, content_type="text/html; charset=utf-8", status=status)
+    return _no_cache(resp)
+
+
+@app.get("/year")
+def year():
+    html, status = _render_quest_hub("year")
     resp = app.response_class(html, content_type="text/html; charset=utf-8", status=status)
     return _no_cache(resp)
 

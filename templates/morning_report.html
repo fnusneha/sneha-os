@@ -102,6 +102,15 @@ body {
   font-size: 11px;
 }
 .hero-date { color: var(--muted); }
+.hero-atlas-link {
+  margin-left: 8px;
+  font-size: 14px;
+  line-height: 1;
+  text-decoration: none;
+  opacity: 0.78;
+  transition: opacity 0.2s, transform 0.2s;
+}
+.hero-atlas-link:hover { opacity: 1; transform: scale(1.08); }
 
 /* ── Sync pill (data freshness indicator + pull-to-refresh) ── */
 .sync-bar {
@@ -1608,6 +1617,142 @@ body {
 .si-status-due { background: rgba(125,211,252,0.1); color: var(--sky); }
 .si-status-overdue { background: rgba(251,113,133,0.1); color: var(--coral); }
 
+/* ── CALIFORNIA COVERAGE MAP (ported from rides.html for the Year tab) ── */
+.ca-coverage { padding: 16px; }
+.ca-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+.ca-title {
+  font-family: 'Fraunces', serif;
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--text);
+}
+.ca-sub {
+  font-size: 0.55rem;
+  color: var(--muted);
+  letter-spacing: 0.03em;
+}
+.ca-count { text-align: right; }
+.ca-count-num {
+  font-family: 'Fraunces', serif;
+  font-size: 1.4rem;
+  color: var(--sky);
+  line-height: 1;
+}
+.ca-count-label {
+  font-size: 0.5rem;
+  color: var(--dim);
+  letter-spacing: 0.04em;
+}
+.ca-map-zone {
+  background: var(--bg);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  padding: 8px;
+  margin-bottom: 8px;
+  background-image:
+    linear-gradient(rgba(125,211,252,0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(125,211,252,0.02) 1px, transparent 1px);
+  background-size: 28px 28px;
+  position: relative;
+}
+.ca-map-svg { width: 100%; height: auto; display: block; }
+.ca-map-svg .map-city {
+  font-family: 'DM Mono', monospace;
+  font-size: 8px;
+  fill: rgba(200, 220, 240, 0.28);
+  letter-spacing: 0.03em;
+  pointer-events: none;
+  font-weight: 400;
+}
+.ca-map-svg .pin-count {
+  font-family: 'DM Mono', monospace;
+  font-size: 8px;
+  font-weight: 600;
+  fill: rgba(13, 27, 46, 0.95);
+  pointer-events: none;
+  letter-spacing: 0;
+}
+.ca-map-svg .pin-lbl {
+  fill: rgba(200, 220, 240, 0.55);
+  paint-order: stroke;
+  stroke: rgba(13, 27, 46, 0.8);
+  stroke-width: 2.5px;
+  stroke-linejoin: round;
+}
+.ca-chips { padding: 8px 0 4px; display: flex; flex-direction: column; gap: 6px; }
+.chip-row { display: flex; flex-wrap: nowrap; align-items: center; gap: 4px; overflow-x: auto; overflow-y: hidden; padding-bottom: 2px; scrollbar-width: none; }
+.chip-row::-webkit-scrollbar { display: none; }
+.chip-label {
+  font-size: 0.48rem; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; padding: 3px 7px; border-radius: 5px;
+  flex-shrink: 0; position: sticky; left: 0;
+  background: rgba(13,27,46,0.95); z-index: 2;
+}
+.chip-label.chip-ridden  { color: #fb7185; background: rgba(224,80,80,0.15); }
+.chip-label.chip-booked  { color: #7dd3fc; background: rgba(125,211,252,0.15); }
+.chip-label.chip-wishlist{ color: #f5c842; background: rgba(245,200,66,0.15); }
+.chip {
+  font-family: 'DM Mono', monospace; font-size: 0.5rem;
+  padding: 3px 7px; border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.02);
+  color: var(--muted); cursor: pointer; transition: all 0.2s;
+  white-space: nowrap; letter-spacing: 0.02em; flex-shrink: 0;
+}
+.chip:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+.chip.chip-ridden-btn:hover   { border-color: rgba(224,80,80,0.4); }
+.chip.chip-booked-btn:hover   { border-color: rgba(125,211,252,0.4); }
+.chip.chip-wishlist-btn:hover { border-color: rgba(245,200,66,0.4); }
+.chip.active {
+  background: rgba(255,255,255,0.08); color: var(--text);
+  border-color: rgba(255,255,255,0.25);
+}
+.ca-legend-float {
+  position: absolute; top: 12px; right: 12px;
+  background: rgba(13,27,46,0.88);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px; padding: 8px 10px;
+  display: flex; flex-direction: column; gap: 5px; z-index: 10;
+}
+.leg-row { display: flex; align-items: center; gap: 6px; font-size: 0.55rem; letter-spacing: 0.03em; }
+.leg-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 0 1.5px rgba(13,27,46,0.6); }
+.leg-ridden   { background: #e05050; }
+.leg-booked   { background: #7dd3fc; }
+.leg-wishlist { background: #f5c842; }
+.leg-label { color: var(--text); flex: 1; min-width: 48px; }
+.leg-count { color: var(--muted); font-family: 'Fraunces', serif; font-size: 0.7rem; min-width: 20px; text-align: right; }
+.ca-hint { text-align: center; font-size: 0.55rem; color: var(--muted); letter-spacing: 0.03em; padding: 10px 0 4px; font-style: italic; }
+.pin-booked:hover, .pin-wishlist:hover, .pin-ridden:hover {
+  opacity: 1 !important; transform-origin: center;
+}
+.ca-popup {
+  display: none; margin-top: 12px; padding: 14px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 12px; position: relative;
+  animation: popIn 0.25s ease;
+}
+.ca-popup.show { display: block; }
+@keyframes popIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:none; } }
+.ca-popup-close {
+  position: absolute; top: 8px; right: 12px;
+  color: var(--muted); font-size: 18px; cursor: pointer; line-height: 1;
+}
+.ca-popup-close:hover { color: var(--text); }
+.ca-popup-type { font-size: 0.5rem; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; }
+.ca-popup-type.booked   { color: var(--sky); }
+.ca-popup-type.wishlist { color: var(--gold); }
+.ca-popup-type.ridden   { color: var(--coral); }
+.ca-popup-title { font-family: 'Fraunces', serif; font-size: 0.95rem; color: var(--text); margin-bottom: 4px; }
+.ca-popup-meta  { font-size: 0.6rem; color: var(--muted); margin-bottom: 6px; }
+.ca-popup-notes { font-size: 0.65rem; color: var(--muted); line-height: 1.5; }
+
 /* ── PINS ── */
 .pins-header { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px; margin-top:12px; }
 .pins-header-row { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px; gap:10px; }
@@ -1887,16 +2032,22 @@ body {
 }
 
 /* ═══ VIEW VISIBILITY (per-tab) ═══
-   Single template renders all three Quest Hub views (Today, Week,
-   Month). Body gets one of view-today / view-week / view-month and
-   we hide the sections that don't belong. Keeps CSS/JS in one place
-   and lets users tab without a full JS reload. */
+   Single template renders all four Quest Hub views (Today, Week,
+   Month, Year). Body gets one of view-today / view-week / view-month
+   / view-year and we hide the sections that don't belong. Keeps
+   CSS/JS in one place and lets users tab without a full JS reload. */
 body.view-today .week-only,
 body.view-today .month-only,
+body.view-today .year-only,
 body.view-week  .today-only,
 body.view-week  .month-only,
+body.view-week  .year-only,
 body.view-month .today-only,
-body.view-month .week-only { display: none !important; }
+body.view-month .week-only,
+body.view-month .year-only,
+body.view-year  .today-only,
+body.view-year  .week-only,
+body.view-year  .month-only { display: none !important; }
 
 .hidden { display: none !important; }
 </style>
@@ -1918,6 +2069,9 @@ body.view-month .week-only { display: none !important; }
         <span class="hero-date">{{TODAY_DAY_LABEL}}</span>
         <span class="hero-sep">&middot;</span>
         <span class="hero-status" id="compile-status-text">compiling<span class="compile-dots"></span></span>
+        <!-- Atlas side-link: rides still live on their own page;
+             this is the easy door in from any main tab. -->
+        <a href="/rides" class="hero-atlas-link" title="Ride Atlas">&#x1F6B4;</a>
       </div>
     </div>
   </div>
@@ -1927,7 +2081,7 @@ body.view-month .week-only { display: none !important; }
     <a href="/dashboard" class="tab {{TAB_TODAY_CLS}}">&#9889; Today</a>
     <a href="/week"      class="tab {{TAB_WEEK_CLS}}">&#x1F4C5; Week</a>
     <a href="/month"     class="tab {{TAB_MONTH_CLS}}">&#x1F5D3;&#xFE0F; Month</a>
-    <a href="/rides"     class="tab {{TAB_RIDES_CLS}}">&#x1f6b4; Atlas</a>
+    <a href="/year"      class="tab {{TAB_YEAR_CLS}}">&#x1F30D; Year</a>
   </div>
 
   <!-- Sync freshness pill + pull-to-refresh hint.
@@ -2155,18 +2309,29 @@ body.view-month .week-only { display: none !important; }
     </div>
   </div>
 
-  <!-- ═══ 7. PINS · Multi-year Timeline ═══ -->
-  <div class="card">
-    <div class="pins-header-row">
-      <div class="card-title">&#x1F4CD; Pins &middot; Timeline</div>
-      <div class="pins-count"><span id="pin-count">0</span> pinned</div>
-    </div>
-    <div class="pins-timeline" id="pinsTimeline">
-      {{PINS_HTML}}
-    </div>
-  </div>
   </div>
   <!-- ════════════ /TODAY VIEW ACCORDIONS ════════════ -->
+
+  <!-- ════════════ YEAR VIEW ════════════ -->
+  <div class="year-only">
+    <!-- Roadmap / Pins timeline — the multi-year pin board showing
+         travel, annual habits, and the 2027 roadmap. -->
+    <div class="card">
+      <div class="pins-header-row">
+        <div class="card-title">&#x1F4CD; Roadmap &middot; 2026 &middot; 2027</div>
+        <div class="pins-count"><span id="pin-count">0</span> pinned</div>
+      </div>
+      <div class="pins-timeline" id="pinsTimeline">
+        {{PINS_HTML}}
+      </div>
+    </div>
+
+    <!-- California coverage map — every ridden + booked + wishlist
+         location, plotted on a CA outline. Moved here from the Ride
+         Atlas page so annual / geographic context lives together. -->
+    {{CA_COVERAGE_HTML}}
+  </div>
+  <!-- ════════════ /YEAR VIEW ════════════ -->
 
   <!-- Server data for JS -->
   <div id="server-state" data-morning="{{MORNING_COLLECTED}}" data-core="{{CORE_COLLECTED}}" data-night="{{NIGHT_COLLECTED}}" data-season="{{SEASON_DONE_INDICES}}" class="hidden"></div>
@@ -3026,6 +3191,41 @@ body.view-month .week-only { display: none !important; }
   restoreAccordionState();
   restoreDeployState();
 })();
+
+// California coverage map: click handler for pins + chips. Mirrors
+// the logic from the Ride Atlas page — if a pin or chip is clicked
+// and window.CA_PIN_DATA is populated (the script injected inside
+// _ca_coverage_html does this), show the popup.
+document.addEventListener('click', function(e) {
+  const target = e.target.closest('.pin-booked, .pin-wishlist, .pin-ridden, .chip');
+  if (!target || !window.CA_PIN_DATA) return;
+  const idx = target.dataset.pinIdx;
+  if (!idx) return;
+  const data = window.CA_PIN_DATA.find(d => d.idx === idx);
+  if (!data) return;
+  // Highlight the corresponding chip
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  const chip = document.querySelector('.chip[data-pin-idx="' + idx + '"]');
+  if (chip) chip.classList.add('active');
+  // Pulse the matching pin
+  document.querySelectorAll('circle[data-pin-idx]').forEach(c => { c.style.filter = ''; });
+  document.querySelectorAll('circle[data-pin-idx="' + idx + '"]').forEach(c => {
+    c.style.filter = 'drop-shadow(0 0 6px currentColor)';
+  });
+  const popup = document.getElementById('caPopup');
+  if (!popup) return;
+  const typeEl = document.getElementById('caPopupType');
+  const typeLabels = { ridden: 'Ridden', booked: 'Booked · Upcoming', wishlist: 'Wishlist' };
+  typeEl.textContent = typeLabels[data.type] || data.type;
+  typeEl.className = 'ca-popup-type ' + data.type;
+  const tmpDiv = document.createElement('div');
+  tmpDiv.innerHTML = data.name;
+  document.getElementById('caPopupTitle').textContent = tmpDiv.textContent;
+  document.getElementById('caPopupMeta').textContent = data.date || '';
+  document.getElementById('caPopupNotes').textContent = data.notes || '';
+  popup.classList.add('show');
+  popup.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+});
 </script>
 </body>
 </html>

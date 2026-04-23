@@ -1577,17 +1577,21 @@ def generate_html_report(
     view: str = "today",
     month_stars_by_date: dict | None = None,
     month_stars_total: int = 0,
+    ca_coverage_html: str = "",
 ) -> str:
     """Generate the Quest Hub dashboard HTML.
 
     `view` selects which tab's content is visible:
-      - "today" (default) — Today Hero, Daily Quest, Pillars, Pins
+      - "today" (default) — Today Hero, Daily Quest, Pillars
       - "week"            — Week card, cycle strip, agenda, rollups
       - "month"           — Month card, Season Pass list
+      - "year"            — Roadmap pins timeline, California map
 
-    The template renders all three views; the body class shows only
+    The template renders all four views; the body class shows only
     the one for `view`. `month_stars_by_date` + `month_stars_total`
     are optional and only meaningful for the Month view.
+    `ca_coverage_html` is only computed for the Year view (requires
+    rides data).
 
     Args:
         data: report_data dict shaped by `data_gather.gather_dashboard_data`.
@@ -1753,10 +1757,12 @@ def generate_html_report(
         "today": "view-today",
         "week":  "view-week",
         "month": "view-month",
+        "year":  "view-year",
     }.get(view, "view-today")
     tab_today_cls = "active" if view == "today" else ""
     tab_week_cls  = "active" if view == "week"  else ""
     tab_month_cls = "active" if view == "month" else ""
+    tab_year_cls  = "active" if view == "year"  else ""
 
     # ── Fill template ──────────────────────────────────────────
     template = _load_template()
@@ -1766,7 +1772,9 @@ def generate_html_report(
         "TAB_TODAY_CLS":       tab_today_cls,
         "TAB_WEEK_CLS":        tab_week_cls,
         "TAB_MONTH_CLS":       tab_month_cls,
-        "TAB_RIDES_CLS":       "",  # /rides is a separate page
+        "TAB_YEAR_CLS":        tab_year_cls,
+        # Atlas moved to a hero-bar side link — no main-tab class needed.
+        "CA_COVERAGE_HTML":    ca_coverage_html,
         # Hero bar
         "SLEEP_EMOJI":         sleep_emoji,
         "SLEEP_LABEL":         sleep_label,
