@@ -1761,68 +1761,11 @@ body {
        forward-looking nudge. Never shames. -->
   {{TODAY_HERO_HTML}}
 
-  <!-- Divider that signals the context-switch from "today" to "week". -->
-  <div class="section-divider"><span>The Bigger Picture</span></div>
-
-  <!-- ═══ 2½. WEEK — compressed ═══
-       Secondary context now. Stars count + "X to go for next medal",
-       progress bar with 3 medal thresholds labelled, day bubbles with
-       dates under labels, and the comeback line at the bottom that
-       reframes remaining days as upside ("20 possible from here"). -->
-  <div class="card weekly-pulse compact">
-    <div class="wp-eyebrow">
-      <span class="wp-eyebrow-label">This Week</span>
-      <span class="wp-eyebrow-sep">&middot;</span>
-      <span class="wp-eyebrow-range">{{TAB_NAME}}</span>
-    </div>
-    <!-- Big stars total + season badge (slots moved to the Today Hero) -->
-    <div class="wp-hero-row compact">
-      <div class="wp-num-block">
-        <div class="wp-stars-num" id="wp-stars-num">{{WEEKLY_STARS}}</div>
-        <div class="wp-stars-sub">/ {{MAX_WEEKLY_STARS}} stars</div>
-      </div>
-      <div class="wp-season-block">
-        <span class="season-badge-compact" id="season-badge">&#x1F3AB; {{SEASON_MONTH_SHORT}}</span>
-      </div>
-    </div>
-    <!-- Progress bar with 3 medal tiers, each labelled with the
-         star count needed to earn it. -->
-    <div class="wp-bar-row">
-      <div class="wp-week-track">
-        <div class="wp-week-fill" id="wp-week-fill" style="width:{{XP_PCT}}%;"></div>
-        <div class="{{MEDAL_BRONZE_CLS}}" style="left:{{MEDAL_BRONZE_POS}}%;">
-          <span class="wp-medal-icon">&#x1F949;</span>
-          <span class="wp-medal-val">{{MEDAL_BRONZE_VAL}}</span>
-        </div>
-        <div class="{{MEDAL_SILVER_CLS}}" style="left:{{MEDAL_SILVER_POS}}%;">
-          <span class="wp-medal-icon">&#x1F948;</span>
-          <span class="wp-medal-val">{{MEDAL_SILVER_VAL}}</span>
-        </div>
-        <div class="{{MEDAL_GOLD_CLS}}" style="left:{{MEDAL_GOLD_POS}}%;">
-          <span class="wp-medal-icon">&#x1F947;</span>
-          <span class="wp-medal-val">{{MEDAL_GOLD_VAL}}</span>
-        </div>
-      </div>
-    </div>
-    <!-- 7 day bubbles with date numbers under day labels -->
-    <div class="wp-days">
-      {{PULSE_DAYS_HTML}}
-    </div>
-    <!-- Forward-looking comeback line: reframes remaining days as
-         upside instead of past misses. -->
-    {{WEEK_COMEBACK_HTML}}
-    {{BEST_DAY_HTML}}
-
-    <!-- Inline "today" (cycle + coach) and "agenda" (calendar events)
-         sections. These used to be a separate Context card directly
-         below the Weekly Pulse, but that created two stacked cards
-         both labelled "THIS WEEK" — confusing and crowded. Now all
-         three kinds of week context live inside one card with thin
-         lowercase divider labels between sections. -->
-    {{CONTEXT_SECTIONS_HTML}}
-  </div>
-
-  <!-- ═══ 3. DAILY QUEST ═══ -->
+  <!-- ═══ 3. DAILY QUEST ═══
+       Sits directly under the Today Hero so the morning flow is
+       Today's stars (goal state) → Daily Quest (actions). The Week
+       card drops below the Night Ritual so the focus stays on
+       "what am I doing now", not "how am I doing this week". -->
   <div class="quest-section">
     <div class="card-title">&#x2B50; Daily Quest</div>
 
@@ -1930,6 +1873,57 @@ body {
         <button class="collect-btn violet-btn" id="collect-night" onclick="collectStar('night','violet')">&#x2B50; Collect Night Star</button>
       </div>
     </div>
+  </div>
+
+  <!-- Divider that signals the context-switch from "today" to
+       "bigger picture". Now sits after Daily Quest so the morning
+       flow is: Today Hero → actions (Daily Quest) → "wait, how's
+       my week going?" → Week card. Keeps the focus tight up top. -->
+  <div class="section-divider"><span>The Bigger Picture</span></div>
+
+  <!-- ═══ 3½. WEEK CARD ═══
+       Stars count + progress bar + day bubbles + comeback line,
+       plus inline "today" (cycle + coach) and "agenda" (calendar
+       events) sections separated by lowercase labels. One card,
+       three sub-sections, no redundant "THIS WEEK" labels. -->
+  <div class="card weekly-pulse compact">
+    <div class="wp-eyebrow">
+      <span class="wp-eyebrow-label">This Week</span>
+      <span class="wp-eyebrow-sep">&middot;</span>
+      <span class="wp-eyebrow-range">{{TAB_NAME}}</span>
+    </div>
+    <div class="wp-hero-row compact">
+      <div class="wp-num-block">
+        <div class="wp-stars-num" id="wp-stars-num">{{WEEKLY_STARS}}</div>
+        <div class="wp-stars-sub">/ {{MAX_WEEKLY_STARS}} stars</div>
+      </div>
+      <div class="wp-season-block">
+        <span class="season-badge-compact" id="season-badge">&#x1F3AB; {{SEASON_MONTH_SHORT}}</span>
+      </div>
+    </div>
+    <div class="wp-bar-row">
+      <div class="wp-week-track">
+        <div class="wp-week-fill" id="wp-week-fill" style="width:{{XP_PCT}}%;"></div>
+        <div class="{{MEDAL_BRONZE_CLS}}" style="left:{{MEDAL_BRONZE_POS}}%;">
+          <span class="wp-medal-icon">&#x1F949;</span>
+          <span class="wp-medal-val">{{MEDAL_BRONZE_VAL}}</span>
+        </div>
+        <div class="{{MEDAL_SILVER_CLS}}" style="left:{{MEDAL_SILVER_POS}}%;">
+          <span class="wp-medal-icon">&#x1F948;</span>
+          <span class="wp-medal-val">{{MEDAL_SILVER_VAL}}</span>
+        </div>
+        <div class="{{MEDAL_GOLD_CLS}}" style="left:{{MEDAL_GOLD_POS}}%;">
+          <span class="wp-medal-icon">&#x1F947;</span>
+          <span class="wp-medal-val">{{MEDAL_GOLD_VAL}}</span>
+        </div>
+      </div>
+    </div>
+    <div class="wp-days">
+      {{PULSE_DAYS_HTML}}
+    </div>
+    {{WEEK_COMEBACK_HTML}}
+    {{BEST_DAY_HTML}}
+    {{CONTEXT_SECTIONS_HTML}}
   </div>
 
   <!-- ═══ 4. SEASON PASS (accordion) ═══ -->
