@@ -1447,7 +1447,7 @@ def _build_month_card(
     pct = min(100, round(month_stars_total / max_stars * 100)) if max_stars else 0
 
     def _medal_cls(th: int) -> str:
-        return "wp-medal-marker lit" if month_stars_total >= th else "wp-medal-marker dim"
+        return "lit" if month_stars_total >= th else "dim"
 
     bronze_pos = round(bronze / max_stars * 100, 1)
     silver_pos = round(silver / max_stars * 100, 1)
@@ -1526,37 +1526,36 @@ def _build_month_card(
             )
 
     month_name = today.strftime("%B %Y")
+    # Same .summary-card layout as Week + Year so the hero card is
+    # visually consistent across the three time-scoped tabs.
     return (
-        '<div class="card weekly-pulse compact month-pulse">'
-        '  <div class="wp-eyebrow">'
-        '    <span class="wp-eyebrow-label">This Month</span>'
-        '    <span class="wp-eyebrow-sep">&middot;</span>'
-        f'    <span class="wp-eyebrow-range">{_esc(month_name.upper())}</span>'
-        '  </div>'
-        '  <div class="wp-hero-row compact">'
-        '    <div class="wp-num-block">'
-        f'      <div class="wp-stars-num">{month_stars_total}</div>'
-        f'      <div class="wp-stars-sub">/ {max_stars} stars</div>'
+        '<div class="card summary-card month-pulse">'
+        '  <div class="sum-head">'
+        '    <div class="sum-title-block">'
+        '      <div class="sum-eyebrow">This Month</div>'
+        f'      <div class="sum-title">{_esc(month_name.upper())}</div>'
+        '    </div>'
+        '    <div class="sum-hero-block">'
+        f'      <div class="sum-hero-num">{month_stars_total}</div>'
+        f'      <div class="sum-hero-unit">/ {max_stars}</div>'
         '    </div>'
         '  </div>'
-        '  <div class="wp-bar-row">'
-        '    <div class="wp-week-track">'
-        f'      <div class="wp-week-fill" style="width:{pct}%;"></div>'
-        f'      <div class="{_medal_cls(bronze)}" style="left:{bronze_pos}%;">'
-        f'        <span class="wp-medal-icon">\U0001f949</span>'
-        f'        <span class="wp-medal-val">{bronze}</span>'
-        '      </div>'
-        f'      <div class="{_medal_cls(silver)}" style="left:{silver_pos}%;">'
-        f'        <span class="wp-medal-icon">\U0001f948</span>'
-        f'        <span class="wp-medal-val">{silver}</span>'
-        '      </div>'
-        f'      <div class="{_medal_cls(gold)}" style="left:{gold_pos}%;">'
-        f'        <span class="wp-medal-icon">\U0001f947</span>'
-        f'        <span class="wp-medal-val">{gold}</span>'
-        '      </div>'
+        '  <div class="sum-bar">'
+        f'    <div class="sum-bar-fill" style="width:{pct}%;"></div>'
+        f'    <div class="sum-tick {_medal_cls(bronze)}" style="left:{bronze_pos}%;">'
+        f'      <span class="sum-tick-ico">\U0001f949</span>'
+        f'      <span class="sum-tick-lbl">{bronze}</span>'
+        '    </div>'
+        f'    <div class="sum-tick {_medal_cls(silver)}" style="left:{silver_pos}%;">'
+        f'      <span class="sum-tick-ico">\U0001f948</span>'
+        f'      <span class="sum-tick-lbl">{silver}</span>'
+        '    </div>'
+        f'    <div class="sum-tick {_medal_cls(gold)}" style="left:{gold_pos}%;">'
+        f'      <span class="sum-tick-ico">\U0001f947</span>'
+        f'      <span class="sum-tick-lbl">{gold}</span>'
         '    </div>'
         '  </div>'
-        f'  <div class="mo-days">{"".join(cells)}</div>'
+        f'  <div class="sum-grid mo-days">{"".join(cells)}</div>'
         f'  {comeback_html}'
         '</div>'
     )
@@ -1649,6 +1648,13 @@ def generate_html_report(
     medal_bronze_cls = _medal_cls(MEDAL_BRONZE)
     medal_silver_cls = _medal_cls(MEDAL_SILVER)
     medal_gold_cls   = _medal_cls(MEDAL_GOLD)
+    # Plain lit/dim class for the unified .sum-tick style (Week hero uses
+    # the same progress-bar component as Year / Month ride pulse).
+    def _sum_cls(th: int) -> str:
+        return "lit" if weekly_stars >= th else "dim"
+    medal_bronze_cls_sum = _sum_cls(MEDAL_BRONZE)
+    medal_silver_cls_sum = _sum_cls(MEDAL_SILVER)
+    medal_gold_cls_sum   = _sum_cls(MEDAL_GOLD)
     # Fractional positions on the track — normalised to 0-1 of the bar.
     bronze_pct = round(MEDAL_BRONZE / MAX_WEEKLY_STARS * 100, 1)
     silver_pct = round(MEDAL_SILVER / MAX_WEEKLY_STARS * 100, 1)
@@ -1823,6 +1829,9 @@ def generate_html_report(
         "MEDAL_BRONZE_CLS":    medal_bronze_cls,
         "MEDAL_SILVER_CLS":    medal_silver_cls,
         "MEDAL_GOLD_CLS":      medal_gold_cls,
+        "MEDAL_BRONZE_CLS_SUM": medal_bronze_cls_sum,
+        "MEDAL_SILVER_CLS_SUM": medal_silver_cls_sum,
+        "MEDAL_GOLD_CLS_SUM":   medal_gold_cls_sum,
         "MEDAL_BRONZE_VAL":    str(MEDAL_BRONZE),
         "MEDAL_SILVER_VAL":    str(MEDAL_SILVER),
         "MEDAL_GOLD_VAL":      str(MEDAL_GOLD),

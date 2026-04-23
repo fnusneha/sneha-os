@@ -1753,9 +1753,22 @@ body {
 .sum-status-sep { color: var(--dim); margin: 0 2px; }
 .sum-status-next strong { color: var(--text); font-family: 'Fraunces', serif; font-size: 14px; font-weight: 600; }
 .sum-status-done { color: var(--mint); font-weight: 600; font-family: 'Fraunces', serif; font-size: 13px; }
-.sum-grid { display: flex; gap: 6px; flex-wrap: wrap; }
+.sum-grid { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
 .sum-grid-weeks .sum-cell { flex: 1 1 0; min-width: 52px; }
 .sum-grid-months .sum-cell { flex: 1 1 0; min-width: 48px; }
+/* Week's 7 day bubbles — same flex row pattern as before. */
+.sum-grid-days {
+  display: flex;
+  gap: 4px;
+  flex-wrap: nowrap;
+}
+.sum-grid-days .wp-day { flex: 1; aspect-ratio: 1; min-width: 0; }
+/* Month's 30-31 day grid — same cells, 7 columns. */
+.sum-grid.mo-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
 .sum-cell {
   padding: 10px 4px 8px;
   background: rgba(255,255,255,0.03);
@@ -2396,40 +2409,36 @@ body.view-year  .month-only { display: none !important; }
 
   <!-- ════════════ WEEK VIEW ════════════ -->
   <div class="week-only">
-    <!-- Big week card: stars · progress · bubbles · comeback -->
-    <div class="card weekly-pulse compact">
-      <div class="wp-eyebrow">
-        <span class="wp-eyebrow-label">This Week</span>
-        <span class="wp-eyebrow-sep">&middot;</span>
-        <span class="wp-eyebrow-range">{{TAB_NAME}}</span>
-      </div>
-      <div class="wp-hero-row compact">
-        <div class="wp-num-block">
-          <div class="wp-stars-num" id="wp-stars-num">{{WEEKLY_STARS}}</div>
-          <div class="wp-stars-sub">/ {{MAX_WEEKLY_STARS}} stars</div>
+    <!-- Week hero — now uses the shared .summary-card / .sum-* layout
+         so Week · Month · Year all share one hero card style. Any
+         visual tweak happens once in CSS and applies to all three. -->
+    <div class="card summary-card">
+      <div class="sum-head">
+        <div class="sum-title-block">
+          <div class="sum-eyebrow">This Week</div>
+          <div class="sum-title">{{TAB_NAME}}</div>
         </div>
-        <div class="wp-season-block">
-          <span class="season-badge-compact" id="season-badge">&#x1F3AB; {{SEASON_MONTH_SHORT}}</span>
+        <div class="sum-hero-block">
+          <div class="sum-hero-num" id="wp-stars-num">{{WEEKLY_STARS}}</div>
+          <div class="sum-hero-unit">/ {{MAX_WEEKLY_STARS}}</div>
         </div>
       </div>
-      <div class="wp-bar-row">
-        <div class="wp-week-track">
-          <div class="wp-week-fill" id="wp-week-fill" style="width:{{XP_PCT}}%;"></div>
-          <div class="{{MEDAL_BRONZE_CLS}}" style="left:{{MEDAL_BRONZE_POS}}%;">
-            <span class="wp-medal-icon">&#x1F949;</span>
-            <span class="wp-medal-val">{{MEDAL_BRONZE_VAL}}</span>
-          </div>
-          <div class="{{MEDAL_SILVER_CLS}}" style="left:{{MEDAL_SILVER_POS}}%;">
-            <span class="wp-medal-icon">&#x1F948;</span>
-            <span class="wp-medal-val">{{MEDAL_SILVER_VAL}}</span>
-          </div>
-          <div class="{{MEDAL_GOLD_CLS}}" style="left:{{MEDAL_GOLD_POS}}%;">
-            <span class="wp-medal-icon">&#x1F947;</span>
-            <span class="wp-medal-val">{{MEDAL_GOLD_VAL}}</span>
-          </div>
+      <div class="sum-bar">
+        <div class="sum-bar-fill" id="wp-week-fill" style="width:{{XP_PCT}}%;"></div>
+        <div class="sum-tick {{MEDAL_BRONZE_CLS_SUM}}" style="left:{{MEDAL_BRONZE_POS}}%;">
+          <span class="sum-tick-ico">&#x1F949;</span>
+          <span class="sum-tick-lbl">{{MEDAL_BRONZE_VAL}}</span>
+        </div>
+        <div class="sum-tick {{MEDAL_SILVER_CLS_SUM}}" style="left:{{MEDAL_SILVER_POS}}%;">
+          <span class="sum-tick-ico">&#x1F948;</span>
+          <span class="sum-tick-lbl">{{MEDAL_SILVER_VAL}}</span>
+        </div>
+        <div class="sum-tick {{MEDAL_GOLD_CLS_SUM}}" style="left:{{MEDAL_GOLD_POS}}%;">
+          <span class="sum-tick-ico">&#x1F947;</span>
+          <span class="sum-tick-lbl">{{MEDAL_GOLD_VAL}}</span>
         </div>
       </div>
-      <div class="wp-days">
+      <div class="sum-grid sum-grid-days">
         {{PULSE_DAYS_HTML}}
       </div>
       {{WEEK_COMEBACK_HTML}}
@@ -2867,7 +2876,9 @@ body.view-year  .month-only { display: none !important; }
     numEl.textContent = updated;
     const barEl = document.getElementById('wp-week-fill');
     if (barEl) barEl.style.width = Math.min(100, Math.round((updated / MAX_WEEKLY_STARS) * 100)) + '%';
-    const markers = document.querySelectorAll('.wp-medal-marker');
+    // Markers migrated from .wp-medal-marker to .sum-tick when the
+    // Week hero adopted the shared .summary-card pattern.
+    const markers = document.querySelectorAll('.week-only .sum-tick');
     MEDAL_THRESHOLDS.forEach((t, i) => {
       if (markers[i]) {
         markers[i].classList.toggle('lit', updated >= t);
