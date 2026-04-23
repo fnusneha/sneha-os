@@ -628,14 +628,21 @@ def _build_morning_ritual(data: dict) -> str:
     )
 
 
-# ── Core Missions (7 items, pre-checked from Postgres rows) ──
+# ── Core 3 (Base · Burn · Recover — rendered as three peer stage cards) ──
 
-def _build_core_missions(data: dict, weekday: int) -> str:
-    """7 core habits — pre-checked from sheet/API data (read-only in the UI).
+def _build_core3(data: dict, weekday: int) -> dict:
+    """Build content for the three Core 3 peer stage cards.
 
-    Hint text is dynamic so the user can see live progress toward the goal
-    (e.g. 'Need 6,591 more · 1,409 / 8,000') without opening the day-details
-    modal — a pull-to-refresh confirms fresh data is flowing.
+    Returns:
+      {
+        "base":    {"items_html": str, "earned": bool, "done_count": int, "total_count": int},
+        "burn":    {...},
+        "recover": {...},
+      }
+
+    Hint text inside each items_html is dynamic so the user sees live
+    progress toward the sub-star ("Need 6,591 more · 1,409 / 8,000")
+    without opening a modal — pull-to-refresh confirms fresh data.
     """
     daily = data["score"].get("daily", {}).get(weekday, {})
 
@@ -701,10 +708,10 @@ def _build_core_missions(data: dict, weekday: int) -> str:
     stretch_hint  = f"Logged: {stretch_v}"  if stretch_v  else "Yoga / mobility needed"
     sauna_hint    = f"Logged: {sauna_v}"    if sauna_v    else "Heat recovery needed"
 
-    # Core Missions is now three sub-stars, each with its own member
-    # habits. Base is "all of" (steps + sleep + calories); Burn and
-    # Recover are "pick one" (strength/cardio, stretch/sauna). A group
-    # header with a ⭐ / ○ indicator shows each sub-star's status.
+    # Core 3 is now three peer stage cards (Base / Burn / Recover) at
+    # the same level as Morning Ritual and Night Ritual — not nested
+    # inside a wrapper. Each group returns its own items-HTML and its
+    # earned flag so the template can render three full .stage cards.
     base_items = [
         ("\U0001f45f",    "8,000 Steps",    steps_hint, steps_done),
         ("\U0001f634",    f"Sleep {SLEEP_STAR_THRESHOLD_DEFAULT:g}h+",
@@ -724,40 +731,35 @@ def _build_core_missions(data: dict, weekday: int) -> str:
     burn_earned = any(item[3] for item in burn_items)
     recover_earned = any(item[3] for item in recover_items)
 
-    def _group(
-        group_key: str,
-        icon: str,
-        name: str,
-        rule: str,
-        earned: bool,
-        items: list,
-        item_offset: int,
-    ) -> str:
-        # Star indicator: filled ⭐ when earned, hollow ☆ otherwise.
-        star_cls = "core-group-star earned" if earned else "core-group-star empty"
-        star_glyph = "\u2B50" if earned else "\u2606"
-        header = (
-            f'<div class="core-group-head">'
-            f'  <span class="core-group-icon">{icon}</span>'
-            f'  <div class="core-group-meta">'
-            f'    <div class="core-group-name">{_esc(name)}</div>'
-            f'    <div class="core-group-rule">{_esc(rule)}</div>'
-            f'  </div>'
-            f'  <span class="{star_cls}">{star_glyph}</span>'
-            f'</div>'
-        )
-        body = "\n".join(
-            _quest_item(f"core-{group_key}", item_offset + i, *item)
+    def _items_html(group_key: str, items: list, offset: int) -> str:
+        return "\n".join(
+            _quest_item(f"core-{group_key}", offset + i, *item)
             for i, item in enumerate(items)
         )
-        return f'<div class="core-group">{header}{body}</div>'
 
-    parts = [
-        _group("base",    "\U0001f3d4\ufe0f", "Base",    "all 3 required", base_earned,    base_items,    0),
-        _group("burn",    "\U0001f525",       "Burn",    "pick one",       burn_earned,    burn_items,    len(base_items)),
-        _group("recover", "\U0001f33f",       "Recover", "pick one",       recover_earned, recover_items, len(base_items) + len(burn_items)),
-    ]
-    return "\n".join(parts)
+    return {
+        "base": {
+            "items_html": _items_html("base", base_items, 0),
+            "earned": base_earned,
+            "done_count": sum(1 for it in base_items if it[3]),
+            "total_count": len(base_items),
+        },
+        "burn": {
+            "items_html": _items_html("burn", burn_items, len(base_items)),
+            "earned": burn_earned,
+            "done_count": sum(1 for it in burn_items if it[3]),
+            "total_count": len(burn_items),
+        },
+        "recover": {
+            "items_html": _items_html(
+                "recover", recover_items,
+                len(base_items) + len(burn_items),
+            ),
+            "earned": recover_earned,
+            "done_count": sum(1 for it in recover_items if it[3]),
+            "total_count": len(recover_items),
+        },
+    }
 
 
 # ── Night Ritual (4 items, no API data — localStorage only) ──────
@@ -804,24 +806,23 @@ def _parse_agenda_items(data: dict) -> list[str]:
     return items
 
 
-def _build_context_card(
+def _build_context_sections(
     data: dict,
     cycle_icon: str,
     cycle_label: str,
     cycle_pill_cls: str,
     coach_line: str,
 ) -> str:
-    """Unified "where am I right now" card.
+    """Return cycle + coach + agenda as HTML fragments meant to be
+    injected inline INSIDE the Weekly Pulse card.
 
-    Surfaces two different timescales of context that both feed into
-    how Sneha should tackle the Daily Quest below:
+    Two sub-sections separated by labelled inline dividers:
 
-        • TODAY     — menstrual cycle phase + one-line coach advice
-        • THIS WEEK — notable Google Calendar events (travel, appts)
+        ─ today ─    🌗 Luteal · Early-Mid · Day 21
+                     steady energy. Normal workouts…
+        ─ agenda ─   SSN update · Lip Blush · Santa Rosa…
 
-    Collapses sections individually: if cycle data is missing the top
-    half hides; if no events this week the bottom half hides; if both
-    are empty the entire card disappears.
+    Any individual section with no data disappears cleanly.
     """
     show_today = bool(coach_line) or bool(cycle_label and cycle_label != "No cycle data yet")
     agenda_items = _parse_agenda_items(data)
@@ -829,10 +830,11 @@ def _build_context_card(
     if not show_today and not agenda_items:
         return ""
 
-    sections: list[str] = []
+    parts: list[str] = []
 
-    if show_today or cycle_label:
-        sections.append(
+    if show_today:
+        parts.append(
+            '<div class="wp-section-label">today</div>'
             '<div class="ctx-today">'
             f'<span class="{cycle_pill_cls}">{cycle_icon} {_esc(cycle_label)}</span>'
             + (f'<div class="ctx-coach">{coach_line}</div>' if coach_line else "")
@@ -840,25 +842,15 @@ def _build_context_card(
         )
 
     if agenda_items:
-        # Inline text-flow with middle-dot separators. When items vary
-        # in length (a 9-char "Lip Blush" next to a 25-char
-        # "Santa Rosa Levi's GranFondo"), chip-per-item leaves awkward
-        # trailing whitespace on short rows. Flowing text packs every
-        # row tight and wraps naturally at word boundaries.
         items_html = '<span class="ctx-sep"> \u00b7 </span>'.join(
             f'<span class="ctx-week-item">{_esc(s)}</span>' for s in agenda_items
         )
-        sections.append(
-            '<div class="ctx-week">'
-            '<div class="ctx-week-head">\U0001f4c5 This Week</div>'
+        parts.append(
+            '<div class="wp-section-label">agenda</div>'
             f'<div class="ctx-week-flow">{items_html}</div>'
-            '</div>'
         )
 
-    divider = '<div class="ctx-divider" aria-hidden="true"></div>'
-    joined = divider.join(sections)
-
-    return f'<div class="context-card">{joined}</div>'
+    return "".join(parts)
 
 
 def _build_coach_line(phase_name: str, last_sleep: float | None) -> str:
@@ -1356,7 +1348,7 @@ def generate_html_report(data: dict) -> str:
     best_day_html       = _build_best_day_html(data, weekday)
     day_details_payload = _build_day_details_payload(data, weekday)
     morning_ritual_html = _build_morning_ritual(data)
-    core_missions_html  = _build_core_missions(data, weekday)
+    core3 = _build_core3(data, weekday)
     night_ritual_html   = _build_night_ritual(data)
     coach_line          = _build_coach_line(phase_name, last_sleep)
     pillars_html        = _build_pillars_html(data)
@@ -1378,8 +1370,11 @@ def generate_html_report(data: dict) -> str:
         cycle_label = "No cycle data yet"
         cycle_pill_cls = "today-ctx-pill empty"
 
-    # One card, two sections: today's phase/coach + this week's events.
-    context_card_html = _build_context_card(
+    # Cycle phase + coach + week agenda — now injected INSIDE the
+    # Weekly Pulse card with an inline "─ today ─ / ─ agenda ─"
+    # divider, so the user has one card of context instead of two
+    # stacked cards that both said "THIS WEEK".
+    context_sections_html = _build_context_sections(
         data, cycle_icon, cycle_label, cycle_pill_cls, coach_line
     )
 
@@ -1400,9 +1395,8 @@ def generate_html_report(data: dict) -> str:
         "SLEEP_EMOJI":         sleep_emoji,
         "SLEEP_LABEL":         sleep_label,
         # Unified "today + this week" context card (replaces the
-        # separate cycle chip inside Daily Quest and the stand-alone
-        # Week Agenda strip).
-        "CONTEXT_CARD_HTML":   context_card_html,
+        # Cycle/coach/agenda now live INSIDE the Weekly Pulse card.
+        "CONTEXT_SECTIONS_HTML": context_sections_html,
         # Today hero — the new top-of-page focus block
         "TODAY_HERO_HTML":     today_hero_html,
         # Weekly Pulse card — 5 stars/day × 7 days = 35 max
@@ -1444,7 +1438,22 @@ def generate_html_report(data: dict) -> str:
         "MEDAL_GOLD_POS":      str(gold_pct),
         # Daily quest stages
         "MORNING_RITUAL_HTML": morning_ritual_html,
-        "CORE_MISSIONS_HTML":  core_missions_html,
+        # Core 3: Base / Burn / Recover rendered as peer stage cards.
+        "BASE_ITEMS_HTML":      core3["base"]["items_html"],
+        "BASE_STAR_CLS":        "earned" if core3["base"]["earned"] else "",
+        "BASE_STAR_GLYPH":      "\u2B50" if core3["base"]["earned"] else "\u2606",
+        "BASE_SUB":             f"Steps · Sleep · Calories · all 3 required",
+        "BASE_STAGE_STATE":     "earned" if core3["base"]["earned"] else "",
+        "BURN_ITEMS_HTML":      core3["burn"]["items_html"],
+        "BURN_STAR_CLS":        "earned" if core3["burn"]["earned"] else "",
+        "BURN_STAR_GLYPH":      "\u2B50" if core3["burn"]["earned"] else "\u2606",
+        "BURN_SUB":             f"Strength or Cardio · pick one",
+        "BURN_STAGE_STATE":     "earned" if core3["burn"]["earned"] else "",
+        "RECOVER_ITEMS_HTML":   core3["recover"]["items_html"],
+        "RECOVER_STAR_CLS":     "earned" if core3["recover"]["earned"] else "",
+        "RECOVER_STAR_GLYPH":   "\u2B50" if core3["recover"]["earned"] else "\u2606",
+        "RECOVER_SUB":          f"Stretch or Sauna · pick one",
+        "RECOVER_STAGE_STATE":  "earned" if core3["recover"]["earned"] else "",
         "NIGHT_RITUAL_HTML":   night_ritual_html,
         # Today's targets
         "TODAY_STEPS":         f"{today_steps:,}",

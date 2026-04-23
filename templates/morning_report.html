@@ -860,6 +860,41 @@ body {
 .quest-section { padding: 0 16px; margin-bottom: 12px; }
 .quest-section .card-title { padding: 0 4px; margin-bottom: 10px; }
 
+/* Lowercase labelled horizontal rule that separates the 5 peer
+   stage cards into two semantic groups:
+     body · core   (Base · Burn · Recover)
+     wind down     (Night Ritual)
+   No card chrome — just a thin line with an inline label. */
+.stage-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 6px 10px;
+  color: var(--dim);
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  font-weight: 500;
+  text-transform: lowercase;
+}
+.stage-divider::before,
+.stage-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg,
+    rgba(255,255,255,0) 0%,
+    rgba(255,255,255,0.08) 50%,
+    rgba(255,255,255,0) 100%);
+}
+
+/* Stage-star filled-gold treatment when its sub-star is earned.
+   Applies to the auto-earned Core 3 cards (Base / Burn / Recover). */
+.stage-star.earned {
+  color: var(--gold);
+  filter: drop-shadow(0 0 5px rgba(245,200,66,0.35));
+}
+
 /* ── Core 3 groups (Base, Burn, Recover) ──
    Each sub-star is a self-contained group card with its own header
    (icon + name + rule + filled/hollow star) and its member items. */
@@ -914,25 +949,41 @@ body {
    Subtle gradient left-lavender → right-gold visually spans the two
    timescales (body-state vs. calendar), but the divider keeps them
    perceptually separate. */
-.context-card {
-  /* Horizontal margin is 0 — the outer `.w` already provides the 20px
-     screen-edge gutter. Stacking margins here would make the card
-     narrower than neighbouring cards. */
-  margin: 0 0 14px;
-  padding: 14px 16px;
-  border-radius: 14px;
-  background: linear-gradient(135deg,
-    rgba(168,139,250,0.08) 0%,
-    rgba(125,211,252,0.04) 55%,
-    rgba(245,200,66,0.05) 100%);
-  border: 1px solid rgba(168,139,250,0.18);
+/* `.context-card` wrapper is retired — cycle/coach/agenda now live
+   inline inside the Weekly Pulse card, delimited by lowercase
+   section labels (below). */
+
+/* Inline section label inside the Weekly Pulse card.
+   Visually "─ today ─ / ─ agenda ─" — tells the eye that the next
+   block is a new semantic group without adding a second card. */
+.wp-section-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0 8px;
+  color: var(--dim);
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  font-weight: 600;
+  text-transform: lowercase;
+}
+.wp-section-label::before,
+.wp-section-label::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg,
+    rgba(255,255,255,0) 0%,
+    rgba(255,255,255,0.08) 50%,
+    rgba(255,255,255,0) 100%);
 }
 
-/* ── Top half: Today's phase + coach line ── */
+/* ── "today" section inside the Week card ── */
 .ctx-today {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 /* Cycle phase chip — the pill format carries the phase name AND day
@@ -976,15 +1027,8 @@ body {
 }
 .ctx-coach strong { color: var(--text); font-weight: 600; }
 
-/* ── Divider between the two halves ── */
-.ctx-divider {
-  height: 1px;
-  margin: 14px -2px;
-  background: linear-gradient(90deg,
-    rgba(255,255,255,0) 0%,
-    rgba(255,255,255,0.10) 50%,
-    rgba(255,255,255,0) 100%);
-}
+/* (.ctx-divider retired — section separation now handled by
+   .wp-section-label which also carries the "today" / "agenda" text) */
 
 /* ── Bottom half: This Week's events ──
    Text-flow rather than chip-cluster: when items vary a lot in length
@@ -1768,14 +1812,15 @@ body {
          upside instead of past misses. -->
     {{WEEK_COMEBACK_HTML}}
     {{BEST_DAY_HTML}}
-  </div>
 
-  <!-- ═══ 2½. CONTEXT CARD ═══
-       One card, two halves: today's cycle phase + coach line at the top,
-       this week's notable calendar events (travel, appointments) at the
-       bottom. Merges what used to be two smaller strips into a single
-       "what do I need to know before tackling the Daily Quest?" block. -->
-  {{CONTEXT_CARD_HTML}}
+    <!-- Inline "today" (cycle + coach) and "agenda" (calendar events)
+         sections. These used to be a separate Context card directly
+         below the Weekly Pulse, but that created two stacked cards
+         both labelled "THIS WEEK" — confusing and crowded. Now all
+         three kinds of week context live inside one card with thin
+         lowercase divider labels between sections. -->
+    {{CONTEXT_SECTIONS_HTML}}
+  </div>
 
   <!-- ═══ 3. DAILY QUEST ═══ -->
   <div class="quest-section">
@@ -1799,39 +1844,74 @@ body {
       </div>
     </div>
 
-    <!-- Core 3 — three auto-earned sub-stars: Base, Burn, Recover.
-         No manual collect because each group lights as soon as its
-         own criteria are met. The header counter shows x/3. -->
-    <div class="stage mint-stage stage-active collapsed" id="stage-core">
-      <div class="stage-header" onclick="toggleStage('stage-core')">
-        <span class="stage-icon">&#x26A1;</span>
+    <!-- ─── body · core ─── -->
+    <div class="stage-divider">body &middot; core</div>
+
+    <!-- Base — steps + sleep + calories (all 3 required) -->
+    <div class="stage mint-stage stage-active collapsed {{BASE_STAGE_STATE}}" id="stage-base">
+      <div class="stage-header" onclick="toggleStage('stage-base')">
+        <span class="stage-icon">&#x1F3D4;&#xFE0F;</span>
         <div class="stage-info">
-          <div class="stage-name">Core 3</div>
-          <div class="stage-sub" id="sub-core">Base &middot; Burn &middot; Recover &middot; 3 auto-stars</div>
+          <div class="stage-name">Base</div>
+          <div class="stage-sub" id="sub-base">{{BASE_SUB}}</div>
         </div>
-        <div class="stage-star" id="star-core">&#x2606;</div>
+        <div class="stage-star {{BASE_STAR_CLS}}" id="star-base">{{BASE_STAR_GLYPH}}</div>
         <span class="stage-chevron">&#x25BC;</span>
       </div>
-      <div class="stage-summary" id="summary-core"></div>
       <div class="stage-body">
-        {{CORE_MISSIONS_HTML}}
-
-        <!-- Manual toggle for sauna/steam (not auto-tracked anywhere).
-             Counts toward the Recover sub-star. -->
-        <div class="manual-log-card">
-          <div class="manual-log-head">
-            <span class="manual-log-title">Log manual</span>
-            <span class="manual-log-hint">Tap to toggle today</span>
-          </div>
-          <button type="button" class="manual-toggle {{SAUNA_CLS}}" id="toggle-sauna"
-                  onclick="toggleManual('sauna', this)">
-            <span class="manual-ico">&#x2668;&#xfe0f;</span>
-            <span class="manual-label">Sauna / Steam</span>
-            <span class="manual-state" id="sauna-state">{{SAUNA_STATE_TEXT}}</span>
-          </button>
-        </div>
+        {{BASE_ITEMS_HTML}}
       </div>
     </div>
+
+    <!-- Burn — strength OR cardio (pick one) -->
+    <div class="stage mint-stage stage-active collapsed {{BURN_STAGE_STATE}}" id="stage-burn">
+      <div class="stage-header" onclick="toggleStage('stage-burn')">
+        <span class="stage-icon">&#x1F525;</span>
+        <div class="stage-info">
+          <div class="stage-name">Burn</div>
+          <div class="stage-sub" id="sub-burn">{{BURN_SUB}}</div>
+        </div>
+        <div class="stage-star {{BURN_STAR_CLS}}" id="star-burn">{{BURN_STAR_GLYPH}}</div>
+        <span class="stage-chevron">&#x25BC;</span>
+      </div>
+      <div class="stage-body">
+        {{BURN_ITEMS_HTML}}
+      </div>
+    </div>
+
+    <!-- Recover — stretch OR sauna / steam (pick one) -->
+    <div class="stage mint-stage stage-active collapsed {{RECOVER_STAGE_STATE}}" id="stage-recover">
+      <div class="stage-header" onclick="toggleStage('stage-recover')">
+        <span class="stage-icon">&#x1F33F;</span>
+        <div class="stage-info">
+          <div class="stage-name">Recover</div>
+          <div class="stage-sub" id="sub-recover">{{RECOVER_SUB}}</div>
+        </div>
+        <div class="stage-star {{RECOVER_STAR_CLS}}" id="star-recover">{{RECOVER_STAR_GLYPH}}</div>
+        <span class="stage-chevron">&#x25BC;</span>
+      </div>
+      <div class="stage-body">
+        {{RECOVER_ITEMS_HTML}}
+      </div>
+    </div>
+
+    <!-- Log manual — sauna/steam isn't auto-tracked anywhere else,
+         stays as a one-tap toggle. Counts toward the Recover card. -->
+    <div class="manual-log-card">
+      <div class="manual-log-head">
+        <span class="manual-log-title">Log manual</span>
+        <span class="manual-log-hint">Tap to toggle today</span>
+      </div>
+      <button type="button" class="manual-toggle {{SAUNA_CLS}}" id="toggle-sauna"
+              onclick="toggleManual('sauna', this)">
+        <span class="manual-ico">&#x2668;&#xfe0f;</span>
+        <span class="manual-label">Sauna / Steam</span>
+        <span class="manual-state" id="sauna-state">{{SAUNA_STATE_TEXT}}</span>
+      </button>
+    </div>
+
+    <!-- ─── wind down ─── -->
+    <div class="stage-divider">wind down</div>
 
     <!-- Night Ritual (collapsed by default) -->
     <div class="stage violet-stage stage-active collapsed" id="stage-night">
@@ -2189,17 +2269,15 @@ body {
   }
 
   // ── Collect buttons + star indicators ──
-  const CORE_THRESHOLD = 4; // 4 of 7 items needed for core star
+  // Morning + Night are the only manually-collected stages. Base /
+  // Burn / Recover auto-light from server data — no collect needed.
   function updateCollectButtons() {
-    ['morning','core','night'].forEach(stage => {
+    ['morning','night'].forEach(stage => {
       const stageEl = document.getElementById('stage-' + stage);
       if (!stageEl) return;
       const items = stageEl.querySelectorAll('.q-item');
       const doneCount = Array.from(items).filter(i => i.classList.contains('done')).length;
-      // Morning/Night: all items needed. Core: 4 of 7 needed.
-      const ready = (stage === 'core')
-        ? doneCount >= CORE_THRESHOLD
-        : (items.length > 0 && doneCount === items.length);
+      const ready = items.length > 0 && doneCount === items.length;
       const btn = document.getElementById('collect-' + stage);
       const starEl = document.getElementById('star-' + stage);
       if (btn && !btn.classList.contains('collected')) {
@@ -2219,17 +2297,20 @@ body {
   }
 
   // ── Weekly Pulse updater ──
+  // Bumps the weekly stars count + progress bar + medal markers on
+  // optimistic collect. 5 stars/day × 7 = 35 weekly max; medal tiers
+  // at 21 / 28 / 33 (bronze / silver / gold).
+  const MAX_WEEKLY_STARS = 35;
+  const MEDAL_THRESHOLDS = [21, 28, 33];
   function updateWeeklyPulse(delta) {
     const numEl = document.getElementById('wp-stars-num');
     if (!numEl) return;
     const updated = (parseInt(numEl.textContent) || 0) + delta;
     numEl.textContent = updated;
-    // Update progress bar
     const barEl = document.getElementById('wp-week-fill');
-    if (barEl) barEl.style.width = Math.min(100, Math.round((updated / 21) * 100)) + '%';
-    // Update medal markers
+    if (barEl) barEl.style.width = Math.min(100, Math.round((updated / MAX_WEEKLY_STARS) * 100)) + '%';
     const markers = document.querySelectorAll('.wp-medal-marker');
-    [14, 21].forEach((t, i) => {
+    MEDAL_THRESHOLDS.forEach((t, i) => {
       if (markers[i]) {
         markers[i].classList.toggle('lit', updated >= t);
         markers[i].classList.toggle('dim', updated < t);
@@ -2291,26 +2372,15 @@ body {
       btn.classList.add('collected');
       btn.textContent = '\u2B50 Collected!';
 
-      // Morning/Night: POST to server + fill slot. Core: check threshold.
+      // Only morning + night are manually collected. Base/Burn/Recover
+      // auto-earn from server data and never hit this path.
       const todayDate = localDateISO();
       if (stage === 'morning' || stage === 'night') {
         fillSlot('slot-' + stage);
         updateWeeklyPulse(1);
         updateTodayBubble();
         postCollect(stage, todayDate).catch(err => {
-          showError('Star NOT saved to sheet (' + err.message + '). Refresh and retry.');
-        });
-      } else if (stage === 'core') {
-        const coreEl = document.getElementById('stage-core');
-        const items = coreEl ? coreEl.querySelectorAll('.q-item') : [];
-        const doneCount = Array.from(items).filter(i => i.classList.contains('done')).length;
-        if (doneCount >= CORE_THRESHOLD) {
-          fillSlot('slot-core');
-          updateWeeklyPulse(1);
-          updateTodayBubble();
-        }
-        postCollect('core', todayDate).catch(err => {
-          showError('Core total NOT saved (' + err.message + '). Refresh and retry.');
+          showError('Star NOT saved (' + err.message + '). Refresh and retry.');
         });
       }
 
