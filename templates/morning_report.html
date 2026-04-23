@@ -185,8 +185,214 @@ body {
 .pill-sleep { background:rgba(110,231,183,0.1); border:1px solid rgba(110,231,183,0.2); color:var(--mint); }
 .pill-cycle { background:rgba(125,211,252,0.1); border:1px solid rgba(125,211,252,0.2); color:var(--sky); }
 
-/* ── 2. WEEKLY PULSE CARD ── */
+/* ══════ 2. TODAY HERO ═══════════════════════════════════════════
+   The highest-visual-weight card on the page. Gold border + glow so
+   the eye goes here first every morning. Stars are big, nudge is
+   forward-looking, never shames past misses. */
+.today-hero {
+  margin: 0 0 14px;
+  padding: 18px 18px 16px;
+  border-radius: 18px;
+  background: linear-gradient(160deg,
+    rgba(245,200,66,0.08) 0%,
+    rgba(255,255,255,0.02) 60%);
+  border: 1.5px solid rgba(245,200,66,0.32);
+  box-shadow: 0 0 22px rgba(245,200,66,0.12);
+}
+.today-hero .hero-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.today-hero .hero-today-lbl { color: var(--gold); font-weight: 700; }
+.today-hero .hero-date { color: var(--muted); font-weight: 600; }
+/* 5 big star glyphs */
+.hero-stars {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.hero-star {
+  font-size: 28px;
+  line-height: 1;
+  transition: all 0.3s;
+}
+.hero-star.lit {
+  color: var(--gold);
+  text-shadow: 0 0 12px rgba(245,200,66,0.45);
+}
+.hero-star.dim {
+  color: var(--dim);
+  opacity: 0.35;
+}
+/* Big "X of Y" numeric callout */
+.hero-count-wrap {
+  text-align: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.hero-count-num {
+  font-size: 44px;
+  color: var(--gold);
+}
+.hero-count-of {
+  font-size: 18px;
+  color: var(--muted);
+  font-style: italic;
+  margin-left: 4px;
+}
+.hero-caption {
+  text-align: center;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 14px;
+}
+/* 5-stage strip: Morning · Base · Burn · Recover · Night */
+.hero-stages {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+  margin-bottom: 14px;
+  padding: 10px 6px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.05);
+}
+.hero-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 2px;
+  border-radius: 8px;
+  transition: all 0.3s;
+}
+.hero-stage-ico { font-size: 18px; line-height: 1; }
+.hero-stage-name {
+  font-family: 'DM Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+}
+.hero-stage-check {
+  font-size: 10px;
+  line-height: 1;
+}
+.hero-stage.done .hero-stage-name  { color: var(--mint); }
+.hero-stage.done .hero-stage-check { color: var(--mint); font-weight: 700; }
+.hero-stage.pending .hero-stage-ico { filter: grayscale(0.7); opacity: 0.45; }
+.hero-stage.pending .hero-stage-name  { color: var(--dim); }
+.hero-stage.pending .hero-stage-check { color: var(--dim); opacity: 0.5; }
+/* Forward-looking nudge bubble */
+.hero-nudge {
+  padding: 10px 14px;
+  border-radius: 10px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--mint);
+  background: rgba(110,231,183,0.08);
+  border: 1px solid rgba(110,231,183,0.22);
+  font-family: 'DM Mono', monospace;
+  letter-spacing: 0.02em;
+}
+.hero-nudge strong {
+  font-family: 'Fraunces', serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--gold);
+  margin-right: 4px;
+}
+.hero-nudge.perfect {
+  color: var(--gold);
+  background: linear-gradient(90deg, rgba(245,200,66,0.18), rgba(110,231,183,0.12));
+  border-color: rgba(245,200,66,0.3);
+  font-weight: 600;
+}
+.hero-nudge.start {
+  color: var(--muted);
+  background: rgba(255,255,255,0.03);
+  border-color: rgba(255,255,255,0.08);
+}
+
+/* Section divider that signals the "today → week" context-switch. */
+.section-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 18px 4px 12px;
+  color: var(--dim);
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.section-divider::before,
+.section-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg,
+    rgba(255,255,255,0) 0%,
+    rgba(255,255,255,0.08) 50%,
+    rgba(255,255,255,0) 100%);
+}
+
+/* Forward-looking "X stars possible from here" line. Sits at the
+   bottom of the compressed week card, always reframes remaining
+   days as upside. "earned" variant = end-of-week recap. */
+.wp-comeback {
+  margin: 10px 0 0;
+  padding: 9px 12px;
+  border-radius: 10px;
+  font-size: 11.5px;
+  font-family: 'DM Mono', monospace;
+  color: var(--muted);
+  background: rgba(110,231,183,0.06);
+  border-left: 2px solid rgba(110,231,183,0.4);
+}
+.wp-comeback strong {
+  font-family: 'Fraunces', serif;
+  font-size: 14px;
+  color: var(--mint);
+  margin-right: 2px;
+}
+.wp-comeback.soft {
+  color: var(--muted);
+  background: rgba(255,255,255,0.02);
+  border-left-color: rgba(255,255,255,0.1);
+}
+.wp-comeback.soft strong { color: var(--text); }
+.wp-comeback.earned {
+  color: var(--gold);
+  background: linear-gradient(90deg, rgba(245,200,66,0.12), rgba(245,200,66,0.04));
+  border-left-color: var(--gold);
+}
+.wp-comeback.earned strong { color: var(--gold); }
+
+/* ── 2½. COMPRESSED WEEKLY PULSE (now secondary context) ── */
 .weekly-pulse { padding: 14px 16px; }
+.weekly-pulse.compact .wp-hero-row.compact {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.weekly-pulse.compact .wp-stars-num { font-size: 30px; }
+.weekly-pulse.compact .wp-stars-sub { font-size: 9px; }
 
 /* Eyebrow — matches the Atlas sum-eyebrow pattern for visual consistency */
 .wp-eyebrow {
@@ -329,40 +535,63 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 2px;
   transition: all 0.3s;
 }
 .wp-day-num {
   font-family: 'Fraunces', serif;
-  font-size: 14px;
-  font-weight: 400;
+  font-size: 16px;
+  font-weight: 500;
   line-height: 1;
+}
+.wp-day-date {
+  font-size: 9px;
+  color: var(--dim);
+  font-family: 'DM Mono', monospace;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  margin-top: 2px;
 }
 .wp-day-lbl {
   font-size: 8px;
   color: var(--dim);
+  font-family: 'DM Mono', monospace;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
 }
 .wp-day.has-stars {
   background: rgba(110,231,183,0.12);
   border: 1px solid rgba(110,231,183,0.25);
 }
 .wp-day.has-stars .wp-day-num { color: var(--mint); }
+.wp-day.has-stars .wp-day-date { color: var(--mint); opacity: 0.7; }
 .wp-day.zero-stars {
   background: rgba(251,113,133,0.08);
   border: 1px solid rgba(251,113,133,0.15);
 }
 .wp-day.zero-stars .wp-day-num { color: var(--coral); }
+.wp-day.zero-stars .wp-day-date { color: var(--coral); opacity: 0.7; }
+/* Today gets a bright gold ring and glow — highest visual priority in
+   the week row. User can always find "what day is it" at a glance. */
 .wp-day.is-today {
-  border: 1.5px solid var(--mint);
-  background: rgba(110,231,183,0.08);
+  border: 2px solid var(--gold);
+  background: rgba(245,200,66,0.10);
+  box-shadow: 0 0 10px rgba(245,200,66,0.22);
 }
 .wp-day.is-today .wp-day-num { color: var(--gold); }
-.wp-day.is-today .wp-day-lbl { color: var(--mint); }
+.wp-day.is-today .wp-day-date { color: var(--gold); opacity: 0.85; }
+.wp-day.is-today .wp-day-lbl { color: var(--gold); opacity: 0.8; }
 .wp-day.is-future {
   background: rgba(255,255,255,0.02);
   border: 1px dashed rgba(255,255,255,0.07);
+}
+.wp-day.is-future .wp-day-date { opacity: 0.3; }
+.wp-day.is-future::before {
+  content: "\2014"; /* em-dash as the "nothing yet" placeholder */
+  color: var(--dim);
+  font-family: 'Fraunces', serif;
+  font-size: 14px;
+  opacity: 0.4;
 }
 /* Winning day this week — subtle gold glow + tiny trophy above the
    number. Chosen by html_report._pick_best_day (most stars, tiebreak
@@ -1481,37 +1710,39 @@ body {
     <span class="sync-hint">tap to pull new data</span>
   </div>
 
-  <!-- ═══ 2. WEEKLY PULSE ═══ -->
-  <div class="card weekly-pulse">
-    <!-- Eyebrow gives the card a clear identity matching the Atlas pattern
-         ("This Month" / "This Year"). Shows the actual week range so
-         you know WHICH week you're looking at. -->
+  <!-- ═══ 2. TODAY HERO ═══
+       The main focus of the page. Bigger visual weight than the
+       week below. 5 big stars (lit/dim), big "X of 5" numeral, the
+       5-stage strip with mint ✓ for done / dim ○ for pending, and a
+       forward-looking nudge. Never shames. -->
+  {{TODAY_HERO_HTML}}
+
+  <!-- Divider that signals the context-switch from "today" to "week". -->
+  <div class="section-divider"><span>The Bigger Picture</span></div>
+
+  <!-- ═══ 2½. WEEK — compressed ═══
+       Secondary context now. Stars count + "X to go for next medal",
+       progress bar with 3 medal thresholds labelled, day bubbles with
+       dates under labels, and the comeback line at the bottom that
+       reframes remaining days as upside ("20 possible from here"). -->
+  <div class="card weekly-pulse compact">
     <div class="wp-eyebrow">
       <span class="wp-eyebrow-label">This Week</span>
       <span class="wp-eyebrow-sep">&middot;</span>
       <span class="wp-eyebrow-range">{{TAB_NAME}}</span>
     </div>
-    <!-- Row 1: Stars count + today slots + season badge.
-         5 slots for the 5 possible daily stars: Morning, Base (🏔),
-         Burn (🔥), Recover (🌿), Night. Slot icon = earned state. -->
-    <div class="wp-hero-row">
+    <!-- Big stars total + season badge (slots moved to the Today Hero) -->
+    <div class="wp-hero-row compact">
       <div class="wp-num-block">
         <div class="wp-stars-num" id="wp-stars-num">{{WEEKLY_STARS}}</div>
-        <div class="wp-stars-sub">/ {{MAX_WEEKLY_STARS}} stars<br>this week</div>
-      </div>
-      <div class="wp-slots">
-        <div class="wp-slot {{TODAY_MORNING_CLS}}" id="slot-morning" title="Morning ritual">&#x2600;&#xFE0F;</div>
-        <div class="wp-slot {{TODAY_BASE_CLS}}"    id="slot-base"    title="Base: steps + sleep + calories">&#x1F3D4;&#xFE0F;</div>
-        <div class="wp-slot {{TODAY_BURN_CLS}}"    id="slot-burn"    title="Burn: strength or cardio">&#x1F525;</div>
-        <div class="wp-slot {{TODAY_RECOVER_CLS}}" id="slot-recover" title="Recover: stretch or sauna">&#x1F33F;</div>
-        <div class="wp-slot {{TODAY_NIGHT_CLS}}"   id="slot-night"   title="Night ritual">&#x1F319;</div>
+        <div class="wp-stars-sub">/ {{MAX_WEEKLY_STARS}} stars</div>
       </div>
       <div class="wp-season-block">
         <span class="season-badge-compact" id="season-badge">&#x1F3AB; {{SEASON_MONTH_SHORT}}</span>
       </div>
     </div>
-    <!-- Row 2: Progress bar with 3 medal tiers, each labelled with
-         the star count needed to earn it. -->
+    <!-- Progress bar with 3 medal tiers, each labelled with the
+         star count needed to earn it. -->
     <div class="wp-bar-row">
       <div class="wp-week-track">
         <div class="wp-week-fill" id="wp-week-fill" style="width:{{XP_PCT}}%;"></div>
@@ -1529,11 +1760,13 @@ body {
         </div>
       </div>
     </div>
-    <!-- Row 3: Day bubbles -->
+    <!-- 7 day bubbles with date numbers under day labels -->
     <div class="wp-days">
       {{PULSE_DAYS_HTML}}
     </div>
-    <!-- Row 4: Best day this week (single line, collapses when empty) -->
+    <!-- Forward-looking comeback line: reframes remaining days as
+         upside instead of past misses. -->
+    {{WEEK_COMEBACK_HTML}}
     {{BEST_DAY_HTML}}
   </div>
 

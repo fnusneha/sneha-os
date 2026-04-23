@@ -109,8 +109,13 @@ def _quest_item(stage: str, index: int, icon: str, name: str,
         hint:  short description.
         done:  whether pre-checked from sheet data.
     """
-    if stage == "core":
-        # Core items are read-only status indicators (no checkbox, no click)
+    # Any stage starting with "core" is a read-only status indicator
+    # (stages: "core", "core-base", "core-burn", "core-recover"). The
+    # data is fully driven by Oura/Garmin/Strava/manual-sauna — the UI
+    # doesn't let you flip these because flipping would just get
+    # overwritten on next sync. Only the morning/night ritual items
+    # and the sauna toggle are interactive.
+    if stage.startswith("core"):
         status = '\u2705' if done else '\u25CB'  # ✅ or ○
         done_cls = " core-done" if done else " core-pending"
         return (
@@ -412,18 +417,167 @@ def _build_best_day_html(data: dict, weekday: int) -> str:
     return ""
 
 
+def _build_today_hero(
+    data: dict,
+    weekday: int,
+    stars_today: int,
+    morning_done: bool,
+    base_done: bool,
+    burn_done: bool,
+    recover_done: bool,
+    night_done: bool,
+) -> str:
+    """Today-is-the-hero card — sits at the very top of Quest Hub.
+
+    Layout (top → bottom):
+      1. Eyebrow:  "TODAY   WED APR 22"
+      2. 5 big ★ icons, lit/dim according to earned count
+      3. Huge "2 of 5" numeral + "STARS EARNED · 3 TO GO" caption
+      4. 5-stage strip: Morning · Base · Burn · Recover · Night,
+         each with icon + name + ✓/○ indicator (mint when done)
+      5. Forward-looking nudge: "3 more for a Perfect Day ✨"
+    """
+    today = data["today"]
+    date_str = today.strftime("%a %b %d").upper()
+    to_go = max(0, MAX_DAILY_STARS - stars_today)
+
+    # 5 star glyphs: filled for earned, hollow for pending.
+    stars_html = "".join(
+        f'<span class="hero-star {"lit" if i < stars_today else "dim"}">\u2605</span>'
+        for i in range(MAX_DAILY_STARS)
+    )
+
+    # 5-stage strip. "done" stages glow mint; "pending" stays dim.
+    stages = [
+        ("\u2600\ufe0f",           "Morning", morning_done),
+        ("\U0001f3d4\ufe0f",       "Base",    base_done),
+        ("\U0001f525",             "Burn",    burn_done),
+        ("\U0001f33f",             "Recover", recover_done),
+        ("\U0001f319",             "Night",   night_done),
+    ]
+    stage_cells = []
+    for icon, name, done in stages:
+        cls = "hero-stage done" if done else "hero-stage pending"
+        check = "\u2713" if done else "\u25cb"
+        stage_cells.append(
+            f'<div class="{cls}">'
+            f'  <div class="hero-stage-ico">{icon}</div>'
+            f'  <div class="hero-stage-name">{name.upper()}</div>'
+            f'  <div class="hero-stage-check">{check}</div>'
+            f'</div>'
+        )
+
+    # Forward-looking nudge — never shames. Three states:
+    if stars_today >= MAX_DAILY_STARS:
+        nudge = '<div class="hero-nudge perfect">\u2728 Perfect Day. You hit every star \U0001f31f</div>'
+    elif stars_today == 0:
+        nudge = (
+            '<div class="hero-nudge start">'
+            f'  <strong>{MAX_DAILY_STARS}</strong> stars to earn today '
+            '\u2728</div>'
+        )
+    else:
+        nudge = (
+            '<div class="hero-nudge">'
+            f'  <strong>{to_go}</strong> more for a Perfect Day \u2728'
+            '</div>'
+        )
+
+    return (
+        '<div class="today-hero">'
+        '  <div class="hero-top">'
+        '    <span class="hero-today-lbl">Today</span>'
+        f'    <span class="hero-date">{date_str}</span>'
+        '  </div>'
+        f'  <div class="hero-stars">{stars_html}</div>'
+        '  <div class="hero-count-wrap">'
+        f'    <span class="hero-count-num">{stars_today}</span>'
+        f'    <span class="hero-count-of">of {MAX_DAILY_STARS}</span>'
+        '  </div>'
+        f'  <div class="hero-caption">Stars earned \u00b7 {to_go} to go</div>'
+        f'  <div class="hero-stages">{"".join(stage_cells)}</div>'
+        f'  {nudge}'
+        '</div>'
+    )
+
+
+# Medal icons for the comeback line / hero nudges.
+_MEDAL_ICONS = {
+    "bronze": "\U0001f949",
+    "silver": "\U0001f948",
+    "gold":   "\U0001f947",
+}
+
+
+def _build_comeback_line(weekly_stars: int, weekday: int) -> str:
+    """Forward-looking "you can still reach X" line.
+
+    Apple-Watch-style psychology: always frame the remaining week as
+    *possible upside*, never as *past miss*. Picks the highest medal
+    tier that's still mathematically reachable given remaining days.
+    """
+    days_done = weekday + 1
+    days_left = 7 - days_done
+    if days_left <= 0:
+        # End of week — recap instead of nudge.
+        if weekly_stars >= MEDAL_GOLD:
+            return f'<div class="wp-comeback earned">{_MEDAL_ICONS["gold"]} Gold week — {weekly_stars}/{MAX_WEEKLY_STARS} stars</div>'
+        if weekly_stars >= MEDAL_SILVER:
+            return f'<div class="wp-comeback earned">{_MEDAL_ICONS["silver"]} Silver week — {weekly_stars}/{MAX_WEEKLY_STARS} stars</div>'
+        if weekly_stars >= MEDAL_BRONZE:
+            return f'<div class="wp-comeback earned">{_MEDAL_ICONS["bronze"]} Bronze week — {weekly_stars}/{MAX_WEEKLY_STARS} stars</div>'
+        return f'<div class="wp-comeback">Week wrapped — {weekly_stars}/{MAX_WEEKLY_STARS} stars</div>'
+
+    max_remaining = days_left * MAX_DAILY_STARS
+    max_total = weekly_stars + max_remaining
+
+    # Find the highest tier still reachable.
+    if max_total >= MEDAL_GOLD:
+        target = ("gold", MEDAL_GOLD)
+    elif max_total >= MEDAL_SILVER:
+        target = ("silver", MEDAL_SILVER)
+    elif max_total >= MEDAL_BRONZE:
+        target = ("bronze", MEDAL_BRONZE)
+    else:
+        # No medal possible. Still frame forward.
+        return (
+            '<div class="wp-comeback soft">'
+            f'<strong>{max_remaining}</strong> stars possible from here \u00b7 '
+            f'{days_left} days \u00d7 {MAX_DAILY_STARS}'
+            '</div>'
+        )
+
+    tier_key, _tier_val = target
+    medal = _MEDAL_ICONS[tier_key]
+    return (
+        '<div class="wp-comeback">'
+        f'<strong>{max_remaining}</strong> stars possible from here \u00b7 '
+        f'{days_left} days \u00d7 {MAX_DAILY_STARS} \u2014 still on track for {medal}'
+        '</div>'
+    )
+
+
 def _build_pulse_days(data: dict, weekday: int, best_wd: int | None = None) -> str:
     """Build the 7-day bubble strip for the Weekly Pulse card.
 
-    Past/today bubbles are clickable → open a modal with that day's breakdown.
-    Future bubbles are faded and inert. `best_wd`, if provided, gets an
-    extra ``is-best`` class so the winning day glows subtly.
+    Each bubble shows: stars earned · day label · date number.
+    Colour states:
+      • Today        — gold ring + glow
+      • Past, stars  — mint
+      • Past, zero   — coral (miss)
+      • Future       — dashed outline, dim
+    Past / today bubbles open the day-details modal on tap.
     """
+    from datetime import timedelta
+    today = data.get("today") or local_today()
+    monday = today - timedelta(days=today.weekday())
+
     bubbles = []
     for wd in range(7):
         is_today = (wd == weekday)
         is_future = (wd > weekday)
         day_stars = 0 if is_future else _compute_day_stars(data, wd)
+        date_num = (monday + timedelta(days=wd)).day
 
         classes = ["wp-day"]
         if is_future:
@@ -444,10 +598,15 @@ def _build_pulse_days(data: dict, weekday: int, best_wd: int | None = None) -> s
 
         cls = " ".join(classes)
         data_attr = f' data-wd="{wd}" onclick="showDayDetails({wd})" tabindex="0"' if not is_future else ""
+        # Label block: date number above day abbreviation.
+        date_block = (
+            f'<span class="wp-day-date">{date_num}</span>'
+            f'<span class="wp-day-lbl">{DAY_LABELS[wd]}</span>'
+        )
         bubbles.append(
             f'<div class="{cls}"{data_attr}>'
             f'{num_html}'
-            f'<span class="wp-day-lbl">{DAY_LABELS[wd]}</span>'
+            f'{date_block}'
             f'</div>'
         )
     return "".join(bubbles)
@@ -1180,6 +1339,19 @@ def generate_html_report(data: dict) -> str:
     # ── Build all HTML sections ────────────────────────────────
     best = _pick_best_day(data, weekday)
     best_wd_for_pulse = best[0] if best else None
+
+    # Today's hero: sits up top, stars-per-slot + forward-looking nudge.
+    stars_today = (
+        int(today_morning_earned) + int(today_base_earned) + int(today_burn_earned)
+        + int(today_recover_earned) + int(today_night_earned)
+    )
+    today_hero_html = _build_today_hero(
+        data, weekday, stars_today,
+        today_morning_earned, today_base_earned, today_burn_earned,
+        today_recover_earned, today_night_earned,
+    )
+    comeback_html = _build_comeback_line(weekly_stars, weekday)
+
     pulse_days_html     = _build_pulse_days(data, weekday, best_wd=best_wd_for_pulse)
     best_day_html       = _build_best_day_html(data, weekday)
     day_details_payload = _build_day_details_payload(data, weekday)
@@ -1231,9 +1403,12 @@ def generate_html_report(data: dict) -> str:
         # separate cycle chip inside Daily Quest and the stand-alone
         # Week Agenda strip).
         "CONTEXT_CARD_HTML":   context_card_html,
+        # Today hero — the new top-of-page focus block
+        "TODAY_HERO_HTML":     today_hero_html,
         # Weekly Pulse card — 5 stars/day × 7 days = 35 max
         "WEEKLY_STARS":        str(weekly_stars),
         "MAX_WEEKLY_STARS":    str(MAX_WEEKLY_STARS),
+        "WEEK_COMEBACK_HTML":  comeback_html,
         "BEST_DAY_HTML":       best_day_html,
         "PULSE_DAYS_HTML":     pulse_days_html,
         "DAY_DETAILS_JSON":    json.dumps(day_details_payload, ensure_ascii=False),
