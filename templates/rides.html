@@ -1429,11 +1429,11 @@ body {
   <a href="/rides"     class="tab active">&#x1F6B4; Atlas</a>
 </div>
 
-<!-- MONTHLY PULSE (mirrors Weekly Pulse) -->
-{{MONTHLY_PULSE_HTML}}
-
-<!-- YEAR AT A GLANCE -->
-{{YEARLY_WIDGET_HTML}}
+<!-- NOTE: Monthly Pulse (rides) moved to /month (Month tab).
+     NOTE: "Year at a Glance" moved to /year (Year tab).
+     NOTE: California map + Upcoming Rides moved to /year (Year tab).
+     What lives on /rides now: year-over-year breakdown, lifetime
+     stats, crowning ride, and region deep-dives. -->
 
 <!-- YEAR-OVER-YEAR PROGRESS -->
 {{YEAR_OVER_YEAR_HTML}}
@@ -1461,15 +1461,6 @@ body {
 <!-- CROWNING ACHIEVEMENT -->
 <div class="section-label">Crowning Achievement</div>
 {{CROWN_HTML}}
-
-<!-- CALIFORNIA COVERAGE MAP -->
-{{CA_COVERAGE_HTML}}
-
-<!-- UPCOMING RIDES (from Travel Master Planner sheet) — flows naturally after the map since both are about planned/upcoming trips -->
-<div class="section-label">Upcoming Rides</div>
-<div class="card">
-  {{UPCOMING_RIDES_HTML}}
-</div>
 
 <!-- ROUTE CARDS GROUPED BY REGION -->
 {{REGIONS_HTML}}

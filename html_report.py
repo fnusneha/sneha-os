@@ -1770,6 +1770,15 @@ def generate_html_report(
         "TAB_YEAR_CLS":        tab_year_cls,
         # Atlas moved to a hero-bar side link — no main-tab class needed.
         "CA_COVERAGE_HTML":    ca_coverage_html,
+        # Ride-data cards stashed on `data` by the /month and /year
+        # routes so they're optional — empty strings render nothing.
+        "MONTHLY_PULSE_HTML":  data.get("_monthly_pulse_html", ""),
+        "YEARLY_WIDGET_HTML":  data.get("_yearly_widget_html", ""),
+        "UPCOMING_RIDES_HTML": data.get("_upcoming_rides_html", ""),
+        # Current year for tab titles. The Roadmap card title reads
+        # "Roadmap · 2026" but the PINS_HTML payload still renders
+        # 2026 + 2027 headers inside the timeline.
+        "CURRENT_YEAR":        str(today.year),
         # Hero bar
         "SLEEP_EMOJI":         sleep_emoji,
         "SLEEP_LABEL":         sleep_label,

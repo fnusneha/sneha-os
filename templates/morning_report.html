@@ -1677,6 +1677,142 @@ body {
   color: var(--muted);
 }
 
+/* ═══ Summary card (used by "This Year" widget on the Year tab) ═══
+   Ported from rides.html — same 3-zone layout as the Atlas's
+   monthly/yearly widgets so Year tab feels like the same app. */
+.summary-card { padding: 18px 18px 16px; }
+.sum-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  margin-bottom: 4px;
+}
+.sum-title-block { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sum-eyebrow {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px; font-weight: 500; color: var(--dim);
+  letter-spacing: 0.14em; text-transform: uppercase;
+}
+.sum-title {
+  font-family: 'Fraunces', serif;
+  font-size: 24px; font-weight: 500; color: var(--text);
+  line-height: 1.1; letter-spacing: -0.01em;
+}
+.sum-hero-block { display: flex; align-items: baseline; gap: 4px; flex-shrink: 0; }
+.sum-hero-num {
+  font-family: 'Fraunces', serif;
+  font-size: 44px; font-weight: 500; color: var(--gold);
+  line-height: 1; letter-spacing: -0.02em;
+}
+.sum-hero-unit {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px; color: var(--muted); letter-spacing: 0.05em;
+}
+.sum-stats {
+  font-size: 11px; color: var(--muted); margin-bottom: 18px;
+  font-family: 'DM Mono', monospace; letter-spacing: 0.02em;
+}
+.sum-stats strong {
+  color: var(--text); font-family: 'Fraunces', serif;
+  font-size: 13px; font-weight: 600;
+}
+.sum-progress { margin: 6px 0 16px; }
+.sum-bar {
+  position: relative; height: 4px;
+  background: rgba(255,255,255,0.06); border-radius: 3px;
+  margin: 16px 0 30px; overflow: visible;
+}
+.sum-bar-fill {
+  height: 100%; border-radius: 3px;
+  background: linear-gradient(90deg, var(--sky), var(--mint));
+  box-shadow: 0 0 6px rgba(110,231,183,0.2);
+  transition: width 0.6s ease;
+}
+.sum-tick {
+  position: absolute; top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex; flex-direction: column; align-items: center;
+  line-height: 1;
+}
+.sum-tick-ico { font-size: 15px; margin-bottom: 14px; transition: filter 0.3s; }
+.sum-tick.dim  .sum-tick-ico { filter: grayscale(0.9) opacity(0.55); }
+.sum-tick.lit  .sum-tick-ico { filter: drop-shadow(0 0 5px rgba(245,200,66,0.6)); }
+.sum-tick-lbl {
+  position: absolute; top: 14px;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px; font-weight: 600; color: var(--muted);
+  letter-spacing: 0.02em; white-space: nowrap;
+}
+.sum-tick.lit .sum-tick-lbl { color: var(--gold); }
+.sum-status {
+  font-size: 12px; color: var(--muted);
+  text-align: center; margin-top: 8px; line-height: 1.5;
+}
+.sum-status-earned { color: var(--gold); font-weight: 600; font-family: 'Fraunces', serif; font-size: 13px; }
+.sum-status-sep { color: var(--dim); margin: 0 2px; }
+.sum-status-next strong { color: var(--text); font-family: 'Fraunces', serif; font-size: 14px; font-weight: 600; }
+.sum-status-done { color: var(--mint); font-weight: 600; font-family: 'Fraunces', serif; font-size: 13px; }
+.sum-grid { display: flex; gap: 6px; flex-wrap: wrap; }
+.sum-grid-weeks .sum-cell { flex: 1 1 0; min-width: 52px; }
+.sum-grid-months .sum-cell { flex: 1 1 0; min-width: 48px; }
+.sum-cell {
+  padding: 10px 4px 8px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 8px; text-align: center;
+  transition: border-color 0.2s, background 0.2s;
+}
+.sum-cell.empty { opacity: 0.45; }
+.sum-cell.has-data { background: rgba(125,211,252,0.06); border-color: rgba(125,211,252,0.15); }
+.sum-cell.is-current {
+  background: rgba(110,231,183,0.1);
+  border-color: rgba(110,231,183,0.35);
+  box-shadow: 0 0 10px rgba(110,231,183,0.12);
+}
+.sum-cell-val { font-family: 'Fraunces', serif; font-size: 15px; font-weight: 600; color: var(--text); line-height: 1; }
+.sum-cell.is-current .sum-cell-val { color: var(--mint); }
+.sum-cell.empty .sum-cell-val { color: var(--dim); }
+.sum-cell-unit { font-family: 'DM Mono', monospace; font-size: 8px; color: var(--muted); margin-left: 1px; font-weight: 400; }
+.sum-cell-lbl { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--dim); letter-spacing: 0.08em; margin-top: 4px; }
+.sum-cell-more { background: transparent; border: 1px dashed rgba(125,154,184,0.25); }
+.sum-cell-more .sum-cell-val { color: var(--muted); }
+@media (max-width: 420px) {
+  .summary-card { padding: 14px 14px 12px; }
+  .sum-title { font-size: 19px; }
+  .sum-hero-num { font-size: 34px; }
+  .sum-grid { gap: 4px; }
+  .sum-grid-weeks .sum-cell, .sum-grid-months .sum-cell { min-width: 42px; padding: 8px 2px 6px; }
+  .sum-cell-val { font-size: 13px; }
+  .sum-cell-lbl { font-size: 8px; }
+  .sum-tick-ico { font-size: 13px; }
+  .sum-tick-lbl { font-size: 9px; }
+}
+
+/* ── Upcoming Rides (ported from rides.html) ── */
+.upcoming-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.upcoming-row:last-child { border-bottom: none; }
+.upcoming-icon { font-size: 14px; flex-shrink: 0; }
+.upcoming-info { flex: 1; min-width: 0; }
+.upcoming-name {
+  font-size: 0.7rem; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.upcoming-sub { font-size: 0.55rem; color: var(--muted); }
+.upcoming-dist {
+  font-size: 0.72rem; color: var(--mint);
+  flex-shrink: 0; font-family: 'Fraunces', serif;
+}
+.upcoming-empty {
+  padding: 20px; text-align: center;
+  color: var(--muted); font-style: italic;
+  font-size: 0.7rem;
+}
+
 /* ── CALIFORNIA COVERAGE MAP (ported from rides.html for the Year tab) ── */
 .ca-coverage { padding: 16px; }
 .ca-header {
@@ -2313,10 +2449,15 @@ body.view-year  .month-only { display: none !important; }
 
   <!-- ════════════ MONTH VIEW ════════════ -->
   <div class="month-only">
+    <!-- Daily-star grid (monthly progress toward medals) -->
     {{MONTH_CARD_HTML}}
 
-    <!-- Season Pass moves here (chip stays on Today hero for quick
-         glance; the interactive list lives here where it has room). -->
+    <!-- Monthly Pulse (rides) — total miles + medal progression +
+         per-week mileage. Uses the same .summary-card / .sum-*
+         styling as the Year widget for cross-tab consistency. -->
+    {{MONTHLY_PULSE_HTML}}
+
+    <!-- Season Pass — habits to clear each month. -->
     <div class="card accordion-section" id="section-season-month" data-section="season-month">
       <div class="card-title" style="margin-bottom:10px;">&#x1F4C5; Season Pass &mdash; {{SEASON_MONTH}}</div>
       <div class="season-progress">
@@ -2355,11 +2496,17 @@ body.view-year  .month-only { display: none !important; }
 
   <!-- ════════════ YEAR VIEW ════════════ -->
   <div class="year-only">
-    <!-- Roadmap / Pins timeline — the multi-year pin board showing
-         travel, annual habits, and the 2027 roadmap. -->
+    <!-- Year-at-a-glance: total miles + progress toward annual medal
+         tiers + month-by-month grid. Moved here from Ride Atlas. -->
+    {{YEARLY_WIDGET_HTML}}
+
+    <!-- Roadmap / Pins timeline — card title shows the current year;
+         the PINS_HTML payload still renders its own year headers
+         (2026 then 2027) inside the timeline, so next-year planning
+         is visible without cluttering the card title. -->
     <div class="card">
       <div class="pins-header-row">
-        <div class="card-title">&#x1F4CD; Roadmap &middot; 2026 &middot; 2027</div>
+        <div class="card-title">&#x1F4CD; Roadmap &middot; {{CURRENT_YEAR}}</div>
         <div class="pins-count"><span id="pin-count">0</span> pinned</div>
       </div>
       <div class="pins-timeline" id="pinsTimeline">
@@ -2371,6 +2518,14 @@ body.view-year  .month-only { display: none !important; }
          location, plotted on a CA outline. Moved here from the Ride
          Atlas page so annual / geographic context lives together. -->
     {{CA_COVERAGE_HTML}}
+
+    <!-- Upcoming cycling trips (from the Travel Master Planner sheet).
+         Moved from Ride Atlas — this is future annual context, not
+         retrospective ride logging, so Year is its natural home. -->
+    <div class="card">
+      <div class="card-title" style="margin-bottom:8px;">&#x1F6B4; Upcoming Rides</div>
+      {{UPCOMING_RIDES_HTML}}
+    </div>
   </div>
   <!-- ════════════ /YEAR VIEW ════════════ -->
 

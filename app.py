@@ -98,15 +98,38 @@ def _render_quest_hub(view: str) -> "tuple[str, int]":
         ca_html = ""
         if view == "month":
             month_by_date, month_total = _gather_monthly_stars(data)
-        elif view == "year":
-            # California coverage map needs rides data. Import lazily
-            # so a Strava / rides_report hiccup can't break the other tabs.
+            # Also load ride data for the Monthly Pulse card (April's
+            # ride miles + medal progression) which now lives here.
             try:
-                from rides_report import _load_rides, _ca_coverage_html
+                from rides_report import _load_rides, _monthly_pulse, _monthly_pulse_html
+                rides = _load_rides()
+                mp = _monthly_pulse(rides)
+                data["_monthly_pulse_html"] = _monthly_pulse_html(mp)
+            except Exception as exc:
+                log.warning("month: monthly pulse render failed: %s", exc)
+                data["_monthly_pulse_html"] = ""
+        elif view == "year":
+            # Year view surfaces rides data in three places:
+            # California coverage map, "This Year" mileage widget,
+            # and Upcoming Rides list. Lazy-import rides_report so a
+            # failure there doesn't block the other tabs.
+            yearly_widget_html = ""
+            upcoming_rides_html = ""
+            try:
+                from rides_report import (
+                    _load_rides, _ca_coverage_html,
+                    _yearly_miles, _yearly_widget_html,
+                    _upcoming_rides_html,
+                )
                 rides = _load_rides()
                 ca_html = _ca_coverage_html(rides)
+                ym = _yearly_miles(rides, data["today"].year)
+                yearly_widget_html = _yearly_widget_html(ym)
+                upcoming_rides_html = _upcoming_rides_html()
             except Exception as exc:
-                log.warning("year: CA map render failed: %s", exc)
+                log.warning("year: rides render failed: %s", exc)
+            data["_yearly_widget_html"] = yearly_widget_html
+            data["_upcoming_rides_html"] = upcoming_rides_html
         html = generate_html_report(
             data,
             view=view,
