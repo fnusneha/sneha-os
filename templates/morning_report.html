@@ -201,7 +201,7 @@ body {
 }
 .today-hero .hero-top {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   justify-content: space-between;
   margin-bottom: 14px;
   font-family: 'DM Mono', monospace;
@@ -209,8 +209,34 @@ body {
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
+.today-hero .hero-top-left,
+.today-hero .hero-top-right {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.today-hero .hero-top-right { align-items: flex-end; }
 .today-hero .hero-today-lbl { color: var(--gold); font-weight: 700; }
 .today-hero .hero-date { color: var(--muted); font-weight: 600; }
+/* Season-pass chip below the date — only shows when this month's
+   pass is complete. Matches the amber glow of the Week card's
+   season badge so the two surfaces feel consistent. */
+.hero-season-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(245,200,66,0.14);
+  border: 1px solid rgba(245,200,66,0.32);
+  color: var(--gold);
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+  box-shadow: 0 0 8px rgba(245,200,66,0.18);
+}
 /* 5 big star glyphs */
 .hero-stars {
   display: flex;
@@ -325,6 +351,50 @@ body {
   background: rgba(255,255,255,0.03);
   border-color: rgba(255,255,255,0.08);
 }
+
+/* Thin hairline that separates the "goal state" (stars + nudge) from
+   the "body state" (cycle + coach) at the bottom of the Today Hero. */
+.hero-divider {
+  height: 1px;
+  margin: 14px -4px 12px;
+  background: linear-gradient(90deg,
+    rgba(255,255,255,0) 0%,
+    rgba(245,200,66,0.18) 50%,
+    rgba(255,255,255,0) 100%);
+}
+
+/* Cycle block inside Today Hero — the pill + "since Apr 1" subline +
+   one-line coach advice. Keeps the phase context visible where the
+   user's eye naturally lands (with today's stars), not pushed down
+   below the week. */
+.hero-cycle {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.hero-cycle-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.hero-period-start {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+.hero-coach {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.hero-coach em {
+  color: var(--mint);
+  font-style: normal;
+  font-weight: 600;
+}
+.hero-coach strong { color: var(--text); font-weight: 600; }
 
 /* Section divider that signals the "today → week" context-switch. */
 .section-divider {

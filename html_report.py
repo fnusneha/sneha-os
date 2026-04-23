@@ -426,20 +426,41 @@ def _build_today_hero(
     burn_done: bool,
     recover_done: bool,
     night_done: bool,
+    *,
+    cycle_icon: str,
+    cycle_label: str,
+    cycle_pill_cls: str,
+    period_start_str: str,
+    coach_line: str,
+    season_earned: bool,
+    season_month_short: str,
 ) -> str:
     """Today-is-the-hero card — sits at the very top of Quest Hub.
 
     Layout (top → bottom):
       1. Eyebrow:  "TODAY   WED APR 22"
+         + optional 🎫 <month> chip below the date if this month's
+           Season Pass is complete.
       2. 5 big ★ icons, lit/dim according to earned count
       3. Huge "2 of 5" numeral + "STARS EARNED · 3 TO GO" caption
       4. 5-stage strip: Morning · Base · Burn · Recover · Night,
          each with icon + name + ✓/○ indicator (mint when done)
       5. Forward-looking nudge: "3 more for a Perfect Day ✨"
+      6. Thin divider
+      7. Cycle chip + "since Apr 1" (period start) + coach line
     """
     today = data["today"]
     date_str = today.strftime("%a %b %d").upper()
     to_go = max(0, MAX_DAILY_STARS - stars_today)
+
+    # Season-pass chip below the date — glows gold when this month
+    # is complete, matches the "🎫 Apr" indicator from the Week card
+    # so the user has visual consistency across cards.
+    season_chip_html = (
+        f'<span class="hero-season-chip earned">\U0001f3ab {_esc(season_month_short)} '
+        f'\u2605 earned</span>'
+        if season_earned else ""
+    )
 
     # 5 star glyphs: filled for earned, hollow for pending.
     stars_html = "".join(
@@ -483,11 +504,45 @@ def _build_today_hero(
             '</div>'
         )
 
+    # Cycle section at the bottom — moved here from the Week card.
+    # This is today's body-state context (phase + energy + period start)
+    # so it belongs with the Today Hero, not with the weekly overview.
+    # Collapses cleanly if no cycle data is available.
+    cycle_section = ""
+    has_cycle_data = bool(cycle_label) and cycle_label != "No cycle data yet"
+    if has_cycle_data or coach_line:
+        period_html = (
+            f'<span class="hero-period-start">since {_esc(period_start_str)}</span>'
+            if period_start_str else ""
+        )
+        coach_html = (
+            f'<div class="hero-coach">{coach_line}</div>' if coach_line else ""
+        )
+        pill_html = (
+            f'<span class="{cycle_pill_cls}">{cycle_icon} {_esc(cycle_label)}</span>'
+            if cycle_label else ""
+        )
+        cycle_section = (
+            '<div class="hero-divider" aria-hidden="true"></div>'
+            '<div class="hero-cycle">'
+            '  <div class="hero-cycle-row">'
+            f'    {pill_html}'
+            f'    {period_html}'
+            '  </div>'
+            f'  {coach_html}'
+            '</div>'
+        )
+
     return (
         '<div class="today-hero">'
         '  <div class="hero-top">'
-        '    <span class="hero-today-lbl">Today</span>'
-        f'    <span class="hero-date">{date_str}</span>'
+        '    <div class="hero-top-left">'
+        '      <span class="hero-today-lbl">Today</span>'
+        '    </div>'
+        '    <div class="hero-top-right">'
+        f'      <span class="hero-date">{date_str}</span>'
+        f'      {season_chip_html}'
+        '    </div>'
         '  </div>'
         f'  <div class="hero-stars">{stars_html}</div>'
         '  <div class="hero-count-wrap">'
@@ -497,6 +552,7 @@ def _build_today_hero(
         f'  <div class="hero-caption">Stars earned \u00b7 {to_go} to go</div>'
         f'  <div class="hero-stages">{"".join(stage_cells)}</div>'
         f'  {nudge}'
+        f'  {cycle_section}'
         '</div>'
     )
 
@@ -806,51 +862,29 @@ def _parse_agenda_items(data: dict) -> list[str]:
     return items
 
 
-def _build_context_sections(
-    data: dict,
-    cycle_icon: str,
-    cycle_label: str,
-    cycle_pill_cls: str,
-    coach_line: str,
-) -> str:
-    """Return cycle + coach + agenda as HTML fragments meant to be
-    injected inline INSIDE the Weekly Pulse card.
+def _build_context_sections(data: dict) -> str:
+    """Return the week's calendar-agenda fragment to be injected
+    inline INSIDE the Weekly Pulse card.
 
-    Two sub-sections separated by labelled inline dividers:
+    Previously this also rendered today's cycle phase + coach line,
+    but those moved up into the Today Hero (they're body-state context
+    for *today*, not the week). What's left here is purely the week's
+    external events (travel, appointments), shown under an inline
+    "─ agenda ─" divider label.
 
-        ─ today ─    🌗 Luteal · Early-Mid · Day 21
-                     steady energy. Normal workouts…
-        ─ agenda ─   SSN update · Lip Blush · Santa Rosa…
-
-    Any individual section with no data disappears cleanly.
+    Returns empty string if no agenda items — whole section hides.
     """
-    show_today = bool(coach_line) or bool(cycle_label and cycle_label != "No cycle data yet")
     agenda_items = _parse_agenda_items(data)
-
-    if not show_today and not agenda_items:
+    if not agenda_items:
         return ""
 
-    parts: list[str] = []
-
-    if show_today:
-        parts.append(
-            '<div class="wp-section-label">today</div>'
-            '<div class="ctx-today">'
-            f'<span class="{cycle_pill_cls}">{cycle_icon} {_esc(cycle_label)}</span>'
-            + (f'<div class="ctx-coach">{coach_line}</div>' if coach_line else "")
-            + '</div>'
-        )
-
-    if agenda_items:
-        items_html = '<span class="ctx-sep"> \u00b7 </span>'.join(
-            f'<span class="ctx-week-item">{_esc(s)}</span>' for s in agenda_items
-        )
-        parts.append(
-            '<div class="wp-section-label">agenda</div>'
-            f'<div class="ctx-week-flow">{items_html}</div>'
-        )
-
-    return "".join(parts)
+    items_html = '<span class="ctx-sep"> \u00b7 </span>'.join(
+        f'<span class="ctx-week-item">{_esc(s)}</span>' for s in agenda_items
+    )
+    return (
+        '<div class="wp-section-label">agenda</div>'
+        f'<div class="ctx-week-flow">{items_html}</div>'
+    )
 
 
 def _build_coach_line(phase_name: str, last_sleep: float | None) -> str:
@@ -1332,7 +1366,51 @@ def generate_html_report(data: dict) -> str:
     best = _pick_best_day(data, weekday)
     best_wd_for_pulse = best[0] if best else None
 
-    # Today's hero: sits up top, stars-per-slot + forward-looking nudge.
+    # Coach line needs to exist before the hero is built (hero shows it).
+    coach_line = _build_coach_line(phase_name, last_sleep)
+
+    # Cycle label: "Luteal · Early-Mid · Day 22" (or "No cycle data yet").
+    # Also compute the first day of the current period from cycle_day
+    # so the hero can show "since Apr 1" — saves Sneha from flipping
+    # to the calendar to look up when her period started.
+    raw_cycle = data.get("latest_cycle_str") or ""
+    period_start_str = ""
+    if phase_name and raw_cycle:
+        friendly = PHASE_DISPLAY.get(phase_name, phase_name)
+        day_part = raw_cycle.rsplit(" ", 1)[-1] if " D" in raw_cycle else ""
+        day_num_str = day_part.lstrip("D") if day_part else ""
+        pretty_day = f"Day {day_num_str}" if day_num_str else ""
+        cycle_label = f"{friendly} · {pretty_day}" if pretty_day else friendly
+        cycle_pill_cls = "today-ctx-pill"
+        # Period start = today - (cycle_day - 1). Skips gracefully if
+        # day_num can't be parsed.
+        try:
+            day_num = int(day_num_str)
+            if day_num >= 1:
+                from datetime import timedelta as _td
+                pstart = today - _td(days=day_num - 1)
+                period_start_str = pstart.strftime("%b %-d")
+        except (ValueError, TypeError):
+            pass
+    else:
+        cycle_icon = ""
+        cycle_label = "No cycle data yet"
+        cycle_pill_cls = "today-ctx-pill empty"
+
+    # Season pass first — we need season_earned for the hero chip,
+    # plus the normal accordion render data for below the Week card.
+    season_month, season_done, season_total, season_items_html = _build_season_pass(data)
+    season_pct = _pct(season_done, season_total)
+    season_earned = bool(season_total) and season_done == season_total
+    if season_done == season_total:
+        season_badge_cls, season_badge_text = "badge-complete", "Complete"
+    elif season_done >= season_total // 2:
+        season_badge_cls, season_badge_text = "badge-track", "On Track"
+    else:
+        season_badge_cls, season_badge_text = "badge-behind", "Behind"
+
+    # Today's hero: stars + forward-looking nudge + (new) cycle/coach
+    # + (new) season chip when this month's pass is locked in.
     stars_today = (
         int(today_morning_earned) + int(today_base_earned) + int(today_burn_earned)
         + int(today_recover_earned) + int(today_night_earned)
@@ -1341,6 +1419,13 @@ def generate_html_report(data: dict) -> str:
         data, weekday, stars_today,
         today_morning_earned, today_base_earned, today_burn_earned,
         today_recover_earned, today_night_earned,
+        cycle_icon=cycle_icon,
+        cycle_label=cycle_label,
+        cycle_pill_cls=cycle_pill_cls,
+        period_start_str=period_start_str,
+        coach_line=coach_line,
+        season_earned=season_earned,
+        season_month_short=today.strftime("%b"),
     )
     comeback_html = _build_comeback_line(weekly_stars, weekday)
 
@@ -1350,43 +1435,12 @@ def generate_html_report(data: dict) -> str:
     morning_ritual_html = _build_morning_ritual(data)
     core3 = _build_core3(data, weekday)
     night_ritual_html   = _build_night_ritual(data)
-    coach_line          = _build_coach_line(phase_name, last_sleep)
     pillars_html        = _build_pillars_html(data)
     pins_html           = _build_pins_html(data)
 
-    # Cycle label comes next — the context card (below) consumes it.
-    # DB stores short "Luteal-EM D20" form; UI shows the friendly phase
-    # name + "Day 20" so "D21" doesn't confuse a first-time reader.
-    raw_cycle = data.get("latest_cycle_str") or ""
-    if phase_name and raw_cycle:
-        friendly = PHASE_DISPLAY.get(phase_name, phase_name)
-        day_part = raw_cycle.rsplit(" ", 1)[-1] if " D" in raw_cycle else ""
-        day_num = day_part.lstrip("D") if day_part else ""
-        pretty_day = f"Day {day_num}" if day_num else ""
-        cycle_label = f"{friendly} · {pretty_day}" if pretty_day else friendly
-        cycle_pill_cls = "today-ctx-pill"
-    else:
-        cycle_icon = ""
-        cycle_label = "No cycle data yet"
-        cycle_pill_cls = "today-ctx-pill empty"
-
-    # Cycle phase + coach + week agenda — now injected INSIDE the
-    # Weekly Pulse card with an inline "─ today ─ / ─ agenda ─"
-    # divider, so the user has one card of context instead of two
-    # stacked cards that both said "THIS WEEK".
-    context_sections_html = _build_context_sections(
-        data, cycle_icon, cycle_label, cycle_pill_cls, coach_line
-    )
-
-    # Season pass (returns tuple)
-    season_month, season_done, season_total, season_items_html = _build_season_pass(data)
-    season_pct = _pct(season_done, season_total)
-    if season_done == season_total:
-        season_badge_cls, season_badge_text = "badge-complete", "Complete"
-    elif season_done >= season_total // 2:
-        season_badge_cls, season_badge_text = "badge-track", "On Track"
-    else:
-        season_badge_cls, season_badge_text = "badge-behind", "Behind"
+    # Context sections now only carries the week's calendar agenda —
+    # cycle/coach moved up to the Today Hero where they belong.
+    context_sections_html = _build_context_sections(data)
 
     # ── Fill template ──────────────────────────────────────────
     template = _load_template()
