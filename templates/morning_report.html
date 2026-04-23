@@ -1816,7 +1816,12 @@ body {
 }
 .rollup-row.done .rollup-value { color: var(--mint); }
 
-/* ─── Month tab: day grid ─── */
+/* ─── Month tab: day grid ───
+   Uses the same .wp-day* cells as Week so the two tabs look and feel
+   identical (same typography, same mint/coral/gold palette, same
+   "missed" em-dash for zero-star past days). Only the container
+   layout differs: Week is flex-row of 7 cells; Month is a 7-column
+   CSS grid, 5-6 rows, with leading blanks for alignment. */
 .month-pulse { padding: 14px 16px; margin-bottom: 14px; }
 .mo-dow-row {
   display: grid;
@@ -1837,42 +1842,17 @@ body {
   grid-template-columns: repeat(7, 1fr);
   gap: 4px;
 }
-.mo-day {
-  aspect-ratio: 1;
-  border-radius: 7px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1px;
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(255,255,255,0.04);
-  font-family: 'DM Mono', monospace;
-  min-width: 0;
+/* Smaller typography inside month cells than week — 30+ cells fit
+   in the same card width, so we shrink the stars numeral and the
+   date a notch. Otherwise it's the same wp-day styling. */
+.mo-days .wp-day-num  { font-size: 14px; }
+.mo-days .wp-day-date { font-size: 8px; margin-top: 1px; }
+/* Blank leading cell for the week-1 alignment (before day 1). */
+.wp-day.is-blank {
+  background: transparent;
+  border: none;
 }
-.mo-day.is-blank { background: transparent; border: none; }
-.mo-day-num { font-size: 9px; color: var(--dim); font-weight: 500; }
-.mo-day-stars {
-  font-family: 'Fraunces', serif;
-  font-size: 13px;
-  line-height: 1;
-  font-weight: 500;
-  color: var(--mint);
-}
-.mo-day.has-stars { background: rgba(110,231,183,0.1); border-color: rgba(110,231,183,0.22); }
-.mo-day.has-stars .mo-day-num { color: var(--mint); opacity: 0.75; }
-.mo-day.zero-stars { background: rgba(251,113,133,0.06); border-color: rgba(251,113,133,0.12); }
-.mo-day.zero-stars .mo-day-stars { color: var(--coral); opacity: 0.8; }
-.mo-day.zero-stars .mo-day-num { color: var(--coral); opacity: 0.65; }
-.mo-day.is-today {
-  background: rgba(245,200,66,0.12);
-  border: 2px solid var(--gold);
-  box-shadow: 0 0 8px rgba(245,200,66,0.25);
-}
-.mo-day.is-today .mo-day-stars { color: var(--gold); }
-.mo-day.is-today .mo-day-num { color: var(--gold); }
-.mo-day.is-future { background: rgba(255,255,255,0.015); border-style: dashed; border-color: rgba(255,255,255,0.05); }
-.mo-day.is-future .mo-day-num { color: var(--dim); opacity: 0.4; }
+.wp-day.is-blank::before { content: none; }
 
 .tab-bar {
   display: flex;

@@ -646,8 +646,10 @@ def _build_pulse_days(data: dict, weekday: int, best_wd: int | None = None) -> s
             classes.extend(["has-stars", "wp-day-clickable"])
             num_html = f'<span class="wp-day-num" data-day="{wd}">{day_stars}</span>'
         else:
+            # Past zero-star days: em-dash so "missed" reads distinctly
+            # from the date number beneath. Same treatment as Month grid.
             classes.extend(["zero-stars", "wp-day-clickable"])
-            num_html = f'<span class="wp-day-num" data-day="{wd}">0</span>'
+            num_html = f'<span class="wp-day-num" data-day="{wd}">\u2014</span>'
 
         if best_wd is not None and wd == best_wd:
             classes.append("is-best")
@@ -1452,41 +1454,44 @@ def _build_month_card(
     gold_pos   = round(gold   / max_stars * 100, 1)
 
     # Day grid — 7 columns (Mon..Sun) × 4-6 rows. First row may lead
-    # with blanks depending on which weekday the 1st falls on.
+    # Month cells reuse the same .wp-day* classes as Week so the two
+    # views look identical — same typography, same colour coding, same
+    # "today gold ring" / "past mint or coral" / "future dashed"
+    # grammar. Past zero-star days render "—" (not "0") so the user
+    # doesn't confuse the missed-state number with the date below it.
     first_weekday = _dt.date(year, month, 1).weekday()  # 0=Mon
     cells: list[str] = []
-    # Leading blanks so the 1st lines up under its true weekday.
     for _ in range(first_weekday):
-        cells.append('<div class="mo-day is-blank"></div>')
+        cells.append('<div class="wp-day is-blank"></div>')
     for d in range(1, days_in_month + 1):
         dt = _dt.date(year, month, d)
         is_today = (dt == today)
         is_future = (dt > today)
         stars = month_stars_by_date.get(dt, 0) if not is_future else 0
 
-        classes = ["mo-day"]
+        classes = ["wp-day"]
         if is_future:
             classes.append("is-future")
-            content = f'<span class="mo-day-num">{d}</span>'
+            num_html = ""  # ::before em-dash from existing CSS
         elif is_today:
             classes.append("is-today")
-            content = (
-                f'<span class="mo-day-stars">{stars}</span>'
-                f'<span class="mo-day-num">{d}</span>'
-            )
+            num_html = f'<span class="wp-day-num">{stars}</span>'
         elif stars > 0:
             classes.append("has-stars")
-            content = (
-                f'<span class="mo-day-stars">{stars}</span>'
-                f'<span class="mo-day-num">{d}</span>'
-            )
+            num_html = f'<span class="wp-day-num">{stars}</span>'
         else:
+            # Past day, zero stars — show em-dash instead of "0" so it's
+            # unambiguously "missed" rather than read as the date.
             classes.append("zero-stars")
-            content = (
-                f'<span class="mo-day-stars">0</span>'
-                f'<span class="mo-day-num">{d}</span>'
-            )
-        cells.append(f'<div class="{" ".join(classes)}">{content}</div>')
+            num_html = '<span class="wp-day-num">\u2014</span>'
+
+        # Month cells omit the 3-letter day label (the column header
+        # row above already says M/T/W/…), but keep the date to stay
+        # visually parallel with Week cells (stars on top, date below).
+        date_html = f'<span class="wp-day-date">{d}</span>'
+        cells.append(
+            f'<div class="{" ".join(classes)}">{num_html}{date_html}</div>'
+        )
 
     # Day-of-week header row (Mon → Sun)
     dow_cells = "".join(
