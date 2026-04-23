@@ -1781,6 +1781,11 @@ def generate_html_report(
         "MONTHLY_PULSE_HTML":  data.get("_monthly_pulse_html", ""),
         "YEARLY_WIDGET_HTML":  data.get("_yearly_widget_html", ""),
         "UPCOMING_RIDES_HTML": data.get("_upcoming_rides_html", ""),
+        # All-Time stats + insight quote (Year tab's epilogue cards).
+        "TOTAL_MILES":           str(data.get("_total_miles", "—")),
+        "TOTAL_ELEVATION_SHORT": str(data.get("_total_elevation", "—")),
+        "TOTAL_RIDES":           str(data.get("_total_rides", "—")),
+        "INSIGHT_TEXT":          data.get("_insight_text", ""),
         # Current year for tab titles. The Roadmap card title reads
         # "Roadmap · 2026" but the PINS_HTML payload still renders
         # 2026 + 2027 headers inside the timeline.

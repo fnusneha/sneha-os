@@ -1802,6 +1802,69 @@ body {
   .sum-tick-lbl { font-size: 9px; }
 }
 
+/* ── All-Time stats row (3 pills) — ported from rides.html ── */
+.stats-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.stat-pill {
+  flex: 1;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  padding: 14px 12px;
+  backdrop-filter: blur(12px);
+}
+.stat-label {
+  font-size: 0.55rem;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 6px;
+}
+.stat-value {
+  font-family: 'Fraunces', serif;
+  font-size: 1.4rem;
+  font-weight: 400;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+.stat-value.mint { color: var(--mint); }
+.stat-value.gold { color: var(--gold); }
+.stat-value.sky  { color: var(--sky); }
+.stat-sub {
+  font-size: 0.55rem;
+  color: var(--dim);
+  letter-spacing: 0.03em;
+}
+
+/* ── Insight line (gold/sky gradient border, quiet pull-quote) ── */
+.insight {
+  background: rgba(255,255,255,0.03);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin: 0 0 14px;
+  font-size: 0.65rem;
+  color: var(--muted);
+  line-height: 1.6;
+  position: relative;
+  overflow: hidden;
+}
+.insight::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(245,200,66,0.25), rgba(125,211,252,0.25));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+.insight em { font-style: normal; color: var(--gold); }
+.insight strong { color: var(--text); font-weight: 500; }
+
 /* ── Upcoming Rides (ported from rides.html) ── */
 .upcoming-row {
   display: flex; align-items: center; gap: 10px;
@@ -2509,10 +2572,17 @@ body.view-year  .month-only { display: none !important; }
          tiers + month-by-month grid. Moved here from Ride Atlas. -->
     {{YEARLY_WIDGET_HTML}}
 
+    <!-- California coverage map — every ridden + booked + wishlist
+         location, plotted on a CA outline. Moved here from the Ride
+         Atlas page so annual / geographic context lives together. -->
+    {{CA_COVERAGE_HTML}}
+
     <!-- Roadmap / Pins timeline — card title shows the current year;
          the PINS_HTML payload still renders its own year headers
          (2026 then 2027) inside the timeline, so next-year planning
-         is visible without cluttering the card title. -->
+         is visible without cluttering the card title. Placed just
+         before Upcoming Rides so planning + concrete bookings sit
+         together at the bottom of the Year view. -->
     <div class="card">
       <div class="pins-header-row">
         <div class="card-title">&#x1F4CD; Roadmap &middot; {{CURRENT_YEAR}}</div>
@@ -2523,17 +2593,40 @@ body.view-year  .month-only { display: none !important; }
       </div>
     </div>
 
-    <!-- California coverage map — every ridden + booked + wishlist
-         location, plotted on a CA outline. Moved here from the Ride
-         Atlas page so annual / geographic context lives together. -->
-    {{CA_COVERAGE_HTML}}
-
     <!-- Upcoming cycling trips (from the Travel Master Planner sheet).
          Moved from Ride Atlas — this is future annual context, not
          retrospective ride logging, so Year is its natural home. -->
     <div class="card">
       <div class="card-title" style="margin-bottom:8px;">&#x1F6B4; Upcoming Rides</div>
       {{UPCOMING_RIDES_HTML}}
+    </div>
+
+    <!-- All-Time stats (Distance / Elevation / Rides) — lifetime ride
+         totals that don't belong to any one year but are the natural
+         "Year · All-Time" epilogue. Moved from Ride Atlas. -->
+    <div class="section-label">All-Time</div>
+    <div class="stats-row">
+      <div class="stat-pill">
+        <div class="stat-label">Distance</div>
+        <div class="stat-value mint">{{TOTAL_MILES}}</div>
+        <div class="stat-sub">miles ridden</div>
+      </div>
+      <div class="stat-pill">
+        <div class="stat-label">Elevation</div>
+        <div class="stat-value gold">{{TOTAL_ELEVATION_SHORT}}</div>
+        <div class="stat-sub">feet climbed</div>
+      </div>
+      <div class="stat-pill">
+        <div class="stat-label">Rides</div>
+        <div class="stat-value sky">{{TOTAL_RIDES}}</div>
+        <div class="stat-sub">logged</div>
+      </div>
+    </div>
+
+    <!-- Insight quote — auto-generated pull-quote about biggest year
+         + what's next. Gold/sky gradient border. -->
+    <div class="insight">
+      {{INSIGHT_TEXT}}
     </div>
   </div>
   <!-- ════════════ /YEAR VIEW ════════════ -->

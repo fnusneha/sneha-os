@@ -109,27 +109,41 @@ def _render_quest_hub(view: str) -> "tuple[str, int]":
                 log.warning("month: monthly pulse render failed: %s", exc)
                 data["_monthly_pulse_html"] = ""
         elif view == "year":
-            # Year view surfaces rides data in three places:
+            # Year view surfaces rides data in several places:
             # California coverage map, "This Year" mileage widget,
-            # and Upcoming Rides list. Lazy-import rides_report so a
-            # failure there doesn't block the other tabs.
+            # Upcoming Rides, All-Time stats, and the Insight pull-quote.
+            # Lazy-import rides_report so a failure there doesn't block
+            # the other tabs.
             yearly_widget_html = ""
             upcoming_rides_html = ""
+            total_miles = total_elevation = total_rides = "—"
+            insight_text = ""
             try:
                 from rides_report import (
                     _load_rides, _ca_coverage_html,
                     _yearly_miles, _yearly_widget_html,
                     _upcoming_rides_html,
+                    _lifetime_stats, _yearly_breakdown, _insight_text,
                 )
                 rides = _load_rides()
                 ca_html = _ca_coverage_html(rides)
                 ym = _yearly_miles(rides, data["today"].year)
                 yearly_widget_html = _yearly_widget_html(ym)
                 upcoming_rides_html = _upcoming_rides_html()
+                stats = _lifetime_stats(rides)
+                total_miles     = stats["miles"]
+                total_elevation = stats["elevation_short"]
+                total_rides     = stats["count"]
+                breakdown = _yearly_breakdown(rides)
+                insight_text = _insight_text(rides, breakdown)
             except Exception as exc:
                 log.warning("year: rides render failed: %s", exc)
-            data["_yearly_widget_html"] = yearly_widget_html
+            data["_yearly_widget_html"]  = yearly_widget_html
             data["_upcoming_rides_html"] = upcoming_rides_html
+            data["_total_miles"]         = total_miles
+            data["_total_elevation"]     = total_elevation
+            data["_total_rides"]         = total_rides
+            data["_insight_text"]        = insight_text
         html = generate_html_report(
             data,
             view=view,
