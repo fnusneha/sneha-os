@@ -679,6 +679,17 @@ def _yearly_widget_html(ym: dict) -> str:
 
     # Compact month strip: past + current months only, +N TO GO chip
     current_m = ym["current_month"]
+    # Pick the best month so far for the 🏆 marker (mirrors Week's
+    # best-day + Month's best-day logic). Highest miles wins; on tie
+    # the earliest month keeps the badge (strict `>` — stable across
+    # reloads). A year with zero miles everywhere gets no badge.
+    best_idx = -1
+    best_val = 0
+    for i in range(current_m):
+        v = ym["months"][i]
+        if v > best_val:
+            best_val = v
+            best_idx = i
     cells = []
     for i in range(current_m):
         val = ym["months"][i]
@@ -690,6 +701,8 @@ def _yearly_widget_html(ym: dict) -> str:
             cls = "sum-cell has-data"
         else:
             cls = "sum-cell empty"
+        if i == best_idx:
+            cls += " is-best"
         display = f'{val}<span class="sum-cell-unit">mi</span>' if has else "&mdash;"
         cells.append(
             f'<div class="{cls}"><div class="sum-cell-val">{display}</div>'

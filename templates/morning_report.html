@@ -622,15 +622,18 @@ body {
   transition: all 0.3s;
   min-width: 0;
 }
-/* ── Shared cell typography — identical across Week and Month ── */
+/* ── Shared cell typography — identical across Week and Month ──
+   Kept intentionally small so a 7-col Week row and a 30-cell Month
+   grid feel calm, not chaotic. Change values here, NOT in per-tab
+   overrides — both views share these exact classes. */
 .wp-day-num {
   font-family: 'Fraunces', serif;
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 500;
   line-height: 1;
 }
 .wp-day-date {
-  font-size: 8px;
+  font-size: 7px;
   color: var(--dim);
   font-family: 'DM Mono', monospace;
   font-weight: 500;
@@ -677,13 +680,18 @@ body {
   content: "\2014"; /* em-dash as the "nothing yet" placeholder */
   color: var(--dim);
   font-family: 'Fraunces', serif;
-  font-size: 14px;
+  font-size: 11px;
   opacity: 0.4;
 }
-/* Winning day this week — subtle gold glow + tiny trophy above the
-   number. Chosen by html_report._pick_best_day (most stars, tiebreak
-   by whether an activity was logged). */
-.wp-day.is-best {
+/* Winning cell — subtle gold glow + tiny trophy above the value.
+   Applies to THREE contexts so all tabs share the same visual:
+     · .wp-day.is-best   — best day this week  (Week tab)
+     · .wp-day.is-best   — best day this month (Month tab, same class)
+     · .sum-cell.is-best — best month this year (Year tab)
+   Chosen by html_report._pick_best_day + _build_month_card's local
+   best-day pick + rides_report._yearly_widget_html's best-month pick. */
+.wp-day.is-best,
+.sum-cell.is-best {
   background: linear-gradient(135deg,
     rgba(245,200,66,0.14),
     rgba(168,139,250,0.06));
@@ -691,7 +699,8 @@ body {
   box-shadow: 0 0 14px rgba(245,200,66,0.22);
   position: relative;
 }
-.wp-day.is-best::before {
+.wp-day.is-best::before,
+.sum-cell.is-best::before {
   content: "\01F3C6";
   position: absolute;
   top: -7px;
@@ -1625,18 +1634,9 @@ body {
 .si-status-due { background: rgba(125,211,252,0.1); color: var(--sky); }
 .si-status-overdue { background: rgba(251,113,133,0.1); color: var(--coral); }
 
-/* ── Section label used by rides_report (e.g. "By Region"). Ported
-   over with the California map so the region summary cards don't
-   render as raw text on the Year tab. */
-.section-label {
-  font-family: 'DM Mono', monospace;
-  font-size: 10px;
-  font-weight: 500;
-  color: var(--dim);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  margin: 24px 0 10px;
-}
+/* (.section-label already defined near the top of this stylesheet —
+   same values, no per-tab override needed. The Year tab reuses the
+   shared definition for "By Region" / "All-Time" labels.) */
 
 /* ── Region summary grid (By Region section) ── */
 .reg-grid {
@@ -1816,8 +1816,11 @@ body {
   padding: 14px 12px;
   backdrop-filter: blur(12px);
 }
+/* All-Time stat pills (Year tab). Units kept in px to match the rest
+   of the stylesheet — previously mixed rem here was the one outlier. */
 .stat-label {
-  font-size: 0.55rem;
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
   color: var(--dim);
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -1825,8 +1828,8 @@ body {
 }
 .stat-value {
   font-family: 'Fraunces', serif;
-  font-size: 1.4rem;
-  font-weight: 400;
+  font-size: 22px;
+  font-weight: 500;
   line-height: 1;
   margin-bottom: 2px;
 }
@@ -1834,7 +1837,8 @@ body {
 .stat-value.gold { color: var(--gold); }
 .stat-value.sky  { color: var(--sky); }
 .stat-sub {
-  font-size: 0.55rem;
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
   color: var(--dim);
   letter-spacing: 0.03em;
 }
@@ -1845,7 +1849,8 @@ body {
   border-radius: 12px;
   padding: 14px 16px;
   margin: 0 0 14px;
-  font-size: 0.65rem;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
   color: var(--muted);
   line-height: 1.6;
   position: relative;

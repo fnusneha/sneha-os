@@ -1462,6 +1462,21 @@ def _build_month_card(
     # (2 · 22 · WED).
     _DOW_SHORT = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]
     first_weekday = _dt.date(year, month, 1).weekday()  # 0=Mon
+
+    # Pick the best day of the month so far for the 🏆 trophy marker
+    # (mirrors _pick_best_day used by Week). Highest stars wins; on tie
+    # the earliest day keeps the badge (strict `>` — stable across
+    # reloads the way Week's logic is). Future days are excluded; a
+    # month with zero stars everywhere gets no badge at all.
+    best_dt: _dt.date | None = None
+    best_stars = 0
+    for d in range(1, today.day + 1):
+        dt = _dt.date(year, month, d)
+        s = month_stars_by_date.get(dt, 0)
+        if s > best_stars:
+            best_stars = s
+            best_dt = dt
+
     cells: list[str] = []
     for _ in range(first_weekday):
         cells.append('<div class="wp-day is-blank"></div>')
@@ -1486,6 +1501,11 @@ def _build_month_card(
             # unambiguously "missed" rather than read as the date.
             classes.append("zero-stars")
             num_html = '<span class="wp-day-num">\u2014</span>'
+
+        # Trophy on the best day of the month (same .is-best treatment
+        # Week uses — shared CSS, shared visual language).
+        if best_dt is not None and dt == best_dt:
+            classes.append("is-best")
 
         # Full week-cell grammar: date number + DOW label below.
         dow_label = _DOW_SHORT[dt.weekday()]
