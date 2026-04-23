@@ -1454,11 +1454,13 @@ def _build_month_card(
     gold_pos   = round(gold   / max_stars * 100, 1)
 
     # Day grid — 7 columns (Mon..Sun) × 4-6 rows. First row may lead
-    # Month cells reuse the same .wp-day* classes as Week so the two
-    # views look identical — same typography, same colour coding, same
-    # "today gold ring" / "past mint or coral" / "future dashed"
-    # grammar. Past zero-star days render "—" (not "0") so the user
-    # doesn't confuse the missed-state number with the date below it.
+    # Month cells reuse the same .wp-day* classes as Week. Each cell
+    # carries the full week-cell content: stars-count on top, date
+    # number, 3-letter day-of-week label at the bottom. That drops
+    # the ambiguity the user flagged — a missed Saturday and a missed
+    # Sunday no longer look identical; each cell is self-describing
+    # (2 · 22 · WED).
+    _DOW_SHORT = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]
     first_weekday = _dt.date(year, month, 1).weekday()  # 0=Mon
     cells: list[str] = []
     for _ in range(first_weekday):
@@ -1485,19 +1487,13 @@ def _build_month_card(
             classes.append("zero-stars")
             num_html = '<span class="wp-day-num">\u2014</span>'
 
-        # Month cells omit the 3-letter day label (the column header
-        # row above already says M/T/W/…), but keep the date to stay
-        # visually parallel with Week cells (stars on top, date below).
+        # Full week-cell grammar: date number + DOW label below.
+        dow_label = _DOW_SHORT[dt.weekday()]
         date_html = f'<span class="wp-day-date">{d}</span>'
+        lbl_html  = f'<span class="wp-day-lbl">{dow_label}</span>'
         cells.append(
-            f'<div class="{" ".join(classes)}">{num_html}{date_html}</div>'
+            f'<div class="{" ".join(classes)}">{num_html}{date_html}{lbl_html}</div>'
         )
-
-    # Day-of-week header row (Mon → Sun)
-    dow_cells = "".join(
-        f'<div class="mo-dow">{d}</div>'
-        for d in ["M", "T", "W", "T", "F", "S", "S"]
-    )
 
     # Forward-looking monthly comeback line — same pattern as week's.
     days_left = days_in_month - today.day
@@ -1560,7 +1556,6 @@ def _build_month_card(
         '      </div>'
         '    </div>'
         '  </div>'
-        f'  <div class="mo-dow-row">{dow_cells}</div>'
         f'  <div class="mo-days">{"".join(cells)}</div>'
         f'  {comeback_html}'
         '</div>'

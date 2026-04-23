@@ -1962,36 +1962,23 @@ body {
 .rollup-row.done .rollup-value { color: var(--mint); }
 
 /* ─── Month tab: day grid ───
-   Uses the same .wp-day* cells as Week so the two tabs look and feel
-   identical (same typography, same mint/coral/gold palette, same
-   "missed" em-dash for zero-star past days). Only the container
-   layout differs: Week is flex-row of 7 cells; Month is a 7-column
-   CSS grid, 5-6 rows, with leading blanks for alignment. */
+   Reuses the SAME .wp-day* cells as Week so a day cell looks
+   identical in both views — stars on top, date, DOW label.
+   Container is a 7-column CSS grid with leading blanks so the 1st
+   lines up under the correct weekday. Each cell self-describes
+   (e.g. "2 · 22 · WED"), so we dropped the separate DOW header row. */
 .month-pulse { padding: 14px 16px; margin-bottom: 14px; }
-.mo-dow-row {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
-  margin: 10px 0 4px;
-}
-.mo-dow {
-  text-align: center;
-  font-family: 'DM Mono', monospace;
-  font-size: 9px;
-  color: var(--dim);
-  letter-spacing: 0.06em;
-  font-weight: 600;
-}
 .mo-days {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 4px;
+  margin-top: 12px;
 }
-/* Smaller typography inside month cells than week — 30+ cells fit
-   in the same card width, so we shrink the stars numeral and the
-   date a notch. Otherwise it's the same wp-day styling. */
+/* 30+ cells share the card width, so we down-shift the type one
+   notch vs Week's large row — but keep the same visual grammar. */
 .mo-days .wp-day-num  { font-size: 14px; }
 .mo-days .wp-day-date { font-size: 8px; margin-top: 1px; }
+.mo-days .wp-day-lbl  { font-size: 7px; letter-spacing: 0.05em; }
 /* Blank leading cell for the week-1 alignment (before day 1). */
 .wp-day.is-blank {
   background: transparent;

@@ -73,7 +73,7 @@ body {
 /* ── TAB BAR ── identical pattern to Quest Hub for visual continuity */
 .tab-bar {
   display: flex;
-  gap: 6px;
+  gap: 5px;
   padding: 6px 0 8px;
   position: sticky;
   top: 47px;
@@ -84,14 +84,17 @@ body {
   margin: 0 0 4px;
 }
 .tab {
-  padding: 6px 14px;
+  flex: 1;
+  text-align: center;
+  padding: 6px 8px;
   border-radius: 20px;
   font-size: 11px;
   color: var(--muted);
   text-decoration: none;
   border: 1px solid transparent;
   transition: all 0.2s;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
 }
 .tab:hover { color: var(--text); background: rgba(255,255,255,0.04); }
 .tab.active {
@@ -1414,10 +1417,16 @@ body {
 
 <div class="w">
 
-<!-- TAB BAR -->
+<!-- TAB BAR — matches the 4-tab Quest Hub layout. Atlas is accessed
+     from the hero-bar 🚴 link on other tabs; when you're here, this
+     page adds a 5th active "Atlas" pill so the tab bar still reads
+     as your current location. -->
 <div class="tab-bar">
-  <a href="/dashboard" class="tab">&#9889; Quest Hub</a>
-  <a href="/rides" class="tab active">&#x1f6b4; Ride Atlas</a>
+  <a href="/dashboard" class="tab">&#9889; Today</a>
+  <a href="/week"      class="tab">&#x1F4C5; Week</a>
+  <a href="/month"     class="tab">&#x1F5D3;&#xFE0F; Month</a>
+  <a href="/year"      class="tab">&#x1F30D; Year</a>
+  <a href="/rides"     class="tab active">&#x1F6B4; Atlas</a>
 </div>
 
 <!-- MONTHLY PULSE (mirrors Weekly Pulse) -->
