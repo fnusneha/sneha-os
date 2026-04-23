@@ -1253,141 +1253,6 @@ body {
   font-weight: 500;
 }
 
-/* ── YEAR-OVER-YEAR CARD ── */
-.yoy-card { padding: 18px 18px 22px; }
-.yoy-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; }
-.yoy-title {
-  font-family: 'Fraunces', serif;
-  font-size: 18px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--text);
-}
-.yoy-sub { font-size: 10px; color: var(--dim); letter-spacing: 0.05em; text-transform: uppercase; }
-
-/* Pace comparison chips */
-.yoy-chips { display: flex; gap: 10px; margin-bottom: 18px; }
-.yoy-chip {
-  flex: 1;
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
-  display: flex; flex-direction: column; gap: 2px;
-}
-.yoy-chip-lbl { font-size: 9px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
-.yoy-chip-val {
-  font-family: 'Fraunces', serif;
-  font-size: 24px;
-  font-weight: 600;
-  line-height: 1;
-  display: flex; align-items: baseline; gap: 3px;
-}
-.yoy-chip.yoy-up .yoy-chip-val { color: var(--mint); }
-.yoy-chip.yoy-down .yoy-chip-val { color: var(--coral); }
-.yoy-chip-sub { font-size: 10px; color: var(--dim); margin-top: 2px; }
-.yoy-mi { font-size: 10px; color: var(--dim); font-weight: 400; font-family: 'DM Mono', monospace; letter-spacing: 0; }
-.yoy-chip-empty { padding: 12px; font-size: 11px; color: var(--dim); text-align: center; flex: 1; }
-
-/* Sparkline */
-.yoy-spark-wrap {
-  margin: 6px -6px 6px;
-  padding: 0;
-}
-.yoy-svg { width: 100%; height: auto; display: block; }
-
-/* Legend under sparkline */
-.yoy-legend {
-  display: flex; flex-wrap: wrap; gap: 8px 14px;
-  margin: 4px 4px 12px;
-  justify-content: center;
-}
-.yoy-legend-item {
-  display: flex; align-items: center; gap: 6px;
-  font-size: 11px; color: var(--muted);
-}
-.yoy-dot {
-  width: 8px; height: 8px; border-radius: 50%;
-  display: inline-block;
-}
-.yoy-legend-year { color: var(--text); font-weight: 500; }
-.yoy-legend-mi { color: var(--muted); }
-
-.yoy-divider {
-  height: 1px;
-  background: rgba(255,255,255,0.06);
-  margin: 8px 0 14px;
-}
-
-.yoy-bars-label {
-  font-size: 10px;
-  color: var(--dim);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  margin-bottom: 10px;
-}
-
-/* Horizontal year bars */
-.yoy-bars { display: flex; flex-direction: column; gap: 8px; }
-.yoy-bar-row {
-  display: grid;
-  grid-template-columns: 44px 1fr auto auto;
-  gap: 10px;
-  align-items: center;
-  padding: 6px 4px;
-  border-radius: 6px;
-}
-.yoy-bar-current {
-  background: rgba(110,231,183,0.06);
-  border: 1px solid rgba(110,231,183,0.18);
-  padding: 8px 6px;
-}
-.yoy-bar-year {
-  font-family: 'Fraunces', serif;
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text);
-}
-.yoy-bar-current .yoy-bar-year { color: var(--mint); }
-.yoy-bar-track {
-  height: 6px;
-  background: rgba(255,255,255,0.05);
-  border-radius: 3px;
-  overflow: hidden;
-}
-.yoy-bar-fill {
-  height: 100%;
-  background: linear-gradient(90deg, rgba(125,154,184,0.4), rgba(125,154,184,0.7));
-  border-radius: 3px;
-}
-.yoy-bar-current .yoy-bar-fill {
-  background: linear-gradient(90deg, var(--mint), var(--gold));
-  box-shadow: 0 0 8px rgba(110,231,183,0.3);
-}
-.yoy-bar-val {
-  font-family: 'Fraunces', serif;
-  font-size: 16px;
-  font-weight: 500;
-  color: var(--text);
-  min-width: 60px;
-  text-align: right;
-}
-.yoy-bar-current .yoy-bar-val { color: var(--mint); }
-.yoy-bar-count {
-  font-size: 9px;
-  color: var(--dim);
-  letter-spacing: 0.05em;
-  min-width: 50px;
-  text-align: right;
-}
-
-/* Tighter on small phones */
-@media (max-width: 380px) {
-  .yoy-chips { flex-direction: column; }
-  .yoy-bar-row { grid-template-columns: 36px 1fr auto; }
-  .yoy-bar-count { display: none; }
-}
-
 /* ── FOOTER ── */
 .footer {
   text-align: center;
@@ -1432,11 +1297,9 @@ body {
 <!-- NOTE: Monthly Pulse (rides) moved to /month (Month tab).
      NOTE: "Year at a Glance" moved to /year (Year tab).
      NOTE: California map + Upcoming Rides moved to /year (Year tab).
-     What lives on /rides now: year-over-year breakdown, lifetime
-     stats, crowning ride, and region deep-dives. -->
-
-<!-- YEAR-OVER-YEAR PROGRESS -->
-{{YEAR_OVER_YEAR_HTML}}
+     What lives on /rides now: crowning ride + region deep-dives.
+     The year-over-year comparison block was removed — high-level
+     year progress lives on the Year tab (yearly widget + CA map). -->
 
 <!-- CROWNING ACHIEVEMENT -->
 <div class="section-label">Crowning Achievement</div>
