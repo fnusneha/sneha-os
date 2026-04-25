@@ -165,6 +165,14 @@ def gather_dashboard_data(
         if fresh:
             today_steps = fresh
 
+    # IMPORTANT: also patch steps_row[weekday] with the live value so the
+    # downstream scoring run (which drives the Today hero's star count)
+    # agrees with the Daily Quest Base card (which reads today_steps
+    # directly). Without this patch, the hero could show "1 star" while
+    # Base visually showed "earned" because they read different sources.
+    if weekday < len(steps_row) and today_steps > (today_steps_db or 0):
+        steps_row[weekday] = str(today_steps)
+
     # Live Garmin nutrition is ONLY fetched on an explicit pull-to-
     # refresh (force=True). Every regular tab switch back to Quest Hub
     # would otherwise spend 500ms–2s on a synchronous Garmin call,
@@ -183,6 +191,10 @@ def gather_dashboard_data(
                 today_row = {}
                 week[weekday] = today_row
             today_row["calories"] = live_cal
+            # Same reasoning as steps_row above — keep nutrition_row in
+            # sync so scoring and Daily Quest Base card agree.
+            if weekday < len(nutrition_row):
+                nutrition_row[weekday] = str(live_cal)
         # Goal sometimes changes in Garmin too; pick the fresher one.
         live_goal = live_nutrition.get("goal") or 0
         if live_goal and live_goal != today_cal_goal:
