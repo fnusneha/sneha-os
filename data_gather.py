@@ -145,8 +145,8 @@ def gather_dashboard_data(
     nutrition_row = _build_weekday_list(week, "calories")
     strength_row = _build_weekday_list(week, "strength_note")
     cardio_row   = _build_weekday_list(week, "cardio_note")
-    stretch_row  = _build_weekday_list(week, "stretch_note")
     sauna_row    = [("✓" if (r and r.get("sauna")) else "") for r in week]
+    stretch_row  = [("✓" if (r and r.get("stretch_logged")) else "") for r in week]
     morning_star_row = [("✓" if (r and r.get("morning_star")) else "") for r in week]
     night_star_row   = [("✓" if (r and r.get("night_star")) else "") for r in week]
     cycle_row    = [_cycle_cell(r) for r in week]

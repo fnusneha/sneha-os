@@ -12,9 +12,9 @@
 #   3. /dashboard renders HTML with the Quest Hub markers
 #   4. /rides renders HTML with the Ride Atlas markers
 #   5. /api/season GET returns the current month's done indices
-#   6. /api/manual sauna toggle round-trips through the DB. The test
-#      reads the current value, flips it, then restores it — so your
-#      real sauna log is never left in the wrong state.
+#   6. /api/manual sauna + stretch toggles round-trip through the DB.
+#      The test reads each current value, flips it, then restores it —
+#      so the real logs are never left in the wrong state.
 #
 # Exits non-zero on any failure.
 
@@ -63,6 +63,7 @@ echo "=== 2. Dashboard render ==="
 check "/dashboard has Quest Hub markers"   grep_body "$URL/dashboard" "wp-stars-num"
 check "/dashboard has Core Missions stage" grep_body "$URL/dashboard" "stage-core"
 check "/dashboard has Sauna toggle"        grep_body "$URL/dashboard" "toggle-sauna"
+check "/dashboard has Stretch toggle"      grep_body "$URL/dashboard" "toggle-stretch"
 check "/dashboard has NO Tailscale URLs"   bash -c "! curl -fsS '$URL/dashboard' | grep -q 'tail790bc5'"
 
 echo
@@ -75,15 +76,23 @@ echo "=== 4. Season pass (GET) ==="
 check "/api/season returns indices" json_key "$URL/api/season" "indices"
 
 echo
-echo "=== 5. Sauna round-trip (non-destructive — restores original value) ==="
+echo "=== 5. Manual toggles round-trip (non-destructive — restores original values) ==="
 TODAY=$(date +%Y-%m-%d)
-# Read current sauna state so we can restore it after the round-trip.
-ORIG=$(curl -fsS --max-time 15 "$URL/api/today" \
+
+# Read current sauna + stretch state so we can restore both afterward.
+SAUNA_ORIG=$(curl -fsS --max-time 15 "$URL/api/today" \
        | python3 -c "import sys,json; print('true' if json.load(sys.stdin).get('sauna') else 'false')" \
        2>/dev/null || echo "false")
-OTHER=$([ "$ORIG" = "true" ] && echo "false" || echo "true")
-check "POST /api/manual sauna=$OTHER (flip)"   post_ok "$URL/api/manual" "{\"field\":\"sauna\",\"value\":$OTHER,\"date\":\"$TODAY\"}"
-check "POST /api/manual sauna=$ORIG (restore)" post_ok "$URL/api/manual" "{\"field\":\"sauna\",\"value\":$ORIG,\"date\":\"$TODAY\"}"
+SAUNA_OTHER=$([ "$SAUNA_ORIG" = "true" ] && echo "false" || echo "true")
+check "POST /api/manual sauna=$SAUNA_OTHER (flip)"   post_ok "$URL/api/manual" "{\"field\":\"sauna\",\"value\":$SAUNA_OTHER,\"date\":\"$TODAY\"}"
+check "POST /api/manual sauna=$SAUNA_ORIG (restore)" post_ok "$URL/api/manual" "{\"field\":\"sauna\",\"value\":$SAUNA_ORIG,\"date\":\"$TODAY\"}"
+
+STRETCH_ORIG=$(curl -fsS --max-time 15 "$URL/api/today" \
+       | python3 -c "import sys,json; print('true' if json.load(sys.stdin).get('stretch') else 'false')" \
+       2>/dev/null || echo "false")
+STRETCH_OTHER=$([ "$STRETCH_ORIG" = "true" ] && echo "false" || echo "true")
+check "POST /api/manual stretch=$STRETCH_OTHER (flip)"   post_ok "$URL/api/manual" "{\"field\":\"stretch\",\"value\":$STRETCH_OTHER,\"date\":\"$TODAY\"}"
+check "POST /api/manual stretch=$STRETCH_ORIG (restore)" post_ok "$URL/api/manual" "{\"field\":\"stretch\",\"value\":$STRETCH_ORIG,\"date\":\"$TODAY\"}"
 
 echo
 echo "=== Summary ==="

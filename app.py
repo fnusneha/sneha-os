@@ -6,7 +6,7 @@ Routes:
     GET  /dashboard        → Quest Hub HTML (rendered live from DB)
     GET  /rides            → Ride Atlas HTML
     POST /api/collect      → {action: morning|night|core, date} — set daily star
-    POST /api/manual       → {field: sauna, value: bool, date}  — toggle manual field
+    POST /api/manual       → {field: sauna|stretch, value: bool, date}  — toggle manual field
     POST /api/season       → {index, done}  — toggle season-pass item for current month
     GET  /api/season       → current month's done_indices
     GET  /api/health       → JSON: DB row counts + last-sync date
@@ -196,7 +196,7 @@ def _gather_monthly_stars(data: dict) -> "tuple[dict, int]":
         cal_ok     = bool((row.get("calories") or 0) > 0)
         base_ok    = steps_ok and sleep_ok and cal_ok
         burn_ok    = bool(row.get("strength_note") or row.get("cardio_note"))
-        recover_ok = bool(row.get("stretch_note") or row.get("sauna"))
+        recover_ok = bool(row.get("stretch_logged") or row.get("sauna"))
         morning_ok = bool(row.get("morning_star"))
         night_ok   = bool(row.get("night_star"))
         stars = sum(map(int, [morning_ok, base_ok, burn_ok, recover_ok, night_ok]))
@@ -290,10 +290,10 @@ def api_collect():
 
 @app.post("/api/manual")
 def api_manual():
-    """Generic manual-field toggle. Today: sauna. Future: anything else
-    we decide to track via mobile.
+    """Generic manual-field toggle. Sauna and stretch are both
+    tap-to-log fields with no auto-detection — body posts here.
 
-    Body: {"field": "sauna", "value": true, "date": "YYYY-MM-DD"}
+    Body: {"field": "sauna" | "stretch", "value": true, "date": "YYYY-MM-DD"}
     """
     body = request.get_json(silent=True) or {}
     field = body.get("field")
@@ -303,11 +303,14 @@ def api_manual():
     except ValueError as exc:
         return jsonify(ok=False, error=str(exc)), 400
 
+    if not isinstance(value, bool):
+        return jsonify(ok=False, error="value must be bool"), 400
+
     db = _db()
     if field == "sauna":
-        if not isinstance(value, bool):
-            return jsonify(ok=False, error="value must be bool"), 400
         db.set_sauna(d, value)
+    elif field == "stretch":
+        db.set_stretch(d, value)
     else:
         return jsonify(ok=False, error=f"unknown field {field!r}"), 400
 
@@ -394,6 +397,7 @@ def api_today():
           "morning_star": true,
           "night_star": false,
           "sauna": true,
+          "stretch": false,
           "base_earned": true,      # steps AND sleep AND calories
           "base_done":   3,          # 0–3 count toward Base sub-star
           "burn_earned": false,     # strength OR cardio
@@ -446,6 +450,7 @@ def api_today():
         morning_done = bool((today_row or {}).get("morning_star"))
         night_done   = bool((today_row or {}).get("night_star"))
         sauna_done   = bool((today_row or {}).get("sauna"))
+        stretch_done = bool((today_row or {}).get("stretch_logged"))
         cycle_phase  = (today_row or {}).get("cycle_phase") or ""
         cycle_day    = (today_row or {}).get("cycle_day")
 
@@ -455,7 +460,7 @@ def api_today():
         cal_ok     = bool(calories and calories > 0)
         base_ok    = steps_ok and sleep_ok and cal_ok
         burn_ok    = bool((today_row or {}).get("strength_note") or (today_row or {}).get("cardio_note"))
-        recover_ok = bool((today_row or {}).get("stretch_note") or sauna_done)
+        recover_ok = bool(stretch_done or sauna_done)
         core_done  = int(base_ok) + int(burn_ok) + int(recover_ok)
         stars_today = (
             int(morning_done) + int(base_ok) + int(burn_ok)
@@ -473,7 +478,7 @@ def api_today():
             d_base    = (s >= DAILY_STEPS_GOAL and sl is not None
                          and float(sl) >= SLEEP_STAR_THRESHOLD and cal_i > 0)
             d_burn    = bool(row.get("strength_note") or row.get("cardio_note"))
-            d_recover = bool(row.get("stretch_note") or row.get("sauna"))
+            d_recover = bool(row.get("stretch_logged") or row.get("sauna"))
             stars_week += (
                 int(bool(row.get("morning_star")))
                 + int(d_base) + int(d_burn) + int(d_recover)
@@ -495,6 +500,7 @@ def api_today():
             "morning_star": morning_done,
             "night_star": night_done,
             "sauna": sauna_done,
+            "stretch": stretch_done,
             # New star structure
             "base_earned": base_ok,
             "burn_earned": burn_ok,

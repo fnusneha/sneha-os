@@ -286,13 +286,13 @@ def _build_day_details_payload(data: dict, weekday: int) -> dict:
                 "name": "🧘 Stretch",
                 "done": _row_has(stretch_row, wd),
                 "value": _cell(stretch_row, wd) or "—",
-                "target": "any session",
+                "target": "manual log",
             },
             {
                 "name": "♨️ Sauna / Steam",
                 "done": _row_has(sauna_row, wd),
                 "value": _cell(sauna_row, wd) or "—",
-                "target": "any session",
+                "target": "manual log",
             },
         ]
 
@@ -379,7 +379,9 @@ def _pick_best_day(data: dict, weekday: int) -> tuple[int, dict] | None:
     """
 
     def activity_note(wd: int) -> str:
-        for key in ("cardio_row", "strength_row", "stretch_row"):
+        # Only cardio/strength carry a free-text label worth showing.
+        # Stretch and sauna are binary "✓" toggles — skip them here.
+        for key in ("cardio_row", "strength_row"):
             row = data.get(key, [])
             if wd < len(row) and str(row[wd]).strip():
                 return str(row[wd]).strip()
@@ -763,8 +765,8 @@ def _build_core3(data: dict, weekday: int) -> dict:
 
     strength_hint = f"Logged: {strength_v}" if strength_v else "Lift session needed"
     cardio_hint   = f"Logged: {cardio_v}"   if cardio_v   else "Ride or run needed"
-    stretch_hint  = f"Logged: {stretch_v}"  if stretch_v  else "Yoga / mobility needed"
-    sauna_hint    = f"Logged: {sauna_v}"    if sauna_v    else "Heat recovery needed"
+    stretch_hint  = "Logged"                if stretch_v  else "Tap below to log"
+    sauna_hint    = "Logged"                if sauna_v    else "Tap below to log"
 
     # Core 3 is now three peer stage cards (Base / Burn / Recover) at
     # the same level as Morning Ritual and Night Ritual — not nested
@@ -1845,6 +1847,8 @@ def generate_html_report(
         # empty otherwise; sibling state text reflects either way.
         "SAUNA_CLS":           ("done" if _row_has(data.get("sauna_row", []), weekday) else ""),
         "SAUNA_STATE_TEXT":    ("\u2713 logged" if _row_has(data.get("sauna_row", []), weekday) else "not logged"),
+        "STRETCH_CLS":         ("done" if _row_has(data.get("stretch_row", []), weekday) else ""),
+        "STRETCH_STATE_TEXT":  ("\u2713 logged" if _row_has(data.get("stretch_row", []), weekday) else "not logged"),
         "MORNING_COLLECTED":   "true" if today_morning_earned else "false",
         "NIGHT_COLLECTED":     "true" if today_night_earned else "false",
         "CORE_COLLECTED":      "true" if today_core_earned else "false",

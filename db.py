@@ -149,6 +149,14 @@ class Db:
                 (d, value),
             )
 
+    def set_stretch(self, d: date, value: bool) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT INTO daily_entries (date, stretch_logged) VALUES (%s, %s) "
+                "ON CONFLICT (date) DO UPDATE SET stretch_logged = EXCLUDED.stretch_logged",
+                (d, value),
+            )
+
     # ───────────────────────────────────────────────────────────────
     # season_pass
     # ───────────────────────────────────────────────────────────────
@@ -292,7 +300,7 @@ _ENTRY_COLUMNS = {
     "strength_note", "cardio_note", "stretch_note",
     "cycle_phase", "cycle_day",
     "notes",
-    "sauna", "morning_star", "night_star",
+    "sauna", "stretch_logged", "morning_star", "night_star",
     "morning_checks", "night_checks",
 }
 

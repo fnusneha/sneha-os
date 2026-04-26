@@ -2435,15 +2435,22 @@ body.view-year  .month-only { display: none !important; }
       </div>
     </div>
 
-    <!-- Log manual — sauna/steam isn't auto-tracked anywhere else,
-         stays as a one-tap toggle. Counts toward the Recover card. -->
+    <!-- Log manual — stretch and sauna/steam aren't auto-tracked, so
+         they stay as one-tap toggles. Either one earns the Recover star. -->
     <div class="manual-log-card">
       <div class="manual-log-head">
         <span class="manual-log-title">Log manual</span>
         <span class="manual-log-hint">Tap to toggle today</span>
       </div>
+      <button type="button" class="manual-toggle {{STRETCH_CLS}}" id="toggle-stretch"
+              onclick="toggleManual('stretch', this)">
+        <span class="manual-ico">&#x1F9D8;</span>
+        <span class="manual-label">Stretch</span>
+        <span class="manual-state" id="stretch-state">{{STRETCH_STATE_TEXT}}</span>
+      </button>
       <button type="button" class="manual-toggle {{SAUNA_CLS}}" id="toggle-sauna"
-              onclick="toggleManual('sauna', this)">
+              onclick="toggleManual('sauna', this)"
+              style="margin-top:8px;">
         <span class="manual-ico">&#x2668;&#xfe0f;</span>
         <span class="manual-label">Sauna / Steam</span>
         <span class="manual-state" id="sauna-state">{{SAUNA_STATE_TEXT}}</span>
@@ -3205,10 +3212,11 @@ body.view-year  .month-only { display: none !important; }
         btn.classList.remove('saving');
         btn.classList.toggle('done', currentlyDone);  // revert
         if (stateEl) stateEl.textContent = currentlyDone ? '\u2713 logged' : 'not logged';
+        const fieldLabel = field.charAt(0).toUpperCase() + field.slice(1);
         if (typeof showError === 'function') {
-          showError('Sauna save failed: ' + (err && err.message || err));
+          showError(fieldLabel + ' save failed: ' + (err && err.message || err));
         } else {
-          alert('Could not save sauna toggle');
+          alert('Could not save ' + field + ' toggle');
         }
       });
   };

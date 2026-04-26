@@ -127,7 +127,8 @@ def sync_single_day(db: Db, target: date, creds) -> bool:
         entry["cycle_day"] = cycle_day
         entry["cycle_phase"] = get_cycle_phase(cycle_day)
 
-    # Garmin activities (strength / cardio / stretch)
+    # Garmin activities (strength / cardio). Stretch is intentionally
+    # NOT auto-detected — it's a manual one-tap toggle in the dashboard.
     activities = fetch_garmin_activities(target)
     if activities["strength"]:
         parts = [f"💪 {s['duration_min']}m" for s in activities["strength"]]
@@ -140,9 +141,6 @@ def sync_single_day(db: Db, target: date, creds) -> bool:
             mi = c.get("distance_mi")
             parts.append(f"{icon} {mi}mi" if mi else f"{icon} {c['duration_min']}m")
         entry["cardio_note"] = " + ".join(parts)
-    if activities["stretch"]:
-        parts = [f"🧘 {st['duration_min']}m" for st in activities["stretch"]]
-        entry["stretch_note"] = " + ".join(parts)
 
     # Nutrition (Garmin/MFP)
     nutrition = fetch_nutrition(target)

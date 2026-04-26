@@ -15,7 +15,7 @@ from googleapiclient.discovery import build
 
 from constants import (
     OURA_BASE, GARMIN_TOKEN_DIR, CALENDAR_ID, CYCLE_LENGTH,
-    STRENGTH_TYPES, CARDIO_TYPES, STRETCH_TYPES,
+    STRENGTH_TYPES, CARDIO_TYPES,
     NOTES_SKIP_STARTS, NOTES_TRIP_LOGISTICS,
     PERIOD_LOOKBACK_DAYS,
 )
@@ -217,6 +217,9 @@ def fetch_nutrition(day: date) -> dict | None:
 def fetch_garmin_activities(day: date) -> dict:
     """Fetch strength and cardio activities from Garmin for a given day.
 
+    Stretch / yoga / mobility is intentionally NOT pulled from Garmin —
+    it's a manual one-tap toggle in the dashboard.
+
     Args:
         day: The date to query.
 
@@ -224,7 +227,7 @@ def fetch_garmin_activities(day: date) -> dict:
         Dict with keys ``strength`` (list) and ``cardio`` (list).
         Each entry has: duration_min, calories, avg_hr, name, distance_mi.
     """
-    result = {"strength": [], "cardio": [], "stretch": []}
+    result = {"strength": [], "cardio": []}
     try:
         garmin = _get_garmin_client()
         if garmin is None:
@@ -247,12 +250,10 @@ def fetch_garmin_activities(day: date) -> dict:
                 result["strength"].append(entry)
             elif type_key in CARDIO_TYPES:
                 result["cardio"].append(entry)
-            elif type_key in STRETCH_TYPES:
-                result["stretch"].append(entry)
 
-        if result["strength"] or result["cardio"] or result["stretch"]:
-            log.info("Garmin activities for %s: %d strength, %d cardio, %d stretch",
-                     day, len(result["strength"]), len(result["cardio"]), len(result["stretch"]))
+        if result["strength"] or result["cardio"]:
+            log.info("Garmin activities for %s: %d strength, %d cardio",
+                     day, len(result["strength"]), len(result["cardio"]))
     except Exception as exc:
         log.warning("Garmin activities fetch failed: %s", exc)
 

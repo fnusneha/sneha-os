@@ -90,7 +90,7 @@ on both. No duplicate code to maintain.
   exist in a web app, so those are the only pieces of real Android
   code. Everything else is the web.
 - **Idempotent sync.** Re-running for the same day never clobbers a
-  collected ⭐ or a manually ticked sauna.
+  collected ⭐, a manually ticked sauna, or a manually ticked stretch.
 - **Timezone-pinned to Pacific.** Cron runs in UTC; `tz.local_today()`
   translates so "today" always matches the wall clock in California.
 - **Graceful degradation.** If Oura / Garmin / Strava / Google flakes,
@@ -133,7 +133,7 @@ from Postgres rows.
   want to glance at when planning workouts around life)
 - **Daily Quest** — 4-item morning ritual, 7-item core missions with
   live progress ("need 2 more to earn ⭐"), 4-item night ritual
-- **Manual toggles** — sauna / steam, tap to save
+- **Manual toggles** — stretch and sauna / steam, tap to save
 - **Season Pass** — monthly habit checklist (DB-backed)
 - **Pillar Health** — annual anchors pulled from a Google Docs habit
   tracker
@@ -206,8 +206,9 @@ pip install -r requirements.txt
 #   STRAVA_CLIENT_ID / STRAVA_CLIENT_SECRET / STRAVA_REFRESH_TOKEN
 #   GOOGLE_TOKEN_JSON   OAuth user token (single-line JSON)
 
-# First-time DB setup
+# First-time DB setup (run all migrations in order)
 psql "$DATABASE_URL" -f migrations/001_initial_schema.sql
+psql "$DATABASE_URL" -f migrations/002_stretch_logged.sql
 
 # Pull today's data
 python sync.py --morning --force
