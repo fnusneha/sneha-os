@@ -1281,32 +1281,7 @@ body {
   box-shadow: 0 0 4px rgba(245,200,66,0.6);
 }
 
-/* ── Manual log card (Sauna toggle, future manual fields) ── */
-.manual-log-card {
-  margin: 12px 0;
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: rgba(245,200,66,0.04);
-  border: 1px solid rgba(245,200,66,0.15);
-}
-.manual-log-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: 8px;
-}
-.manual-log-title {
-  font-size: 11px;
-  color: var(--muted);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  font-weight: 600;
-}
-.manual-log-hint {
-  font-size: 9px;
-  color: var(--dim);
-  letter-spacing: 0.02em;
-}
+/* ── Manual toggle (stretch + sauna, inside the Recover stage body) ── */
 .manual-toggle {
   display: flex;
   align-items: center;
@@ -2418,8 +2393,9 @@ body.view-year  .month-only { display: none !important; }
       </div>
     </div>
 
-    <!-- Recover — stretch OR sauna / steam (pick one).
-         Expanded until earned; collapsed once any recovery is logged. -->
+    <!-- Recover — stretch OR sauna / steam (pick one). Both are
+         manual one-tap toggles inside this card; either one earns
+         the Recover star. -->
     <div class="stage mint-stage stage-active {{RECOVER_STAGE_STATE}} {{RECOVER_COLLAPSED}}" id="stage-recover">
       <div class="stage-header" onclick="toggleStage('stage-recover')">
         <span class="stage-icon">&#x1F33F;</span>
@@ -2430,31 +2406,21 @@ body.view-year  .month-only { display: none !important; }
         <div class="stage-star {{RECOVER_STAR_CLS}}" id="star-recover">{{RECOVER_STAR_GLYPH}}</div>
         <span class="stage-chevron">&#x25BC;</span>
       </div>
-      <div class="stage-body">
-        {{RECOVER_ITEMS_HTML}}
+      <div class="stage-body" style="padding-bottom:12px;">
+        <button type="button" class="manual-toggle {{STRETCH_CLS}}" id="toggle-stretch"
+                onclick="toggleManual('stretch', this)">
+          <span class="manual-ico">&#x1F9D8;</span>
+          <span class="manual-label">Stretch</span>
+          <span class="manual-state" id="stretch-state">{{STRETCH_STATE_TEXT}}</span>
+        </button>
+        <button type="button" class="manual-toggle {{SAUNA_CLS}}" id="toggle-sauna"
+                onclick="toggleManual('sauna', this)"
+                style="margin-top:8px;">
+          <span class="manual-ico">&#x2668;&#xfe0f;</span>
+          <span class="manual-label">Sauna / Steam</span>
+          <span class="manual-state" id="sauna-state">{{SAUNA_STATE_TEXT}}</span>
+        </button>
       </div>
-    </div>
-
-    <!-- Log manual — stretch and sauna/steam aren't auto-tracked, so
-         they stay as one-tap toggles. Either one earns the Recover star. -->
-    <div class="manual-log-card">
-      <div class="manual-log-head">
-        <span class="manual-log-title">Log manual</span>
-        <span class="manual-log-hint">Tap to toggle today</span>
-      </div>
-      <button type="button" class="manual-toggle {{STRETCH_CLS}}" id="toggle-stretch"
-              onclick="toggleManual('stretch', this)">
-        <span class="manual-ico">&#x1F9D8;</span>
-        <span class="manual-label">Stretch</span>
-        <span class="manual-state" id="stretch-state">{{STRETCH_STATE_TEXT}}</span>
-      </button>
-      <button type="button" class="manual-toggle {{SAUNA_CLS}}" id="toggle-sauna"
-              onclick="toggleManual('sauna', this)"
-              style="margin-top:8px;">
-        <span class="manual-ico">&#x2668;&#xfe0f;</span>
-        <span class="manual-label">Sauna / Steam</span>
-        <span class="manual-state" id="sauna-state">{{SAUNA_STATE_TEXT}}</span>
-      </button>
     </div>
 
     <!-- ─── wind down ─── -->
@@ -3184,11 +3150,98 @@ body.view-year  .month-only { display: none !important; }
     el.classList.toggle('expanded');
   };
 
-  // ── Manual log toggle (sauna, future fields) ──
+  // ── Recover state syncer ──
+  // After a manual toggle flips, recompute whether the Recover star is
+  // currently earned (any toggle done) and reconcile every UI surface
+  // that reflects it: stage card star, today hero RECOVER pill, today
+  // hero star count + nudge + dim/lit glyphs, weekly stars total +
+  // medals, and today's day bubble.
+  function syncRecoverState(prevEarned) {
+    const stageEl = document.getElementById('stage-recover');
+    if (!stageEl) return;
+    const anyDone = !!stageEl.querySelector('.manual-toggle.done');
+    if (anyDone === prevEarned) return;  // no net change
+
+    // Stage card star + earned class
+    const starEl = document.getElementById('star-recover');
+    if (starEl) {
+      starEl.textContent = anyDone ? '\u2B50' : '\u2606';
+      starEl.classList.toggle('earned', anyDone);
+    }
+    stageEl.classList.toggle('earned', anyDone);
+
+    // Today hero RECOVER pill
+    const hero = document.querySelector('.today-hero');
+    if (hero) {
+      hero.querySelectorAll('.hero-stage').forEach(cell => {
+        const nameEl = cell.querySelector('.hero-stage-name');
+        if (nameEl && nameEl.textContent.trim().toUpperCase() === 'RECOVER') {
+          cell.classList.toggle('done', anyDone);
+          cell.classList.toggle('pending', !anyDone);
+          const checkEl = cell.querySelector('.hero-stage-check');
+          if (checkEl) checkEl.textContent = anyDone ? '\u2713' : '\u25CB';
+        }
+      });
+
+      // Today hero star count + nudge + glyph row.
+      const numEl = hero.querySelector('.hero-count-num');
+      if (numEl) {
+        const current = parseInt(numEl.textContent) || 0;
+        const next = Math.max(0, current + (anyDone ? 1 : -1));
+        numEl.textContent = next;
+        const MAX = 5;
+        const toGo = Math.max(0, MAX - next);
+        const caption = hero.querySelector('.hero-caption');
+        if (caption) caption.textContent = 'Stars earned \u00b7 ' + toGo + ' to go';
+        const nudge = hero.querySelector('.hero-nudge');
+        if (nudge) {
+          if (next >= MAX) {
+            nudge.className = 'hero-nudge perfect';
+            nudge.innerHTML = '\u2728 Perfect Day. You hit every star \ud83c\udf1f';
+          } else {
+            nudge.className = 'hero-nudge';
+            nudge.innerHTML = '<strong>' + toGo + '</strong> more for a Perfect Day \u2728';
+          }
+        }
+      }
+      // Light or dim a star glyph in the hero row.
+      const starsRow = hero.querySelector('.hero-stars');
+      if (starsRow) {
+        if (anyDone) {
+          const dim = starsRow.querySelector('.hero-star.dim');
+          if (dim) { dim.classList.remove('dim'); dim.classList.add('lit'); }
+        } else {
+          const lits = starsRow.querySelectorAll('.hero-star.lit');
+          const last = lits[lits.length - 1];
+          if (last) { last.classList.remove('lit'); last.classList.add('dim'); }
+        }
+      }
+    }
+
+    // Weekly stars total + medal markers + bar.
+    updateWeeklyPulse(anyDone ? 1 : -1);
+
+    // Today's bubble (week/month grids).
+    const todayBubble = document.querySelector('.wp-day.is-today');
+    if (todayBubble) {
+      const numEl = todayBubble.querySelector('.wp-day-num');
+      if (numEl) {
+        const current = parseInt(numEl.textContent) || 0;
+        numEl.textContent = Math.max(0, current + (anyDone ? 1 : -1));
+      }
+    }
+  }
+
+  // ── Manual log toggle (stretch, sauna) ──
   // Posts to /api/manual. Uses optimistic UI: flips immediately, then
   // syncs to server. On failure reverts and shows the existing toast.
+  // After a successful flip, recomputes Recover star + Today hero +
+  // weekly count so the user doesn't have to pull-to-refresh.
   window.toggleManual = function(field, btn) {
     if (!btn) return;
+    const stageEl = document.getElementById('stage-recover');
+    const recoverEarnedBefore = !!(stageEl && stageEl.querySelector('.manual-toggle.done'));
+
     const currentlyDone = btn.classList.contains('done');
     const next = !currentlyDone;
 
@@ -3197,6 +3250,9 @@ body.view-year  .month-only { display: none !important; }
     const stateEl = btn.querySelector('.manual-state');
     if (stateEl) stateEl.textContent = next ? '\u2713 logged' : 'not logged';
     btn.classList.add('saving');
+
+    // Reconcile every Recover-driven surface.
+    syncRecoverState(recoverEarnedBefore);
 
     const todayLocal = (typeof localDateISO === 'function') ? localDateISO() : null;
     fetch('/api/manual', {
@@ -3210,8 +3266,12 @@ body.view-year  .month-only { display: none !important; }
       })
       .catch(err => {
         btn.classList.remove('saving');
-        btn.classList.toggle('done', currentlyDone);  // revert
+        // Capture post-flip state, revert the button, then re-sync so
+        // the Recover star / hero / week count all snap back too.
+        const earnedAfterFlip = !!(stageEl && stageEl.querySelector('.manual-toggle.done'));
+        btn.classList.toggle('done', currentlyDone);
         if (stateEl) stateEl.textContent = currentlyDone ? '\u2713 logged' : 'not logged';
+        syncRecoverState(earnedAfterFlip);
         const fieldLabel = field.charAt(0).toUpperCase() + field.slice(1);
         if (typeof showError === 'function') {
           showError(fieldLabel + ' save failed: ' + (err && err.message || err));
