@@ -527,13 +527,15 @@ def fetch_week_calendar_notes(monday: date, sunday: date, creds) -> str | None:
                 continue
             candidates.append(s)
 
-        # Filter logistics if a trip exists, deduplicate similar names
+        # Filter logistics + deduplicate similar names. Logistics
+        # (drives, pickups, packing, etc.) are dropped unconditionally
+        # — Sneha wants only main events in the Week Agenda card.
         kept: list[str] = []
         seen: set[str] = set()
         trip_line_added = False
 
         for summary in candidates:
-            if has_trip and _is_trip_logistics(summary):
+            if _is_trip_logistics(summary):
                 continue
 
             lower = summary.lower()

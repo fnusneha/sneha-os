@@ -121,6 +121,8 @@ NOTES_SKIP_STARTS = [
     # Cycle / astronomy markers — not actionable agenda items.
     "periods", "flower moon", "full moon", "new moon", "blood moon",
     "blue moon", "supermoon", "lunar eclipse", "solar eclipse",
+    # Home maintenance / chores — not main events.
+    "hvac", "filter replacement",
 ]
 
 # Substring filters — events whose summary CONTAINS any of these
@@ -128,10 +130,17 @@ NOTES_SKIP_STARTS = [
 # fit a startswith rule, e.g. "Abhishek Singh's birthday".
 NOTES_SKIP_CONTAINS = [
     "birthday", "bday",
+    # Home maintenance phrasing varies — catch anywhere in the title.
+    "filter replacement", "hvac",
 ]
 
-# Events that are trip logistics. When a Travel:/Trip event is present
-# for the same week, these are hidden (the trip line covers them).
+# Events that are logistics / fluff — pickups, drives, packing,
+# checkins, etc. Always filtered out of the Week Agenda card so only
+# the main events land there ("Alcatraz Night Tour", not "Drive to
+# Pier 33"). Previously gated on whether a Travel:/Trip event existed
+# in the same week, but the gate let too much filler through when the
+# main event wasn't tagged Travel:.
 NOTES_TRIP_LOGISTICS = [
-    "drive", "checkin", "check in", "arrange", "airbnb", "pack", "commute",
+    "drive", "checkin", "check in", "arrange", "airbnb", "pack",
+    "commute", "pick up", "pickup", "drop off", "dropoff",
 ]
