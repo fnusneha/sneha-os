@@ -118,6 +118,16 @@ NOTES_SKIP_STARTS = [
     # Out-of-office markers are implied when a trip event exists;
     # showing "OOO" separately is just noise.
     "ooo", "out of office",
+    # Cycle / astronomy markers — not actionable agenda items.
+    "periods", "flower moon", "full moon", "new moon", "blood moon",
+    "blue moon", "supermoon", "lunar eclipse", "solar eclipse",
+]
+
+# Substring filters — events whose summary CONTAINS any of these
+# (case-insensitive) are excluded. Use this for patterns that don't
+# fit a startswith rule, e.g. "Abhishek Singh's birthday".
+NOTES_SKIP_CONTAINS = [
+    "birthday", "bday",
 ]
 
 # Events that are trip logistics. When a Travel:/Trip event is present

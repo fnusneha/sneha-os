@@ -16,7 +16,7 @@ from googleapiclient.discovery import build
 from constants import (
     OURA_BASE, GARMIN_TOKEN_DIR, CALENDAR_ID, CYCLE_LENGTH,
     STRENGTH_TYPES, CARDIO_TYPES,
-    NOTES_SKIP_STARTS, NOTES_TRIP_LOGISTICS,
+    NOTES_SKIP_STARTS, NOTES_SKIP_CONTAINS, NOTES_TRIP_LOGISTICS,
     PERIOD_LOOKBACK_DAYS,
 )
 
@@ -376,6 +376,9 @@ def _should_skip_event(summary: str) -> bool:
     for pat in NOTES_SKIP_STARTS:
         if lower.startswith(pat) or check.startswith(pat):
             return True
+    for pat in NOTES_SKIP_CONTAINS:
+        if pat in lower:
+            return True
     return False
 
 
@@ -415,7 +418,11 @@ def _shorten_event_name(summary: str) -> str:
     s = re.sub(r"\s{2,}", " ", s).strip()
     if len(s) > 30:
         s = " ".join(s.split()[:4])
-    return s.strip()
+    # Trim trailing punctuation artifacts AFTER the truncate so a
+    # name like "HVAC Filter Replacement - Quarterly" doesn't end up
+    # as "HVAC Filter Replacement -".
+    s = re.sub(r"[\s\-\u2013\u2014:;,]+$", "", s).strip()
+    return s
 
 
 def fetch_week_calendar_notes(monday: date, sunday: date, creds) -> str | None:
