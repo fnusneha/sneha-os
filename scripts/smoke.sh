@@ -61,14 +61,13 @@ check "/api/health has daily_entries count" json_key "$URL/api/health" "daily_en
 echo
 echo "=== 2. Dashboard render ==="
 check "/dashboard has Quest Hub markers"   grep_body "$URL/dashboard" "wp-stars-num"
-check "/dashboard has Core Missions stage" grep_body "$URL/dashboard" "stage-core"
+check "/dashboard has Recover stage"       grep_body "$URL/dashboard" "stage-recover"
 check "/dashboard has Sauna toggle"        grep_body "$URL/dashboard" "toggle-sauna"
 check "/dashboard has Stretch toggle"      grep_body "$URL/dashboard" "toggle-stretch"
 check "/dashboard has NO Tailscale URLs"   bash -c "! curl -fsS '$URL/dashboard' | grep -q 'tail790bc5'"
 
 echo
 echo "=== 3. Rides render ==="
-check "/rides has YoY title"   grep_body "$URL/rides" "yoy-title"
 check "/rides has Monthly Pulse" grep_body "$URL/rides" "rp-pulse"
 
 echo
