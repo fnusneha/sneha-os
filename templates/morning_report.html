@@ -2494,6 +2494,21 @@ body.view-year  .month-only { display: none !important; }
 
     <!-- Weekly rollups: steps / sleep / strength / cardio -->
     {{WEEKLY_ROLLUPS_HTML}}
+
+    <!-- Pillar Health (sleep / stress / recovery / etc) — lives at the
+         bottom of the Week view because it's a multi-day rollup, not
+         today's snapshot. Same accordion behaviour as before. -->
+    <div class="card accordion-section collapsed" id="section-pillars" data-section="pillars">
+      <div class="accordion-header" onclick="toggleAccordion('pillars')">
+        <div class="card-title">&#x1F9E9; Pillar Health</div>
+        <span class="accordion-chevron">&#x25BC;</span>
+      </div>
+      <div class="accordion-body">
+        <div class="pillars-grid">
+          {{PILLARS_HTML}}
+        </div>
+      </div>
+    </div>
   </div>
   <!-- ════════════ /WEEK VIEW ════════════ -->
 
@@ -2523,26 +2538,11 @@ body.view-year  .month-only { display: none !important; }
   </div>
   <!-- ════════════ /MONTH VIEW ════════════ -->
 
-  <!-- Pillars + Pins continue to live on Today — they're personal /
-       yearly context, not time-scoped. Wrap them in today-only so
-       they hide on Week/Month tabs. -->
-  <div class="today-only">
-
-  <!-- ═══ 6. PILLAR HEALTH (accordion) ═══ -->
-  <div class="card accordion-section collapsed" id="section-pillars" data-section="pillars">
-    <div class="accordion-header" onclick="toggleAccordion('pillars')">
-      <div class="card-title">&#x1F9E9; Pillar Health</div>
-      <span class="accordion-chevron">&#x25BC;</span>
-    </div>
-    <div class="accordion-body">
-      <div class="pillars-grid">
-        {{PILLARS_HTML}}
-      </div>
-    </div>
-  </div>
-
-  </div>
-  <!-- ════════════ /TODAY VIEW ACCORDIONS ════════════ -->
+  <!-- (Pillar Health used to live here on the Today tab. Moved to
+       the bottom of the Week view because it's a multi-day rollup,
+       not today's snapshot. The element id "section-pillars" stays
+       the same in its new home, so the existing accordion-state
+       persistence on lines ~3136 keeps working unchanged.) -->
 
   <!-- ════════════ YEAR VIEW ════════════ -->
   <div class="year-only">
