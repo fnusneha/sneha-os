@@ -701,7 +701,7 @@ def _build_core3(data: dict, weekday: int) -> dict:
       }
 
     Hint text inside each items_html is dynamic so the user sees live
-    progress toward the sub-star ("Need 6,591 more · 1,409 / 8,000")
+    progress toward the sub-star (e.g. "Need 4,591 more · 5,409 / 10,000")
     without opening a modal — pull-to-refresh confirms fresh data.
     """
     daily = data["score"].get("daily", {}).get(weekday, {})
@@ -773,7 +773,7 @@ def _build_core3(data: dict, weekday: int) -> dict:
     # inside a wrapper. Each group returns its own items-HTML and its
     # earned flag so the template can render three full .stage cards.
     base_items = [
-        ("\U0001f45f",    "8,000 Steps",    steps_hint, steps_done),
+        ("\U0001f45f",    f"{DAILY_STEPS_GOAL:,} Steps", steps_hint, steps_done),
         ("\U0001f634",    f"Sleep {SLEEP_STAR_THRESHOLD_DEFAULT:g}h+",
          sleep_hint, sleep_done),
         ("\U0001f357",    "Calories Logged", cal_hint,  cal_done),
@@ -1383,7 +1383,7 @@ def _build_weekly_rollups(data: dict) -> str:
     avg_sleep      = data.get("avg_sleep")
     strength_count = data.get("strength_count") or 0
     cardio_count   = data.get("cardio_count") or 0
-    week_steps_goal = DAILY_STEPS_GOAL * 7   # 56k on an 8k/day target
+    week_steps_goal = DAILY_STEPS_GOAL * 7   # 70k on a 10k/day target
 
     def _row(icon: str, label: str, value_html: str, done: bool) -> str:
         done_cls = "done" if done else ""
