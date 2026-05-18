@@ -820,28 +820,32 @@ def _build_core3(data: dict, weekday: int) -> dict:
     stretch_hint  = "Logged"                if stretch_v  else "Tap below to log"
     sauna_hint    = "Logged"                if sauna_v    else "Tap below to log"
 
-    # Core 3 is now three peer stage cards (Base / Burn / Recover) at
-    # the same level as Morning Ritual and Night Ritual — not nested
-    # inside a wrapper. Each group returns its own items-HTML and its
-    # earned flag so the template can render three full .stage cards.
+    # Each Core stage decides which sub-goals get their own auto-tracked
+    # q-item row vs which get represented ONLY by a manual-toggle
+    # button. The split is honest about what's auto and what's tapped:
+    #
+    #   Base    — Steps + Sleep are auto-fetched from Oura; render
+    #             them as q-items. Calories is now manual-only, so it
+    #             lives in the Cal Logged button below (no q-item).
+    #   Burn    — Both strength + cardio are manual-only now (Garmin
+    #             activity fetch is disabled). No q-items here; the
+    #             two manual-toggle buttons in the template ARE the
+    #             whole stage body.
+    #   Recover — Both are manual; ditto.
     base_items = [
         ("\U0001f45f",    f"{DAILY_STEPS_GOAL:,} Steps", steps_hint, steps_done),
         ("\U0001f634",    f"Sleep {SLEEP_STAR_THRESHOLD_DEFAULT:g}h+",
          sleep_hint, sleep_done),
-        ("\U0001f357",    "Calories Logged", cal_hint,  cal_done),
     ]
-    burn_items = [
-        ("\U0001f4aa",    "Strength",       strength_hint, strength_done),
-        ("\U0001f6b4",    "Cardio",         cardio_hint,   cardio_done),
-    ]
-    recover_items = [
-        ("\U0001f9d8",    "Stretch",        stretch_hint,  bool(stretch_v)),
-        ("\u2668\ufe0f",  "Sauna / Steam",  sauna_hint,    bool(sauna_v)),
-    ]
+    burn_items: list = []     # body is just the two manual toggles
+    recover_items: list = []  # body is just the two manual toggles
 
-    base_earned = all(item[3] for item in base_items)
-    burn_earned = any(item[3] for item in burn_items)
-    recover_earned = any(item[3] for item in recover_items)
+    # Earned flags are computed from source-of-truth booleans, NOT from
+    # items list contents — so trimming items_html for visual simplicity
+    # above doesn't accidentally weaken the star rules.
+    base_earned    = steps_done and sleep_done and cal_done
+    burn_earned    = strength_done or cardio_done
+    recover_earned = bool(stretch_v) or bool(sauna_v)
 
     def _items_html(group_key: str, items: list, offset: int) -> str:
         return "\n".join(
