@@ -119,10 +119,11 @@ def _quest_item(stage: str, index: int, icon: str, name: str,
     if stage.startswith("core"):
         # Pill-style status mirroring the Sauna / Stretch / Cal Logged
         # manual-toggle buttons — "\u2713 done" in gold when achieved,
-        # "pending" in muted gray when not. Right-edge pill placement
-        # so all 3 Base sub-goals + the manual toggle underneath share
-        # one consistent visual language.
-        status = '\u2713 done' if done else 'pending'
+        # "in progress" in muted gray when not. We say "in progress"
+        # (not "pending") because these rows are AUTO-tracked from
+        # Oura — they aren't waiting on a user tap, the data is just
+        # accumulating toward the threshold during the day.
+        status = '\u2713 done' if done else 'in progress'
         done_cls = " core-done" if done else " core-pending"
         return (
             f'<div class="q-item{done_cls}" data-readonly="true">'

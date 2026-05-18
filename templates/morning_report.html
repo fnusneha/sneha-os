@@ -1398,8 +1398,13 @@ body {
   color: var(--gold);
   font-weight: 600;
 }
-.q-item.core-done .q-name { color: var(--text); font-weight: 500; }
-.q-item.core-pending .q-name { color: var(--muted); }
+/* Both pending and done q-item names use the same bright text color
+   to match the manual-toggle labels — what changes between states is
+   the status PILL on the right, not the name brightness. Before,
+   pending names were muted and toggle names were bright, so the same
+   row class looked different depending on data source. */
+.q-item.core-done .q-name,
+.q-item.core-pending .q-name { color: var(--text); font-weight: 500; }
 .q-item:last-of-type { border-bottom: none; }
 .q-check {
   width: 20px;
@@ -2445,14 +2450,14 @@ body.view-year  .month-only { display: none !important; }
                 onclick="toggleManual('strength_logged', this)"
                 style="margin-top:8px;">
           <span class="manual-ico">&#x1F4AA;</span>
-          <span class="manual-label">Strength &middot; 1 session</span>
+          <span class="manual-label">Strength</span>
           <span class="manual-state" id="strength_logged-state">{{STRENGTH_LOGGED_STATE_TEXT}}</span>
         </button>
         <button type="button" class="manual-toggle {{CARDIO_LOGGED_CLS}}" id="toggle-cardio_logged"
                 onclick="toggleManual('cardio_logged', this)"
                 style="margin-top:8px;">
           <span class="manual-ico">&#x1F6B4;</span>
-          <span class="manual-label">Cardio &middot; 1 session</span>
+          <span class="manual-label">Cardio</span>
           <span class="manual-state" id="cardio_logged-state">{{CARDIO_LOGGED_STATE_TEXT}}</span>
         </button>
       </div>
@@ -2475,14 +2480,14 @@ body.view-year  .month-only { display: none !important; }
         <button type="button" class="manual-toggle {{STRETCH_CLS}}" id="toggle-stretch"
                 onclick="toggleManual('stretch', this)">
           <span class="manual-ico">&#x1F9D8;</span>
-          <span class="manual-label">Stretch &middot; 1 session</span>
+          <span class="manual-label">Stretch</span>
           <span class="manual-state" id="stretch-state">{{STRETCH_STATE_TEXT}}</span>
         </button>
         <button type="button" class="manual-toggle {{SAUNA_CLS}}" id="toggle-sauna"
                 onclick="toggleManual('sauna', this)"
                 style="margin-top:8px;">
           <span class="manual-ico">&#x2668;&#xfe0f;</span>
-          <span class="manual-label">Sauna / Steam &middot; 1 session</span>
+          <span class="manual-label">Sauna / Steam</span>
           <span class="manual-state" id="sauna-state">{{SAUNA_STATE_TEXT}}</span>
         </button>
       </div>
