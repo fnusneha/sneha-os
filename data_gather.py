@@ -228,13 +228,20 @@ def gather_dashboard_data(
     # is wrong because last night's sleep IS in the DB, just under the
     # previous date. We want the user to always see their latest sleep
     # number, regardless of which calendar day it's stored under.
+    #
+    # IMPORTANT: walk back through DB rows by absolute date, not through
+    # the in-memory `week` array. On a Monday, week[:weekday+1] is just
+    # [today] — yesterday is in LAST week's array, not this one. Direct
+    # DB lookup covers cross-week boundaries cleanly. Cap at 7 days back
+    # (anything older isn't really "your last sleep" anymore).
     last_sleep = None
     if today_row and today_row.get("sleep_hours") is not None:
         last_sleep = float(today_row["sleep_hours"])
     else:
-        for r in reversed(week[:weekday + 1]):
-            if r and r.get("sleep_hours") is not None:
-                last_sleep = float(r["sleep_hours"])
+        for delta in range(1, 8):
+            prev = db.get_entry(today - timedelta(days=delta))
+            if prev and prev.get("sleep_hours") is not None:
+                last_sleep = float(prev["sleep_hours"])
                 break
 
     # Calorie values (7-length, None where missing).
