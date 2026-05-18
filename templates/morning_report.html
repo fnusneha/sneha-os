@@ -3575,10 +3575,13 @@ body.view-year  .month-only { display: none !important; }
         // so you know refresh actually did something even if the numbers
         // are "still low". (If Oura's cloud is lagging behind your ring,
         // the number will be low here and that's upstream, not us.)
+        //
+        // Calories are now entered manually via the Cal Logged toggle —
+        // they're no longer part of the "fresh fetch" set, so dropped
+        // from the toast to avoid implying we pulled a new kcal value.
         const toast = document.createElement('div');
         toast.textContent =
-          '\u2713 fresh: ' + d.steps.toLocaleString() + ' steps \u00b7 ' +
-          (d.calories || 0).toLocaleString() + ' kcal';
+          '\u2713 fresh: ' + d.steps.toLocaleString() + ' steps';
         toast.style.cssText =
           'position:fixed;top:60px;left:50%;transform:translateX(-50%);' +
           'background:rgba(110,231,183,0.96);color:#0d1b2e;padding:8px 16px;' +
