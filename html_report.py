@@ -33,7 +33,8 @@ log = logging.getLogger(__name__)
 # ═══════════════════════════════════════════════════════════════════
 
 from constants import (
-    DAILY_STEPS_GOAL, MAX_DAILY_STARS, MAX_WEEKLY_STARS,
+    DAILY_STEPS_GOAL, DAILY_CAL_TARGET,
+    MAX_DAILY_STARS, MAX_WEEKLY_STARS,
     MEDAL_BRONZE, MEDAL_SILVER, MEDAL_GOLD,
     SLEEP_STAR_THRESHOLD_DEFAULT,
     WEEKLY_CARDIO_GOAL, WEEKLY_STRENGTH_GOAL,
@@ -750,11 +751,11 @@ def _build_core3(data: dict, weekday: int) -> dict:
     today_cal = cal_values[weekday] if weekday < len(cal_values) and cal_values[weekday] else 0
     cal_done = bool(daily.get("cal"))
     if today_cal_logged:
-        cal_hint = "Done \u2713  \u00b7  manually logged"
+        cal_hint = f"Done \u2713  \u00b7  \u2264 {DAILY_CAL_TARGET:,} kcal logged"
     elif cal_done and today_cal:
-        cal_hint = f"{today_cal:,} logged"
+        cal_hint = f"{today_cal:,} logged  \u00b7  target {DAILY_CAL_TARGET:,}"
     else:
-        cal_hint = "Tap below to mark logged"
+        cal_hint = f"Tap below if \u2264 {DAILY_CAL_TARGET:,} kcal today"
 
     # ── Strength / Cardio / Stretch / Sauna — show what was logged (or "—")
     def _row_val(row_key):
@@ -1860,6 +1861,10 @@ def generate_html_report(
         # only today's index gets a clickable button in the template.
         "CAL_LOGGED_CLS":        ("done" if (data.get("cal_logged_row") or [False]*7)[weekday] else ""),
         "CAL_LOGGED_STATE_TEXT": ("\u2713 logged" if (data.get("cal_logged_row") or [False]*7)[weekday] else "not logged"),
+        # Target chip surfaces the kcal ceiling on the button label
+        # itself ("Cal Logged · ≤1,520") so you don't have to remember
+        # the number — matches how Steps shows "/10,000".
+        "CAL_TARGET_LABEL":      f"\u2264{DAILY_CAL_TARGET:,}",
         "MORNING_COLLECTED":   "true" if today_morning_earned else "false",
         "NIGHT_COLLECTED":     "true" if today_night_earned else "false",
         "CORE_COLLECTED":      "true" if today_core_earned else "false",

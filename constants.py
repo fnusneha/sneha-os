@@ -49,6 +49,12 @@ WEEKLY_STEPS_GOAL = 60_000
 WEEKLY_STRENGTH_GOAL = 3
 WEEKLY_CARDIO_GOAL = 1
 
+# Daily calorie ceiling used by the Cal Logged toggle.
+# Pure UI hint — the actual star fires on the manual toggle, not on
+# any numeric comparison. Tweak here and both the Calories item hint
+# and the Cal Logged button label pick it up automatically.
+DAILY_CAL_TARGET = 1_520
+
 # ═══════════════════════════════════════════════════════════════════
 # Scoring thresholds
 # ═══════════════════════════════════════════════════════════════════
