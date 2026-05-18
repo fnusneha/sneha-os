@@ -142,13 +142,18 @@ def sync_single_day(db: Db, target: date, creds) -> bool:
             parts.append(f"{icon} {mi}mi" if mi else f"{icon} {c['duration_min']}m")
         entry["cardio_note"] = " + ".join(parts)
 
-    # Nutrition (Garmin/MFP)
-    nutrition = fetch_nutrition(target)
-    if nutrition:
-        if nutrition.get("calories") is not None:
-            entry["calories"] = nutrition["calories"]
-        if nutrition.get("goal") is not None:
-            entry["calorie_goal"] = nutrition["goal"]
+    # Nutrition (Garmin/MFP) — DISABLED.
+    # The endpoint kept returning empty (`has-meals=False`) for recent
+    # days even after a successful Garmin login, so the Base star never
+    # fired. Replaced by the manual cal_logged toggle on the dashboard
+    # (Base stage). Uncomment if Garmin nutrition ever becomes reliable.
+    #
+    # nutrition = fetch_nutrition(target)
+    # if nutrition:
+    #     if nutrition.get("calories") is not None:
+    #         entry["calories"] = nutrition["calories"]
+    #     if nutrition.get("goal") is not None:
+    #         entry["calorie_goal"] = nutrition["goal"]
 
     # Notes — only updated on the FIRST day of the week so we don't
     # rewrite the same text 7 times.

@@ -740,15 +740,21 @@ def _build_core3(data: dict, weekday: int) -> dict:
     else:
         sleep_hint = "No sleep data yet"
 
-    # ── Calories: logged vs. goal (from Garmin Connect / MFP)
-    cal_goal = data.get("cal_goal", 0)
+    # ── Calories: manual toggle (replaced Garmin/MFP fetch).
+    # User taps Cal Logged once food is recorded in whatever app she
+    # prefers. Legacy cal_values fallback preserved for historical
+    # Garmin-populated days so the past star grid stays intact.
+    cal_logged_row = data.get("cal_logged_row", []) or []
+    today_cal_logged = bool(cal_logged_row[weekday]) if weekday < len(cal_logged_row) else False
     cal_values = data.get("cal_values", []) or []
     today_cal = cal_values[weekday] if weekday < len(cal_values) and cal_values[weekday] else 0
     cal_done = bool(daily.get("cal"))
-    if cal_done and today_cal:
-        cal_hint = f"{today_cal:,} logged  \u00b7  target {cal_goal:,}"
+    if today_cal_logged:
+        cal_hint = "Done \u2713  \u00b7  manually logged"
+    elif cal_done and today_cal:
+        cal_hint = f"{today_cal:,} logged"
     else:
-        cal_hint = f"Not logged yet  \u00b7  target {cal_goal:,}"
+        cal_hint = "Tap below to mark logged"
 
     # ── Strength / Cardio / Stretch / Sauna — show what was logged (or "—")
     def _row_val(row_key):
@@ -1849,6 +1855,11 @@ def generate_html_report(
         "SAUNA_STATE_TEXT":    ("\u2713 logged" if _row_has(data.get("sauna_row", []), weekday) else "not logged"),
         "STRETCH_CLS":         ("done" if _row_has(data.get("stretch_row", []), weekday) else ""),
         "STRETCH_STATE_TEXT":  ("\u2713 logged" if _row_has(data.get("stretch_row", []), weekday) else "not logged"),
+        # Cal Logged manual toggle (replaces Garmin/MFP auto-fetch).
+        # cal_logged_row is a 7-element bool list from data_gather;
+        # only today's index gets a clickable button in the template.
+        "CAL_LOGGED_CLS":        ("done" if (data.get("cal_logged_row") or [False]*7)[weekday] else ""),
+        "CAL_LOGGED_STATE_TEXT": ("\u2713 logged" if (data.get("cal_logged_row") or [False]*7)[weekday] else "not logged"),
         "MORNING_COLLECTED":   "true" if today_morning_earned else "false",
         "NIGHT_COLLECTED":     "true" if today_night_earned else "false",
         "CORE_COLLECTED":      "true" if today_core_earned else "false",

@@ -42,6 +42,7 @@ def calculate_challenge_score(
     cardio_count: int,
     cal_goal: int,
     show_days: list[int],
+    cal_logged_row: list | None = None,
 ) -> dict:
     """Compute per-day booleans for steps/sleep/calories.
 
@@ -56,8 +57,13 @@ def calculate_challenge_score(
         cycle_row: 7-element list of per-day cycle phase labels.
         strength_count: Total strength sessions this week (unused for scoring).
         cardio_count: Total cardio sessions this week (unused for scoring).
-        cal_goal: Daily calorie goal from Garmin.
+        cal_goal: Daily calorie goal from Garmin (legacy — only used as
+            fallback for historical days when cal_logged wasn't set).
         show_days: List of day indices (0=Mon) with data.
+        cal_logged_row: 7-element list of bools — manual "I logged my
+            food today" toggle. When True, the cal star fires regardless
+            of the legacy calories<=goal check. This is the new primary
+            path; the Garmin/MFP fetch is disabled.
 
     Returns:
         Dict with ``daily`` breakdown and ``total`` count of booleans hit.
@@ -95,13 +101,21 @@ def calculate_challenge_score(
                 day_stars["sleep"] = True
                 total += 1
 
-        # Calories
-        raw_c = str(nutrition_row[i]).strip() if i < len(nutrition_row) else ""
-        num_c = raw_c.split(" ")[0].split("/")[0].strip() if raw_c else ""
-        if num_c.isdigit() and cal_goal > 0:
-            if int(num_c) <= cal_goal:
-                day_stars["cal"] = True
-                total += 1
+        # Calories — primary path is the manual cal_logged toggle.
+        # Legacy fallback (calories <= goal) preserved for historical
+        # days populated by the old Garmin/MFP fetch, so the past star
+        # grid doesn't suddenly empty out after the migration.
+        cal_ok = False
+        if cal_logged_row and i < len(cal_logged_row) and cal_logged_row[i]:
+            cal_ok = True
+        else:
+            raw_c = str(nutrition_row[i]).strip() if i < len(nutrition_row) else ""
+            num_c = raw_c.split(" ")[0].split("/")[0].strip() if raw_c else ""
+            if num_c.isdigit() and cal_goal > 0 and int(num_c) <= cal_goal:
+                cal_ok = True
+        if cal_ok:
+            day_stars["cal"] = True
+            total += 1
 
         daily[i] = day_stars
 

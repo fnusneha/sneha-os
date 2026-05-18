@@ -157,6 +157,22 @@ class Db:
                 (d, value),
             )
 
+    def set_cal_logged(self, d: date, value: bool) -> None:
+        """Manual calorie-logged toggle (replaces Garmin/MFP fetch).
+
+        We stopped relying on Garmin's nutrition endpoint because it
+        wasn't returning current-day data reliably. User taps a Cal
+        Logged toggle on the dashboard once they've recorded food for
+        the day (in whatever app they prefer) — a single boolean per
+        day, same shape as the sauna / stretch toggles.
+        """
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT INTO daily_entries (date, cal_logged) VALUES (%s, %s) "
+                "ON CONFLICT (date) DO UPDATE SET cal_logged = EXCLUDED.cal_logged",
+                (d, value),
+            )
+
     # ───────────────────────────────────────────────────────────────
     # season_pass
     # ───────────────────────────────────────────────────────────────
@@ -300,7 +316,7 @@ _ENTRY_COLUMNS = {
     "strength_note", "cardio_note", "stretch_note",
     "cycle_phase", "cycle_day",
     "notes",
-    "sauna", "stretch_logged", "morning_star", "night_star",
+    "sauna", "stretch_logged", "cal_logged", "morning_star", "night_star",
     "morning_checks", "night_checks",
 }
 

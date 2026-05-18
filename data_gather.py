@@ -180,27 +180,29 @@ def gather_dashboard_data(
     # loads we trust the DB (populated by sync.py 4x/day); for
     # pull-to-refresh the user has explicitly asked for fresh data and
     # the extra latency is expected.
-    live_nutrition = _cached_fetch_nutrition(today, force=force) if (live_steps and force) else None
-    if live_nutrition:
-        db_cal = (today_row or {}).get("calories") or 0
-        live_cal = live_nutrition.get("calories") or 0
-        if live_cal > db_cal:
-            # Patch today's row in memory so downstream builders see the fresh
-            # value (cal_values list + today_row reads both flow from `week`).
-            if today_row is None:
-                today_row = {}
-                week[weekday] = today_row
-            today_row["calories"] = live_cal
-            # Same reasoning as steps_row above — keep nutrition_row in
-            # sync so scoring and Daily Quest Base card agree.
-            if weekday < len(nutrition_row):
-                nutrition_row[weekday] = str(live_cal)
-        # Goal sometimes changes in Garmin too; pick the fresher one.
-        live_goal = live_nutrition.get("goal") or 0
-        if live_goal and live_goal != today_cal_goal:
-            today_cal_goal = live_goal
-            if today_row is not None:
-                today_row["calorie_goal"] = live_goal
+    # Live Garmin nutrition fetch — DISABLED.
+    # Garmin's nutrition endpoint kept returning empty for current-day
+    # data even after a successful auth, so the Base star never fired
+    # off live numbers. The dashboard now relies on the manual
+    # cal_logged toggle (Base stage). Re-enable if Garmin ever fixes
+    # their current-day delay.
+    #
+    # live_nutrition = _cached_fetch_nutrition(today, force=force) if (live_steps and force) else None
+    # if live_nutrition:
+    #     db_cal = (today_row or {}).get("calories") or 0
+    #     live_cal = live_nutrition.get("calories") or 0
+    #     if live_cal > db_cal:
+    #         if today_row is None:
+    #             today_row = {}
+    #             week[weekday] = today_row
+    #         today_row["calories"] = live_cal
+    #         if weekday < len(nutrition_row):
+    #             nutrition_row[weekday] = str(live_cal)
+    #     live_goal = live_nutrition.get("goal") or 0
+    #     if live_goal and live_goal != today_cal_goal:
+    #         today_cal_goal = live_goal
+    #         if today_row is not None:
+    #             today_row["calorie_goal"] = live_goal
 
     # Weekly totals.
     total_steps = 0
@@ -254,6 +256,10 @@ def gather_dashboard_data(
                 cal_goal = int(r["calorie_goal"])
                 break
 
+    # cal_logged is the manual toggle that replaced the Garmin/MFP
+    # nutrition fetch. 7-length list, True/False per day.
+    cal_logged_row = [bool(r.get("cal_logged")) if r else False for r in week]
+
     # Cycle phase for the header chip + coach line ("Luteal-EM", "D19").
     # sync.py only writes cycle_phase when it runs — and cron fires 4×/day,
     # so between midnight and the first morning slot, today's row has a
@@ -301,6 +307,7 @@ def gather_dashboard_data(
         steps_row=steps_row,
         sleep_row=sleep_row,
         nutrition_row=nutrition_row,
+        cal_logged_row=cal_logged_row,
         cycle_row=cycle_row,
         strength_count=strength_count,
         cardio_count=cardio_count,
@@ -352,6 +359,7 @@ def gather_dashboard_data(
         "cardio_row": cardio_row,
         "sauna_row": sauna_row,
         "stretch_row": stretch_row,
+        "cal_logged_row": cal_logged_row,
         "cycle_row": cycle_row,
         "morning_star_row": morning_star_row,
         "night_star_row": night_star_row,
