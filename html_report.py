@@ -117,16 +117,22 @@ def _quest_item(stage: str, index: int, icon: str, name: str,
     # overwritten on next sync. Only the morning/night ritual items
     # and the sauna toggle are interactive.
     if stage.startswith("core"):
-        status = '\u2705' if done else '\u25CB'  # ✅ or ○
+        # Pill-style status mirroring the Sauna / Stretch / Cal Logged
+        # manual-toggle buttons — "\u2713 done" in gold when achieved,
+        # "pending" in muted gray when not. Right-edge pill placement
+        # so all 3 Base sub-goals + the manual toggle underneath share
+        # one consistent visual language.
+        status = '\u2713 done' if done else 'pending'
         done_cls = " core-done" if done else " core-pending"
         return (
             f'<div class="q-item{done_cls}" data-readonly="true">'
-            f'<span class="core-status">{status}</span>'
             f'<span class="q-icon">{icon}</span>'
             f'<div class="q-text">'
             f'<div class="q-name">{_esc(name)}</div>'
             f'<div class="q-hint">{_esc(hint)}</div>'
-            f'</div></div>'
+            f'</div>'
+            f'<span class="core-status">{status}</span>'
+            f'</div>'
         )
     cls = "q-item done" if done else "q-item"
     return (
