@@ -1300,7 +1300,19 @@ body {
 }
 .manual-toggle:active { transform: scale(0.97); }
 .manual-toggle .manual-ico { font-size: 18px; }
-.manual-toggle .manual-label { flex: 1; font-weight: 500; }
+/* `.manual-text` is the optional 2-line stack (label on top, dim
+   hint below) — used by Cal Logged to surface the kcal target the
+   same way Steps shows "Need X more · Y/Z" below its name. Other
+   toggles (Strength / Cardio / Stretch / Sauna) skip the hint and
+   the inner div just renders one line. */
+.manual-toggle .manual-text { flex: 1; display: flex; flex-direction: column; gap: 1px; }
+.manual-toggle .manual-label { font-weight: 500; line-height: 1.2; }
+.manual-toggle .manual-hint {
+  font-size: 9px;
+  color: var(--dim);
+  font-family: 'DM Mono', monospace;
+  letter-spacing: 0.02em;
+}
 .manual-toggle .manual-state {
   font-size: 11px;
   padding: 3px 10px;
@@ -2422,7 +2434,10 @@ body.view-year  .month-only { display: none !important; }
                 onclick="toggleManual('cal_logged', this)"
                 style="margin-top:8px;">
           <span class="manual-ico">&#x1F35A;</span>
-          <span class="manual-label">Cal Logged &middot; {{CAL_TARGET_LABEL}} kcal</span>
+          <div class="manual-text">
+            <span class="manual-label">Cal Logged</span>
+            <span class="manual-hint">{{CAL_TARGET_LABEL}} kcal</span>
+          </div>
           <span class="manual-state" id="cal_logged-state">{{CAL_LOGGED_STATE_TEXT}}</span>
         </button>
       </div>
@@ -2450,14 +2465,14 @@ body.view-year  .month-only { display: none !important; }
                 onclick="toggleManual('strength_logged', this)"
                 style="margin-top:8px;">
           <span class="manual-ico">&#x1F4AA;</span>
-          <span class="manual-label">Strength</span>
+          <div class="manual-text"><span class="manual-label">Strength</span></div>
           <span class="manual-state" id="strength_logged-state">{{STRENGTH_LOGGED_STATE_TEXT}}</span>
         </button>
         <button type="button" class="manual-toggle {{CARDIO_LOGGED_CLS}}" id="toggle-cardio_logged"
                 onclick="toggleManual('cardio_logged', this)"
                 style="margin-top:8px;">
           <span class="manual-ico">&#x1F6B4;</span>
-          <span class="manual-label">Cardio</span>
+          <div class="manual-text"><span class="manual-label">Cardio</span></div>
           <span class="manual-state" id="cardio_logged-state">{{CARDIO_LOGGED_STATE_TEXT}}</span>
         </button>
       </div>
@@ -2480,14 +2495,14 @@ body.view-year  .month-only { display: none !important; }
         <button type="button" class="manual-toggle {{STRETCH_CLS}}" id="toggle-stretch"
                 onclick="toggleManual('stretch', this)">
           <span class="manual-ico">&#x1F9D8;</span>
-          <span class="manual-label">Stretch</span>
+          <div class="manual-text"><span class="manual-label">Stretch</span></div>
           <span class="manual-state" id="stretch-state">{{STRETCH_STATE_TEXT}}</span>
         </button>
         <button type="button" class="manual-toggle {{SAUNA_CLS}}" id="toggle-sauna"
                 onclick="toggleManual('sauna', this)"
                 style="margin-top:8px;">
           <span class="manual-ico">&#x2668;&#xfe0f;</span>
-          <span class="manual-label">Sauna / Steam</span>
+          <div class="manual-text"><span class="manual-label">Sauna / Steam</span></div>
           <span class="manual-state" id="sauna-state">{{SAUNA_STATE_TEXT}}</span>
         </button>
       </div>
