@@ -3221,38 +3221,85 @@ body.view-year  .month-only { display: none !important; }
   // that reflects it: stage card star, today hero RECOVER pill, today
   // hero star count + nudge + dim/lit glyphs, weekly stars total +
   // medals, and today's day bubble.
-  function syncRecoverState(prevEarned) {
-    const stageEl = document.getElementById('stage-recover');
-    if (!stageEl) return;
-    const anyDone = !!stageEl.querySelector('.manual-toggle.done');
-    if (anyDone === prevEarned) return;  // no net change
+  // Manual toggle field \u2192 which Core stage it belongs to.
+  // Used to figure out which stage's "earned" state to recompute
+  // after a tap. Each stage has its own truth rule (see isStageEarned).
+  const STAGE_BY_FIELD = {
+    'sauna': 'recover',
+    'stretch': 'recover',
+    'cal_logged': 'base',
+    'strength_logged': 'burn',
+    'cardio_logged': 'burn',
+  };
+  const STAGE_HERO_LABEL = {
+    'recover': 'RECOVER',
+    'burn':    'BURN',
+    'base':    'BASE',
+  };
 
-    // Stage card star + earned class
-    const starEl = document.getElementById('star-recover');
-    if (starEl) {
-      starEl.textContent = anyDone ? '\u2B50' : '\u2606';
-      starEl.classList.toggle('earned', anyDone);
+  // True iff the given core stage currently meets its star rule.
+  //   recover/burn: OR-logic over q-items and manual toggles (any done)
+  //   base:         AND-logic \u2014 every sub-goal (Steps + Sleep q-items
+  //                 AND Cal Logged toggle) must be done.
+  function isStageEarned(stage) {
+    const stageEl = document.getElementById('stage-' + stage);
+    if (!stageEl) return false;
+    if (stage === 'base') {
+      const qitems = stageEl.querySelectorAll('.q-item.core-pending, .q-item.core-done');
+      if (qitems.length === 0) return false;
+      const allQDone = Array.from(qitems).every(el => el.classList.contains('core-done'));
+      // Treat each manual toggle inside Base as also required.
+      const toggles = stageEl.querySelectorAll('.manual-toggle');
+      const allTogglesDone = toggles.length === 0 ||
+        Array.from(toggles).every(b => b.classList.contains('done'));
+      return allQDone && allTogglesDone;
     }
-    stageEl.classList.toggle('earned', anyDone);
+    // OR-logic for burn + recover.
+    if (stageEl.querySelector('.manual-toggle.done')) return true;
+    if (stageEl.querySelector('.q-item.core-done')) return true;
+    return false;
+  }
 
-    // Today hero RECOVER pill
+  // Reconcile every UI surface that reflects a Core stage's star:
+  // the stage-card star, the today hero pill + count + nudge + glyph,
+  // the weekly total + medals, and today's day bubble. Called after
+  // any manual-toggle tap so the dashboard stays consistent without
+  // a full page reload. Supersedes the old Recover-only version.
+  function syncStageState(stage, prevEarned) {
+    const stageEl = document.getElementById('stage-' + stage);
+    if (!stageEl) return;
+    const earned = isStageEarned(stage);
+    if (earned === prevEarned) return;  // no net change
+
+    // Stage card star + earned class.
+    const starEl = document.getElementById('star-' + stage);
+    if (starEl) {
+      starEl.textContent = earned ? '\u2B50' : '\u2606';
+      starEl.classList.toggle('earned', earned);
+    }
+    stageEl.classList.toggle('earned', earned);
+
+    // Today hero stage pill matching this stage's name.
     const hero = document.querySelector('.today-hero');
     if (hero) {
-      hero.querySelectorAll('.hero-stage').forEach(cell => {
-        const nameEl = cell.querySelector('.hero-stage-name');
-        if (nameEl && nameEl.textContent.trim().toUpperCase() === 'RECOVER') {
-          cell.classList.toggle('done', anyDone);
-          cell.classList.toggle('pending', !anyDone);
-          const checkEl = cell.querySelector('.hero-stage-check');
-          if (checkEl) checkEl.textContent = anyDone ? '\u2713' : '\u25CB';
-        }
-      });
+      const upper = STAGE_HERO_LABEL[stage];
+      if (upper) {
+        hero.querySelectorAll('.hero-stage').forEach(cell => {
+          const nameEl = cell.querySelector('.hero-stage-name');
+          if (nameEl && nameEl.textContent.trim().toUpperCase() === upper) {
+            cell.classList.toggle('done', earned);
+            cell.classList.toggle('pending', !earned);
+            const checkEl = cell.querySelector('.hero-stage-check');
+            if (checkEl) checkEl.textContent = earned ? '\u2713' : '\u25CB';
+          }
+        });
+      }
 
-      // Today hero star count + nudge + glyph row.
+      // Hero star count + nudge + glyph row.
       const numEl = hero.querySelector('.hero-count-num');
       if (numEl) {
         const current = parseInt(numEl.textContent) || 0;
-        const next = Math.max(0, current + (anyDone ? 1 : -1));
+        const next = Math.max(0, current + (earned ? 1 : -1));
         numEl.textContent = next;
         const MAX = 5;
         const toGo = Math.max(0, MAX - next);
@@ -3269,10 +3316,9 @@ body.view-year  .month-only { display: none !important; }
           }
         }
       }
-      // Light or dim a star glyph in the hero row.
       const starsRow = hero.querySelector('.hero-stars');
       if (starsRow) {
-        if (anyDone) {
+        if (earned) {
           const dim = starsRow.querySelector('.hero-star.dim');
           if (dim) { dim.classList.remove('dim'); dim.classList.add('lit'); }
         } else {
@@ -3284,7 +3330,7 @@ body.view-year  .month-only { display: none !important; }
     }
 
     // Weekly stars total + medal markers + bar.
-    updateWeeklyPulse(anyDone ? 1 : -1);
+    updateWeeklyPulse(earned ? 1 : -1);
 
     // Today's bubble (week/month grids).
     const todayBubble = document.querySelector('.wp-day.is-today');
@@ -3292,10 +3338,13 @@ body.view-year  .month-only { display: none !important; }
       const numEl = todayBubble.querySelector('.wp-day-num');
       if (numEl) {
         const current = parseInt(numEl.textContent) || 0;
-        numEl.textContent = Math.max(0, current + (anyDone ? 1 : -1));
+        numEl.textContent = Math.max(0, current + (earned ? 1 : -1));
       }
     }
   }
+
+  // Back-compat shim \u2014 any old callers asking for Recover still work.
+  function syncRecoverState(prev) { return syncStageState('recover', prev); }
 
   // ── Manual log toggle (stretch, sauna) ──
   // Posts to /api/manual. Uses optimistic UI: flips immediately, then
@@ -3304,8 +3353,17 @@ body.view-year  .month-only { display: none !important; }
   // weekly count so the user doesn't have to pull-to-refresh.
   window.toggleManual = function(field, btn) {
     if (!btn) return;
-    const stageEl = document.getElementById('stage-recover');
-    const recoverEarnedBefore = !!(stageEl && stageEl.querySelector('.manual-toggle.done'));
+
+    // Route the toggle to the right Core stage so the right star /
+    // hero pill / weekly count updates. Without this, tapping
+    // Strength/Cardio/Cal Logged was silently no-op-ing the Burn /
+    // Base stars (the old code hardcoded "stage-recover").
+    const stage = STAGE_BY_FIELD[field];
+    if (!stage) {
+      console.warn('toggleManual: unknown field', field);
+      return;
+    }
+    const earnedBefore = isStageEarned(stage);
 
     const currentlyDone = btn.classList.contains('done');
     const next = !currentlyDone;
@@ -3316,8 +3374,8 @@ body.view-year  .month-only { display: none !important; }
     if (stateEl) stateEl.textContent = next ? '\u2713 logged' : 'not logged';
     btn.classList.add('saving');
 
-    // Reconcile every Recover-driven surface.
-    syncRecoverState(recoverEarnedBefore);
+    // Reconcile every surface for this stage.
+    syncStageState(stage, earnedBefore);
 
     const todayLocal = (typeof localDateISO === 'function') ? localDateISO() : null;
     fetch('/api/manual', {
@@ -3331,12 +3389,13 @@ body.view-year  .month-only { display: none !important; }
       })
       .catch(err => {
         btn.classList.remove('saving');
-        // Capture post-flip state, revert the button, then re-sync so
-        // the Recover star / hero / week count all snap back too.
-        const earnedAfterFlip = !!(stageEl && stageEl.querySelector('.manual-toggle.done'));
+        // Capture post-flip earned state BEFORE reverting the button,
+        // revert it, then re-sync so the stage star / hero / week
+        // count all snap back too.
+        const earnedAfterFlip = isStageEarned(stage);
         btn.classList.toggle('done', currentlyDone);
         if (stateEl) stateEl.textContent = currentlyDone ? '\u2713 logged' : 'not logged';
-        syncRecoverState(earnedAfterFlip);
+        syncStageState(stage, earnedAfterFlip);
         const fieldLabel = field.charAt(0).toUpperCase() + field.slice(1);
         if (typeof showError === 'function') {
           showError(fieldLabel + ' save failed: ' + (err && err.message || err));
