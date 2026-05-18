@@ -127,20 +127,26 @@ def sync_single_day(db: Db, target: date, creds) -> bool:
         entry["cycle_day"] = cycle_day
         entry["cycle_phase"] = get_cycle_phase(cycle_day)
 
-    # Garmin activities (strength / cardio). Stretch is intentionally
-    # NOT auto-detected — it's a manual one-tap toggle in the dashboard.
-    activities = fetch_garmin_activities(target)
-    if activities["strength"]:
-        parts = [f"💪 {s['duration_min']}m" for s in activities["strength"]]
-        entry["strength_note"] = " + ".join(parts)
-    if activities["cardio"]:
-        parts = []
-        for c in activities["cardio"]:
-            type_key = c.get("name", "").lower()
-            icon = "🚴" if any(k in type_key for k in ["cycling", "biking", "bike"]) else "🏃‍♀️"
-            mi = c.get("distance_mi")
-            parts.append(f"{icon} {mi}mi" if mi else f"{icon} {c['duration_min']}m")
-        entry["cardio_note"] = " + ".join(parts)
+    # Garmin activities (strength / cardio) — DISABLED.
+    # Garmin's mobile login is rate-limited from cloud IPs and its
+    # saved session was missing recent lift / ride sessions even after
+    # successful auth. The Burn star now reads two new manual toggles
+    # (strength_logged + cardio_logged) on the dashboard — same
+    # one-tap pattern as Cal Logged. Re-enable if Garmin's activity
+    # endpoint ever becomes reliable end-to-end.
+    #
+    # activities = fetch_garmin_activities(target)
+    # if activities["strength"]:
+    #     parts = [f"💪 {s['duration_min']}m" for s in activities["strength"]]
+    #     entry["strength_note"] = " + ".join(parts)
+    # if activities["cardio"]:
+    #     parts = []
+    #     for c in activities["cardio"]:
+    #         type_key = c.get("name", "").lower()
+    #         icon = "🚴" if any(k in type_key for k in ["cycling", "biking", "bike"]) else "🏃‍♀️"
+    #         mi = c.get("distance_mi")
+    #         parts.append(f"{icon} {mi}mi" if mi else f"{icon} {c['duration_min']}m")
+    #     entry["cardio_note"] = " + ".join(parts)
 
     # Nutrition (Garmin/MFP) — DISABLED.
     # The endpoint kept returning empty (`has-meals=False`) for recent

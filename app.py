@@ -290,10 +290,13 @@ def api_collect():
 
 @app.post("/api/manual")
 def api_manual():
-    """Generic manual-field toggle. Sauna, stretch, and cal_logged are
-    all tap-to-log fields with no auto-detection — body posts here.
+    """Generic manual-field toggle. Sauna, stretch, cal_logged,
+    strength_logged, and cardio_logged are all tap-to-log fields with
+    no auto-detection — body posts here.
 
-    Body: {"field": "sauna" | "stretch" | "cal_logged", "value": true, "date": "YYYY-MM-DD"}
+    Body: {"field": "sauna" | "stretch" | "cal_logged" |
+                    "strength_logged" | "cardio_logged",
+           "value": true, "date": "YYYY-MM-DD"}
     """
     body = request.get_json(silent=True) or {}
     field = body.get("field")
@@ -313,6 +316,10 @@ def api_manual():
         db.set_stretch(d, value)
     elif field == "cal_logged":
         db.set_cal_logged(d, value)
+    elif field == "strength_logged":
+        db.set_strength_logged(d, value)
+    elif field == "cardio_logged":
+        db.set_cardio_logged(d, value)
     else:
         return jsonify(ok=False, error=f"unknown field {field!r}"), 400
 

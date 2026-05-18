@@ -2435,8 +2435,26 @@ body.view-year  .month-only { display: none !important; }
         <div class="stage-star {{BURN_STAR_CLS}}" id="star-burn">{{BURN_STAR_GLYPH}}</div>
         <span class="stage-chevron">&#x25BC;</span>
       </div>
-      <div class="stage-body">
+      <div class="stage-body" style="padding-bottom:12px;">
         {{BURN_ITEMS_HTML}}
+        <!-- Manual Strength + Cardio toggles — replaced the Garmin
+             activity fetch which sometimes returned empty (and lift
+             sessions in particular didn't always sync from the watch).
+             Same one-tap pattern as Cal Logged / Sauna / Stretch. -->
+        <button type="button" class="manual-toggle {{STRENGTH_LOGGED_CLS}}" id="toggle-strength_logged"
+                onclick="toggleManual('strength_logged', this)"
+                style="margin-top:8px;">
+          <span class="manual-ico">&#x1F4AA;</span>
+          <span class="manual-label">Strength Session</span>
+          <span class="manual-state" id="strength_logged-state">{{STRENGTH_LOGGED_STATE_TEXT}}</span>
+        </button>
+        <button type="button" class="manual-toggle {{CARDIO_LOGGED_CLS}}" id="toggle-cardio_logged"
+                onclick="toggleManual('cardio_logged', this)"
+                style="margin-top:8px;">
+          <span class="manual-ico">&#x1F6B4;</span>
+          <span class="manual-label">Cardio Session</span>
+          <span class="manual-state" id="cardio_logged-state">{{CARDIO_LOGGED_STATE_TEXT}}</span>
+        </button>
       </div>
     </div>
 

@@ -259,6 +259,12 @@ def gather_dashboard_data(
     # cal_logged is the manual toggle that replaced the Garmin/MFP
     # nutrition fetch. 7-length list, True/False per day.
     cal_logged_row = [bool(r.get("cal_logged")) if r else False for r in week]
+    # strength_logged + cardio_logged are the manual toggles that
+    # replaced the Garmin activity fetch — same shape as cal_logged.
+    # When True, the corresponding Burn sub-goal lights up regardless
+    # of whether Garmin detected an activity.
+    strength_logged_row = [bool(r.get("strength_logged")) if r else False for r in week]
+    cardio_logged_row   = [bool(r.get("cardio_logged"))   if r else False for r in week]
 
     # Cycle phase for the header chip + coach line ("Luteal-EM", "D19").
     # sync.py only writes cycle_phase when it runs — and cron fires 4×/day,
@@ -360,6 +366,8 @@ def gather_dashboard_data(
         "sauna_row": sauna_row,
         "stretch_row": stretch_row,
         "cal_logged_row": cal_logged_row,
+        "strength_logged_row": strength_logged_row,
+        "cardio_logged_row": cardio_logged_row,
         "cycle_row": cycle_row,
         "morning_star_row": morning_star_row,
         "night_star_row": night_star_row,

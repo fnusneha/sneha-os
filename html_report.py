@@ -161,9 +161,20 @@ def _base_earned(data: dict, weekday: int) -> bool:
 
 
 def _burn_earned(data: dict, weekday: int) -> bool:
-    """🔥 Burn star — strength OR cardio session logged."""
+    """🔥 Burn star — strength OR cardio session logged.
+
+    Manual toggles are the primary path (replaced Garmin's activity
+    fetch). Legacy strength_row / cardio_row notes still count for
+    historical days populated by the old Garmin sync, so past star
+    grid stays intact.
+    """
+    s_row = data.get("strength_logged_row", []) or []
+    c_row = data.get("cardio_logged_row", []) or []
+    manual_strength = bool(s_row[weekday]) if weekday < len(s_row) else False
+    manual_cardio   = bool(c_row[weekday]) if weekday < len(c_row) else False
     return (
-        _row_has(data.get("strength_row", []), weekday)
+        manual_strength or manual_cardio
+        or _row_has(data.get("strength_row", []), weekday)
         or _row_has(data.get("cardio_row", []), weekday)
     )
 
@@ -274,18 +285,24 @@ def _build_day_details_payload(data: dict, weekday: int) -> dict:
                 "target": "logged",
             },
         ]
+        # Burn items — manual toggles are primary; Garmin notes legacy
+        # fallback for past days.
+        s_log_row = data.get("strength_logged_row", []) or []
+        c_log_row = data.get("cardio_logged_row", []) or []
+        s_manual = bool(s_log_row[wd]) if wd < len(s_log_row) else False
+        c_manual = bool(c_log_row[wd]) if wd < len(c_log_row) else False
         burn_items = [
             {
                 "name": "💪 Strength",
-                "done": _row_has(strength_row, wd),
-                "value": _cell(strength_row, wd) or "—",
-                "target": "any session",
+                "done": s_manual or _row_has(strength_row, wd),
+                "value": (_cell(strength_row, wd) or ("logged" if s_manual else "—")),
+                "target": "manual log",
             },
             {
                 "name": "🚴 Cardio",
-                "done": _row_has(cardio_row, wd),
-                "value": _cell(cardio_row, wd) or "—",
-                "target": "any session",
+                "done": c_manual or _row_has(cardio_row, wd),
+                "value": (_cell(cardio_row, wd) or ("logged" if c_manual else "—")),
+                "target": "manual log",
             },
         ]
         recover_items = [
@@ -776,8 +793,30 @@ def _build_core3(data: dict, weekday: int) -> dict:
     stretch_v  = _row_val("stretch_row")
     sauna_v    = _row_val("sauna_row")
 
-    strength_hint = f"Logged: {strength_v}" if strength_v else "Lift session needed"
-    cardio_hint   = f"Logged: {cardio_v}"   if cardio_v   else "Ride or run needed"
+    # Manual Burn toggles — primary path. Legacy strength_row / cardio_row
+    # still counts for past days that had Garmin notes.
+    strength_logged_row = data.get("strength_logged_row", []) or []
+    cardio_logged_row   = data.get("cardio_logged_row", []) or []
+    strength_manual = bool(strength_logged_row[weekday]) if weekday < len(strength_logged_row) else False
+    cardio_manual   = bool(cardio_logged_row[weekday])   if weekday < len(cardio_logged_row)   else False
+
+    strength_done = strength_manual or bool(strength_v)
+    cardio_done   = cardio_manual   or bool(cardio_v)
+
+    if strength_manual:
+        strength_hint = "Tap below — lift session"
+    elif strength_v:
+        strength_hint = f"Logged: {strength_v}"
+    else:
+        strength_hint = "Tap below to log"
+
+    if cardio_manual:
+        cardio_hint = "Tap below — ride or run"
+    elif cardio_v:
+        cardio_hint = f"Logged: {cardio_v}"
+    else:
+        cardio_hint = "Tap below to log"
+
     stretch_hint  = "Logged"                if stretch_v  else "Tap below to log"
     sauna_hint    = "Logged"                if sauna_v    else "Tap below to log"
 
@@ -792,8 +831,8 @@ def _build_core3(data: dict, weekday: int) -> dict:
         ("\U0001f357",    "Calories Logged", cal_hint,  cal_done),
     ]
     burn_items = [
-        ("\U0001f4aa",    "Strength",       strength_hint, bool(strength_v)),
-        ("\U0001f6b4",    "Cardio",         cardio_hint,   bool(cardio_v)),
+        ("\U0001f4aa",    "Strength",       strength_hint, strength_done),
+        ("\U0001f6b4",    "Cardio",         cardio_hint,   cardio_done),
     ]
     recover_items = [
         ("\U0001f9d8",    "Stretch",        stretch_hint,  bool(stretch_v)),
@@ -1871,6 +1910,12 @@ def generate_html_report(
         # itself ("Cal Logged · ≤1,520") so you don't have to remember
         # the number — matches how Steps shows "/10,000".
         "CAL_TARGET_LABEL":      f"\u2264{DAILY_CAL_TARGET:,}",
+        # Burn manual toggles — same pattern as Cal Logged. Each row
+        # is a 7-element bool list keyed by weekday.
+        "STRENGTH_LOGGED_CLS":        ("done" if (data.get("strength_logged_row") or [False]*7)[weekday] else ""),
+        "STRENGTH_LOGGED_STATE_TEXT": ("\u2713 logged" if (data.get("strength_logged_row") or [False]*7)[weekday] else "not logged"),
+        "CARDIO_LOGGED_CLS":          ("done" if (data.get("cardio_logged_row") or [False]*7)[weekday] else ""),
+        "CARDIO_LOGGED_STATE_TEXT":   ("\u2713 logged" if (data.get("cardio_logged_row") or [False]*7)[weekday] else "not logged"),
         "MORNING_COLLECTED":   "true" if today_morning_earned else "false",
         "NIGHT_COLLECTED":     "true" if today_night_earned else "false",
         "CORE_COLLECTED":      "true" if today_core_earned else "false",

@@ -173,6 +173,33 @@ class Db:
                 (d, value),
             )
 
+    def set_strength_logged(self, d: date, value: bool) -> None:
+        """Manual strength-logged toggle (replaces Garmin activity fetch).
+
+        Same pattern as set_cal_logged — user taps after a lift session,
+        Burn star reads the boolean. Garmin's activity fetch stays
+        commented out so it can't overwrite the manual flag.
+        """
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT INTO daily_entries (date, strength_logged) VALUES (%s, %s) "
+                "ON CONFLICT (date) DO UPDATE SET strength_logged = EXCLUDED.strength_logged",
+                (d, value),
+            )
+
+    def set_cardio_logged(self, d: date, value: bool) -> None:
+        """Manual cardio-logged toggle (replaces Garmin activity fetch).
+
+        Symmetric to set_strength_logged — user taps after a ride / run /
+        bike session.
+        """
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT INTO daily_entries (date, cardio_logged) VALUES (%s, %s) "
+                "ON CONFLICT (date) DO UPDATE SET cardio_logged = EXCLUDED.cardio_logged",
+                (d, value),
+            )
+
     # ───────────────────────────────────────────────────────────────
     # season_pass
     # ───────────────────────────────────────────────────────────────
@@ -316,7 +343,9 @@ _ENTRY_COLUMNS = {
     "strength_note", "cardio_note", "stretch_note",
     "cycle_phase", "cycle_day",
     "notes",
-    "sauna", "stretch_logged", "cal_logged", "morning_star", "night_star",
+    "sauna", "stretch_logged", "cal_logged",
+    "strength_logged", "cardio_logged",
+    "morning_star", "night_star",
     "morning_checks", "night_checks",
 }
 
