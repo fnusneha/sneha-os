@@ -222,7 +222,20 @@ def gather_dashboard_data(
     # Sleep stats.
     sleep_vals = [float(r["sleep_hours"]) for r in week if r and r.get("sleep_hours") is not None]
     avg_sleep = sum(sleep_vals) / len(sleep_vals) if sleep_vals else None
-    last_sleep = float(today_row["sleep_hours"]) if today_row and today_row.get("sleep_hours") is not None else None
+    # last_sleep = today's row first, else the most recent earlier day
+    # that has a value. Without the fallback, the hero shows "No sleep
+    # data yet" all morning until tonight's sleep gets logged — which
+    # is wrong because last night's sleep IS in the DB, just under the
+    # previous date. We want the user to always see their latest sleep
+    # number, regardless of which calendar day it's stored under.
+    last_sleep = None
+    if today_row and today_row.get("sleep_hours") is not None:
+        last_sleep = float(today_row["sleep_hours"])
+    else:
+        for r in reversed(week[:weekday + 1]):
+            if r and r.get("sleep_hours") is not None:
+                last_sleep = float(r["sleep_hours"])
+                break
 
     # Calorie values (7-length, None where missing).
     cal_values = [(int(r["calories"]) if (r and r.get("calories") is not None) else None) for r in week]
