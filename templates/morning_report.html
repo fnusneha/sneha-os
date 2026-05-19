@@ -1221,7 +1221,12 @@ body {
   max-height: 600px;
   overflow: hidden;
   transition: max-height 0.4s ease;
-  padding: 0 14px;
+  /* 12px bottom breathing room for stages that end in a manual-toggle
+     button (Base, Burn, Recover). Lives in the class — NOT as an
+     inline style on the body div — so the .collapsed rule below can
+     reset it to 0. Inline styles win specificity over class selectors,
+     which is what made collapsed cards show a 12px strip earlier. */
+  padding: 0 14px 12px;
 }
 .stage.collapsed .stage-body { max-height: 0; padding: 0 14px; }
 
@@ -2424,7 +2429,7 @@ body.view-year  .month-only { display: none !important; }
         <div class="stage-star {{BASE_STAR_CLS}}" id="star-base">{{BASE_STAR_GLYPH}}</div>
         <span class="stage-chevron">&#x25BC;</span>
       </div>
-      <div class="stage-body" style="padding-bottom:12px;">
+      <div class="stage-body">
         {{BASE_ITEMS_HTML}}
         <!-- Manual Cal Logged toggle — replaces the old Garmin/MFP
              auto-fetch which kept returning empty. User taps once
@@ -2455,7 +2460,7 @@ body.view-year  .month-only { display: none !important; }
         <div class="stage-star {{BURN_STAR_CLS}}" id="star-burn">{{BURN_STAR_GLYPH}}</div>
         <span class="stage-chevron">&#x25BC;</span>
       </div>
-      <div class="stage-body" style="padding-bottom:12px;">
+      <div class="stage-body">
         {{BURN_ITEMS_HTML}}
         <!-- Manual Strength + Cardio toggles — replaced the Garmin
              activity fetch which sometimes returned empty (and lift
@@ -2491,7 +2496,7 @@ body.view-year  .month-only { display: none !important; }
         <div class="stage-star {{RECOVER_STAR_CLS}}" id="star-recover">{{RECOVER_STAR_GLYPH}}</div>
         <span class="stage-chevron">&#x25BC;</span>
       </div>
-      <div class="stage-body" style="padding-bottom:12px;">
+      <div class="stage-body">
         <button type="button" class="manual-toggle {{STRETCH_CLS}}" id="toggle-stretch"
                 onclick="toggleManual('stretch', this)">
           <span class="manual-ico">&#x1F9D8;</span>
