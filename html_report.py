@@ -731,21 +731,14 @@ def _build_core3(data: dict, weekday: int) -> dict:
     """
     daily = data["score"].get("daily", {}).get(weekday, {})
 
-    # ── Steps: live from Oura (data['today_steps']) for today, else from DB
-    steps_row = data.get("steps_row", [])
-    if weekday == data["today"].weekday():
-        steps_today = data.get("today_steps", 0) or 0
-    else:
-        try:
-            steps_today = int(str(steps_row[weekday]).replace(",", "")) if weekday < len(steps_row) and str(steps_row[weekday]).strip() else 0
-        except (ValueError, IndexError):
-            steps_today = 0
-    steps_done = steps_today >= DAILY_STEPS_GOAL
-    if steps_done:
-        steps_hint = f"Done \u2713  \u00b7  {steps_today:,} / {DAILY_STEPS_GOAL:,}"
-    else:
-        steps_left = DAILY_STEPS_GOAL - steps_today
-        steps_hint = f"Need {steps_left:,} more  \u00b7  {steps_today:,} / {DAILY_STEPS_GOAL:,}"
+    # ── Steps — manual toggle now (Oura fetch is commented out).
+    # User taps Steps button once they’ve hit DAILY_STEPS_GOAL.
+    # Legacy: past days with a numeric steps value still satisfy
+    # the star via scoring.py’s fallback (steps >= goal). We keep
+    # steps_hint defined for legacy callers but the Steps q-item is
+    # no longer rendered in Base — the toggle button is.
+    steps_done = bool(daily.get("steps"))
+    steps_hint = ""
 
     # ── Sleep: hours logged last night
     last_sleep = data.get("last_sleep")
@@ -834,7 +827,8 @@ def _build_core3(data: dict, weekday: int) -> dict:
     #             whole stage body.
     #   Recover — Both are manual; ditto.
     base_items = [
-        ("\U0001f45f",    f"{DAILY_STEPS_GOAL:,} Steps", steps_hint, steps_done),
+        # Sleep is still auto-tracked from Oura (the only auto row left).
+        # Steps + Calories are now manual toggles in the template.
         ("\U0001f634",    f"Sleep {SLEEP_STAR_THRESHOLD_DEFAULT:g}h+",
          sleep_hint, sleep_done),
     ]
@@ -1921,6 +1915,10 @@ def generate_html_report(
         "STRENGTH_LOGGED_STATE_TEXT": ("\u2713 logged" if (data.get("strength_logged_row") or [False]*7)[weekday] else "not logged"),
         "CARDIO_LOGGED_CLS":          ("done" if (data.get("cardio_logged_row") or [False]*7)[weekday] else ""),
         "CARDIO_LOGGED_STATE_TEXT":   ("\u2713 logged" if (data.get("cardio_logged_row") or [False]*7)[weekday] else "not logged"),
+        # Steps manual toggle (Oura step fetch is commented out).
+        "STEPS_LOGGED_CLS":           ("done" if (data.get("steps_logged_row") or [False]*7)[weekday] else ""),
+        "STEPS_LOGGED_STATE_TEXT":    ("\u2713 logged" if (data.get("steps_logged_row") or [False]*7)[weekday] else "not logged"),
+        "STEPS_TARGET_LABEL":         f"{DAILY_STEPS_GOAL:,} steps",
         "MORNING_COLLECTED":   "true" if today_morning_earned else "false",
         "NIGHT_COLLECTED":     "true" if today_night_earned else "false",
         "CORE_COLLECTED":      "true" if today_core_earned else "false",

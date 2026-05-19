@@ -2430,6 +2430,21 @@ body.view-year  .month-only { display: none !important; }
         <span class="stage-chevron">&#x25BC;</span>
       </div>
       <div class="stage-body">
+        <!-- Manual Steps toggle — sits ABOVE the auto Sleep q-item so
+             the user can quickly mark 10k done; Oura step fetch is
+             commented out so this is the source of truth. Hint line
+             surfaces the target ("10,000 steps") same way Cal Logged
+             surfaces "≤1,520 kcal". -->
+        <button type="button" class="manual-toggle {{STEPS_LOGGED_CLS}}" id="toggle-steps_logged"
+                onclick="toggleManual('steps_logged', this)"
+                style="margin-bottom:8px;">
+          <span class="manual-ico">&#x1F45F;</span>
+          <div class="manual-text">
+            <span class="manual-label">Steps</span>
+            <span class="manual-hint">{{STEPS_TARGET_LABEL}}</span>
+          </div>
+          <span class="manual-state" id="steps_logged-state">{{STEPS_LOGGED_STATE_TEXT}}</span>
+        </button>
         {{BASE_ITEMS_HTML}}
         <!-- Manual Cal Logged toggle — replaces the old Garmin/MFP
              auto-fetch which kept returning empty. User taps once
@@ -3253,6 +3268,7 @@ body.view-year  .month-only { display: none !important; }
     'sauna': 'recover',
     'stretch': 'recover',
     'cal_logged': 'base',
+    'steps_logged': 'base',
     'strength_logged': 'burn',
     'cardio_logged': 'burn',
   };

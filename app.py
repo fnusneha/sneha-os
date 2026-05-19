@@ -320,6 +320,8 @@ def api_manual():
         db.set_strength_logged(d, value)
     elif field == "cardio_logged":
         db.set_cardio_logged(d, value)
+    elif field == "steps_logged":
+        db.set_steps_logged(d, value)
     else:
         return jsonify(ok=False, error=f"unknown field {field!r}"), 400
 

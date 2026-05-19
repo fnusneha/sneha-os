@@ -200,6 +200,20 @@ class Db:
                 (d, value),
             )
 
+    def set_steps_logged(self, d: date, value: bool) -> None:
+        """Manual steps-logged toggle (replaces Oura step fetch).
+
+        User taps once they've hit 10k steps. Same one-tap pattern as
+        Cal Logged / Strength / Cardio. The Oura step fetch in sync.py
+        is commented out so this manual flag is the source of truth.
+        """
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT INTO daily_entries (date, steps_logged) VALUES (%s, %s) "
+                "ON CONFLICT (date) DO UPDATE SET steps_logged = EXCLUDED.steps_logged",
+                (d, value),
+            )
+
     # ───────────────────────────────────────────────────────────────
     # season_pass
     # ───────────────────────────────────────────────────────────────
@@ -344,7 +358,7 @@ _ENTRY_COLUMNS = {
     "cycle_phase", "cycle_day",
     "notes",
     "sauna", "stretch_logged", "cal_logged",
-    "strength_logged", "cardio_logged",
+    "strength_logged", "cardio_logged", "steps_logged",
     "morning_star", "night_star",
     "morning_checks", "night_checks",
 }

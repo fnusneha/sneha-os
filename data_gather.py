@@ -156,22 +156,17 @@ def gather_dashboard_data(
     today_steps_db = (today_row or {}).get("steps") or 0
     today_cal_goal = (today_row or {}).get("calorie_goal") or 0
 
-    # Fetch today's steps fresh from Oura so the "X steps left" hint
-    # always reflects current activity, even between scheduled syncs.
-    # `force` is set on pull-to-refresh and bypasses the 60s cache.
+    # Live Oura step fetch — DISABLED.
+    # Steps is now a manual toggle (steps_logged column). Star fires
+    # off the boolean; live numeric step counts aren't needed by any
+    # surface that ships. Re-enable if Oura becomes the source again.
     today_steps = today_steps_db
-    if live_steps:
-        fresh = _cached_fetch_steps(today.isoformat(), force=force)
-        if fresh:
-            today_steps = fresh
-
-    # IMPORTANT: also patch steps_row[weekday] with the live value so the
-    # downstream scoring run (which drives the Today hero's star count)
-    # agrees with the Daily Quest Base card (which reads today_steps
-    # directly). Without this patch, the hero could show "1 star" while
-    # Base visually showed "earned" because they read different sources.
-    if weekday < len(steps_row) and today_steps > (today_steps_db or 0):
-        steps_row[weekday] = str(today_steps)
+    # if live_steps:
+    #     fresh = _cached_fetch_steps(today.isoformat(), force=force)
+    #     if fresh:
+    #         today_steps = fresh
+    # if weekday < len(steps_row) and today_steps > (today_steps_db or 0):
+    #     steps_row[weekday] = str(today_steps)
 
     # Live Garmin nutrition is ONLY fetched on an explicit pull-to-
     # refresh (force=True). Every regular tab switch back to Quest Hub
@@ -265,6 +260,11 @@ def gather_dashboard_data(
     # of whether Garmin detected an activity.
     strength_logged_row = [bool(r.get("strength_logged")) if r else False for r in week]
     cardio_logged_row   = [bool(r.get("cardio_logged"))   if r else False for r in week]
+    # steps_logged is the manual toggle that replaced the Oura step
+    # auto-fetch. True = user has hit the 10k goal for the day. Past
+    # days that pre-date the migration fall back to the numeric
+    # steps_row[i] >= DAILY_STEPS_GOAL check in scoring.
+    steps_logged_row = [bool(r.get("steps_logged")) if r else False for r in week]
 
     # Cycle phase for the header chip + coach line ("Luteal-EM", "D19").
     # sync.py only writes cycle_phase when it runs — and cron fires 4×/day,
@@ -314,6 +314,7 @@ def gather_dashboard_data(
         sleep_row=sleep_row,
         nutrition_row=nutrition_row,
         cal_logged_row=cal_logged_row,
+        steps_logged_row=steps_logged_row,
         cycle_row=cycle_row,
         strength_count=strength_count,
         cardio_count=cardio_count,
@@ -368,6 +369,7 @@ def gather_dashboard_data(
         "cal_logged_row": cal_logged_row,
         "strength_logged_row": strength_logged_row,
         "cardio_logged_row": cardio_logged_row,
+        "steps_logged_row": steps_logged_row,
         "cycle_row": cycle_row,
         "morning_star_row": morning_star_row,
         "night_star_row": night_star_row,

@@ -43,6 +43,7 @@ def calculate_challenge_score(
     cal_goal: int,
     show_days: list[int],
     cal_logged_row: list | None = None,
+    steps_logged_row: list | None = None,
 ) -> dict:
     """Compute per-day booleans for steps/sleep/calories.
 
@@ -74,9 +75,18 @@ def calculate_challenge_score(
     for i in show_days:
         day_stars = {"steps": False, "sleep": False, "cal": False}
 
-        # Steps
-        raw_s = str(steps_row[i]).replace(",", "").strip() if i < len(steps_row) else ""
-        if raw_s.isdigit() and int(raw_s) >= DAILY_STEPS_GOAL:
+        # Steps — primary path is the manual steps_logged toggle.
+        # Legacy fallback (steps_row[i] >= DAILY_STEPS_GOAL) preserved
+        # for historical days that pre-date the migration, so the
+        # past star grid doesn't suddenly empty out.
+        steps_ok = False
+        if steps_logged_row and i < len(steps_logged_row) and steps_logged_row[i]:
+            steps_ok = True
+        else:
+            raw_s = str(steps_row[i]).replace(",", "").strip() if i < len(steps_row) else ""
+            if raw_s.isdigit() and int(raw_s) >= DAILY_STEPS_GOAL:
+                steps_ok = True
+        if steps_ok:
             day_stars["steps"] = True
             total += 1
 
