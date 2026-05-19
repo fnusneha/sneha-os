@@ -3320,6 +3320,19 @@ body.view-year  .month-only { display: none !important; }
     }
     stageEl.classList.toggle('earned', earned);
 
+    // Auto-collapse the stage card once earned \u2014 matches the Morning /
+    // Night Ritual collect behaviour (done \u2192 get out of the way) and
+    // the server-rendered initial state which adds `collapsed` to
+    // earned stages on page load. Without this, the live tap leaves
+    // the card expanded until a full reload.
+    //
+    // We intentionally do NOT auto-expand on un-earn: the user might
+    // be un-toggling on purpose (e.g. to inspect what's missing), so
+    // let them open the card themselves if needed.
+    if (earned && !stageEl.classList.contains('collapsed')) {
+      stageEl.classList.add('collapsed');
+    }
+
     // Today hero stage pill matching this stage's name.
     const hero = document.querySelector('.today-hero');
     if (hero) {
