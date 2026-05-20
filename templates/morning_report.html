@@ -2470,6 +2470,15 @@ body.view-year  .month-only { display: none !important; }
           </div>
           <span class="manual-state" id="cal_logged-state">{{CAL_LOGGED_STATE_TEXT}}</span>
         </button>
+        <!-- Stretch — moved from Recover into Base's AND-rule. Now part
+             of the daily foundations (Steps + Sleep + Cal + Stretch). -->
+        <button type="button" class="manual-toggle {{STRETCH_CLS}}" id="toggle-stretch"
+                onclick="toggleManual('stretch', this)"
+                style="margin-top:8px;">
+          <span class="manual-ico">&#x1F9D8;</span>
+          <div class="manual-text"><span class="manual-label">Stretch</span></div>
+          <span class="manual-state" id="stretch-state">{{STRETCH_STATE_TEXT}}</span>
+        </button>
       </div>
     </div>
 
@@ -2508,9 +2517,9 @@ body.view-year  .month-only { display: none !important; }
       </div>
     </div>
 
-    <!-- Recover — stretch OR sauna / steam (pick one). Both are
-         manual one-tap toggles inside this card; either one earns
-         the Recover star. -->
+    <!-- Recover — massage OR sauna / steam (pick one). Stretch moved
+         into Base's AND-rule so Recover is now strictly body-care
+         rituals. Either toggle earns the Recover star. -->
     <div class="stage mint-stage stage-active {{RECOVER_STAGE_STATE}} {{RECOVER_COLLAPSED}}" id="stage-recover">
       <div class="stage-header" onclick="toggleStage('stage-recover')">
         <span class="stage-icon">&#x1F33F;</span>
@@ -2522,11 +2531,11 @@ body.view-year  .month-only { display: none !important; }
         <span class="stage-chevron">&#x25BC;</span>
       </div>
       <div class="stage-body">
-        <button type="button" class="manual-toggle {{STRETCH_CLS}}" id="toggle-stretch"
-                onclick="toggleManual('stretch', this)">
-          <span class="manual-ico">&#x1F9D8;</span>
-          <div class="manual-text"><span class="manual-label">Stretch</span></div>
-          <span class="manual-state" id="stretch-state">{{STRETCH_STATE_TEXT}}</span>
+        <button type="button" class="manual-toggle {{MASSAGE_CLS}}" id="toggle-massage"
+                onclick="toggleManual('massage', this)">
+          <span class="manual-ico">&#x1F486;&#x200D;&#x2640;&#xFE0F;</span>
+          <div class="manual-text"><span class="manual-label">Massage</span></div>
+          <span class="manual-state" id="massage-state">{{MASSAGE_STATE_TEXT}}</span>
         </button>
         <button type="button" class="manual-toggle {{SAUNA_CLS}}" id="toggle-sauna"
                 onclick="toggleManual('sauna', this)"
@@ -3276,7 +3285,11 @@ body.view-year  .month-only { display: none !important; }
   // after a tap. Each stage has its own truth rule (see isStageEarned).
   const STAGE_BY_FIELD = {
     'sauna': 'recover',
-    'stretch': 'recover',
+    'massage': 'recover',
+    // Stretch moved from Recover → Base. It now contributes to the
+    // Base AND-rule (Steps + Sleep + Cal + Stretch — all 4 required)
+    // instead of the Recover OR-rule.
+    'stretch': 'base',
     'cal_logged': 'base',
     'steps_logged': 'base',
     'sleep_logged': 'base',

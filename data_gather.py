@@ -269,6 +269,9 @@ def gather_dashboard_data(
     # auto-fetch. Symmetric to steps_logged — past days fall back to
     # numeric sleep_hours >= SLEEP_STAR_THRESHOLD_DEFAULT in scoring.
     sleep_logged_row = [bool(r.get("sleep_logged")) if r else False for r in week]
+    # massage_logged is the manual toggle that paired with sauna in
+    # Recover's OR-logic when Stretch moved into Base's AND-rule.
+    massage_logged_row = [bool(r.get("massage_logged")) if r else False for r in week]
 
     # Cycle phase for the header chip + coach line ("Luteal-EM", "D19").
     # sync.py only writes cycle_phase when it runs — and cron fires 4×/day,
@@ -376,6 +379,7 @@ def gather_dashboard_data(
         "cardio_logged_row": cardio_logged_row,
         "steps_logged_row": steps_logged_row,
         "sleep_logged_row": sleep_logged_row,
+        "massage_logged_row": massage_logged_row,
         "cycle_row": cycle_row,
         "morning_star_row": morning_star_row,
         "night_star_row": night_star_row,

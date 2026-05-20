@@ -230,6 +230,20 @@ class Db:
                 (d, value),
             )
 
+    def set_massage_logged(self, d: date, value: bool) -> None:
+        """Manual massage-logged toggle (Recover stage).
+
+        Sits alongside sauna in the Recover stage's OR-logic — either
+        one lights the Recover star. Stretch moved out of Recover and
+        into Base's AND-logic at the same time as this addition.
+        """
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT INTO daily_entries (date, massage_logged) VALUES (%s, %s) "
+                "ON CONFLICT (date) DO UPDATE SET massage_logged = EXCLUDED.massage_logged",
+                (d, value),
+            )
+
     # ───────────────────────────────────────────────────────────────
     # season_pass
     # ───────────────────────────────────────────────────────────────
@@ -375,6 +389,7 @@ _ENTRY_COLUMNS = {
     "notes",
     "sauna", "stretch_logged", "cal_logged",
     "strength_logged", "cardio_logged", "steps_logged", "sleep_logged",
+    "massage_logged",
     "morning_star", "night_star",
     "morning_checks", "night_checks",
 }

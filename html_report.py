@@ -152,12 +152,18 @@ def _quest_item(stage: str, index: int, icon: str, name: str,
 # ═══════════════════════════════════════════════════════════════════
 
 def _base_earned(data: dict, weekday: int) -> bool:
-    """🏔 Base star — steps AND sleep AND calories (all three)."""
+    """🏔 Base star — steps AND sleep AND calories AND stretch (all four).
+
+    Stretch moved into Base so the bundle now covers the four daily
+    non-workout foundations. Recover then shrank to massage OR sauna.
+    """
     daily = data["score"].get("daily", {}).get(weekday, {})
+    stretch_ok = _row_has(data.get("stretch_row", []), weekday)
     return (
         bool(daily.get("steps"))
         and bool(daily.get("sleep"))
         and bool(daily.get("cal"))
+        and stretch_ok
     )
 
 
@@ -181,9 +187,17 @@ def _burn_earned(data: dict, weekday: int) -> bool:
 
 
 def _recover_earned(data: dict, weekday: int) -> bool:
-    """🌿 Recover star — stretch OR sauna / steam logged."""
+    """🌿 Recover star — massage OR sauna logged.
+
+    Stretch moved into Base. The Recover bundle is now strictly the
+    body-care rituals (massage / sauna) — pick one to earn the star.
+    Legacy stretch_row data still flowed through Base via the
+    AND-rule, so the past star grid stays intact.
+    """
+    m_row = data.get("massage_logged_row", []) or []
+    manual_massage = bool(m_row[weekday]) if weekday < len(m_row) else False
     return (
-        _row_has(data.get("stretch_row", []), weekday)
+        manual_massage
         or _row_has(data.get("sauna_row", []), weekday)
     )
 
@@ -1897,6 +1911,9 @@ def generate_html_report(
         # empty otherwise; sibling state text reflects either way.
         "SAUNA_CLS":           ("done" if _row_has(data.get("sauna_row", []), weekday) else ""),
         "SAUNA_STATE_TEXT":    ("\u2713 logged" if _row_has(data.get("sauna_row", []), weekday) else "not logged"),
+        # Massage replaces Stretch in Recover (Stretch moved to Base).
+        "MASSAGE_CLS":         ("done" if (data.get("massage_logged_row") or [False]*7)[weekday] else ""),
+        "MASSAGE_STATE_TEXT":  ("\u2713 logged" if (data.get("massage_logged_row") or [False]*7)[weekday] else "not logged"),
         "STRETCH_CLS":         ("done" if _row_has(data.get("stretch_row", []), weekday) else ""),
         "STRETCH_STATE_TEXT":  ("\u2713 logged" if _row_has(data.get("stretch_row", []), weekday) else "not logged"),
         # Cal Logged manual toggle (replaces Garmin/MFP auto-fetch).
@@ -1951,7 +1968,7 @@ def generate_html_report(
         "BASE_ITEMS_HTML":      core3["base"]["items_html"],
         "BASE_STAR_CLS":        "earned" if core3["base"]["earned"] else "",
         "BASE_STAR_GLYPH":      "\u2B50" if core3["base"]["earned"] else "\u2606",
-        "BASE_SUB":             "Steps · Sleep · Calories · all 3 required",
+        "BASE_SUB":             "Steps · Sleep · Calories · Stretch · all 4 required",
         "BASE_STAGE_STATE":     "earned" if core3["base"]["earned"] else "",
         "BASE_COLLAPSED":       "collapsed" if core3["base"]["earned"] else "",
         "BURN_ITEMS_HTML":      core3["burn"]["items_html"],
@@ -1963,7 +1980,7 @@ def generate_html_report(
         "RECOVER_ITEMS_HTML":   core3["recover"]["items_html"],
         "RECOVER_STAR_CLS":     "earned" if core3["recover"]["earned"] else "",
         "RECOVER_STAR_GLYPH":   "\u2B50" if core3["recover"]["earned"] else "\u2606",
-        "RECOVER_SUB":          "Stretch or Sauna · pick one",
+        "RECOVER_SUB":          "Massage or Sauna · pick one",
         "RECOVER_STAGE_STATE":  "earned" if core3["recover"]["earned"] else "",
         "RECOVER_COLLAPSED":    "collapsed" if core3["recover"]["earned"] else "",
         "NIGHT_COLLAPSED":     "collapsed" if today_night_earned else "",
