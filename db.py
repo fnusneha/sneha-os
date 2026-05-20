@@ -203,14 +203,30 @@ class Db:
     def set_steps_logged(self, d: date, value: bool) -> None:
         """Manual steps-logged toggle (replaces Oura step fetch).
 
-        User taps once they've hit 10k steps. Same one-tap pattern as
-        Cal Logged / Strength / Cardio. The Oura step fetch in sync.py
-        is commented out so this manual flag is the source of truth.
+        User taps once they've hit the daily step goal. Same one-tap
+        pattern as Cal Logged / Strength / Cardio. The Oura step fetch
+        in sync.py is commented out so this manual flag is the source
+        of truth.
         """
         with self._connect() as conn:
             conn.execute(
                 "INSERT INTO daily_entries (date, steps_logged) VALUES (%s, %s) "
                 "ON CONFLICT (date) DO UPDATE SET steps_logged = EXCLUDED.steps_logged",
+                (d, value),
+            )
+
+    def set_sleep_logged(self, d: date, value: bool) -> None:
+        """Manual sleep-logged toggle (replaces Oura sleep fetch).
+
+        User taps after a full night that hit the sleep threshold.
+        Symmetric with set_steps_logged — flips one bool, scoring.py
+        reads it as the primary path with a legacy fallback to
+        sleep_hours >= SLEEP_STAR_THRESHOLD_DEFAULT for historical days.
+        """
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT INTO daily_entries (date, sleep_logged) VALUES (%s, %s) "
+                "ON CONFLICT (date) DO UPDATE SET sleep_logged = EXCLUDED.sleep_logged",
                 (d, value),
             )
 
@@ -358,7 +374,7 @@ _ENTRY_COLUMNS = {
     "cycle_phase", "cycle_day",
     "notes",
     "sauna", "stretch_logged", "cal_logged",
-    "strength_logged", "cardio_logged", "steps_logged",
+    "strength_logged", "cardio_logged", "steps_logged", "sleep_logged",
     "morning_star", "night_star",
     "morning_checks", "night_checks",
 }

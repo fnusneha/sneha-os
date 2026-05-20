@@ -110,10 +110,12 @@ def sync_single_day(db: Db, target: date, creds) -> bool:
     log.info("Syncing %s (%s)", day_str, target.strftime("%A"))
 
     # Oura
-    sleep_hrs = fetch_sleep(day_str)
-    # Steps fetch DISABLED — Steps is now a manual toggle on the
-    # dashboard (steps_logged). Re-enable here if Oura ever becomes
+    # Sleep fetch DISABLED — Sleep is now a manual toggle on the
+    # dashboard (sleep_logged). Re-enable here if Oura becomes
     # reliable enough that auto-fetching is preferable again.
+    # sleep_hrs = fetch_sleep(day_str)
+    sleep_hrs = None
+    # Steps fetch DISABLED — same reason; Steps is also a manual toggle.
     # steps = fetch_steps(day_str)
     steps = None
     cycle_day = fetch_cycle_day(day_str, creds) if creds else None

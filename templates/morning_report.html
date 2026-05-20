@@ -2430,11 +2430,9 @@ body.view-year  .month-only { display: none !important; }
         <span class="stage-chevron">&#x25BC;</span>
       </div>
       <div class="stage-body">
-        <!-- Manual Steps toggle — sits ABOVE the auto Sleep q-item so
-             the user can quickly mark 10k done; Oura step fetch is
-             commented out so this is the source of truth. Hint line
-             surfaces the target ("10,000 steps") same way Cal Logged
-             surfaces "≤1,520 kcal". -->
+        <!-- Manual Steps toggle — Oura step fetch is commented out so
+             this is the source of truth. Hint line surfaces the target
+             same way Cal Logged surfaces "≤1,520 kcal". -->
         <button type="button" class="manual-toggle {{STEPS_LOGGED_CLS}}" id="toggle-steps_logged"
                 onclick="toggleManual('steps_logged', this)"
                 style="margin-bottom:8px;">
@@ -2444,6 +2442,18 @@ body.view-year  .month-only { display: none !important; }
             <span class="manual-hint">{{STEPS_TARGET_LABEL}}</span>
           </div>
           <span class="manual-state" id="steps_logged-state">{{STEPS_LOGGED_STATE_TEXT}}</span>
+        </button>
+        <!-- Manual Sleep toggle — Oura sleep fetch is commented out;
+             user taps after a night that hit the threshold. -->
+        <button type="button" class="manual-toggle {{SLEEP_LOGGED_CLS}}" id="toggle-sleep_logged"
+                onclick="toggleManual('sleep_logged', this)"
+                style="margin-bottom:8px;">
+          <span class="manual-ico">&#x1F634;</span>
+          <div class="manual-text">
+            <span class="manual-label">Sleep</span>
+            <span class="manual-hint">{{SLEEP_TARGET_LABEL}}</span>
+          </div>
+          <span class="manual-state" id="sleep_logged-state">{{SLEEP_LOGGED_STATE_TEXT}}</span>
         </button>
         {{BASE_ITEMS_HTML}}
         <!-- Manual Cal Logged toggle — replaces the old Garmin/MFP
@@ -3269,6 +3279,7 @@ body.view-year  .month-only { display: none !important; }
     'stretch': 'recover',
     'cal_logged': 'base',
     'steps_logged': 'base',
+    'sleep_logged': 'base',
     'strength_logged': 'burn',
     'cardio_logged': 'burn',
   };

@@ -44,6 +44,7 @@ def calculate_challenge_score(
     show_days: list[int],
     cal_logged_row: list | None = None,
     steps_logged_row: list | None = None,
+    sleep_logged_row: list | None = None,
 ) -> dict:
     """Compute per-day booleans for steps/sleep/calories.
 
@@ -90,26 +91,35 @@ def calculate_challenge_score(
             day_stars["steps"] = True
             total += 1
 
-        # Sleep (cycle-aware threshold)
-        raw_sl = str(sleep_row[i]).strip() if i < len(sleep_row) else ""
-        try:
-            sl = float(raw_sl.rstrip("h"))
-        except (ValueError, AttributeError):
-            sl = 0.0
-        if sl > 0:
-            phase = ""
-            if i < len(cycle_row):
-                cell = str(cycle_row[i]).strip()
-                for p in LOW_ENERGY_PHASES:
-                    if p in cell:
-                        phase = p
-                        break
-            threshold = (SLEEP_STAR_THRESHOLD_LOW_ENERGY
-                         if phase in LOW_ENERGY_PHASES
-                         else SLEEP_STAR_THRESHOLD_DEFAULT)
-            if sl >= threshold:
-                day_stars["sleep"] = True
-                total += 1
+        # Sleep — primary path is the manual sleep_logged toggle.
+        # Legacy fallback (sleep_hours >= cycle-aware threshold) keeps
+        # historical days populated by the old Oura sync intact in the
+        # past star grid.
+        sleep_ok = False
+        if sleep_logged_row and i < len(sleep_logged_row) and sleep_logged_row[i]:
+            sleep_ok = True
+        else:
+            raw_sl = str(sleep_row[i]).strip() if i < len(sleep_row) else ""
+            try:
+                sl = float(raw_sl.rstrip("h"))
+            except (ValueError, AttributeError):
+                sl = 0.0
+            if sl > 0:
+                phase = ""
+                if i < len(cycle_row):
+                    cell = str(cycle_row[i]).strip()
+                    for p in LOW_ENERGY_PHASES:
+                        if p in cell:
+                            phase = p
+                            break
+                threshold = (SLEEP_STAR_THRESHOLD_LOW_ENERGY
+                             if phase in LOW_ENERGY_PHASES
+                             else SLEEP_STAR_THRESHOLD_DEFAULT)
+                if sl >= threshold:
+                    sleep_ok = True
+        if sleep_ok:
+            day_stars["sleep"] = True
+            total += 1
 
         # Calories — primary path is the manual cal_logged toggle.
         # Legacy fallback (calories <= goal) preserved for historical

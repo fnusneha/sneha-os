@@ -826,12 +826,11 @@ def _build_core3(data: dict, weekday: int) -> dict:
     #             two manual-toggle buttons in the template ARE the
     #             whole stage body.
     #   Recover — Both are manual; ditto.
-    base_items = [
-        # Sleep is still auto-tracked from Oura (the only auto row left).
-        # Steps + Calories are now manual toggles in the template.
-        ("\U0001f634",    f"Sleep {SLEEP_STAR_THRESHOLD_DEFAULT:g}h+",
-         sleep_hint, sleep_done),
-    ]
+    # All three Base sub-goals (Steps, Sleep, Calories) are now manual
+    # toggles in the template — no auto-tracked q-items left to render
+    # here. Earned flag is still computed from source-of-truth booleans
+    # below so the AND-logic stays correct.
+    base_items: list = []
     burn_items: list = []     # body is just the two manual toggles
     recover_items: list = []  # body is just the two manual toggles
 
@@ -1919,6 +1918,10 @@ def generate_html_report(
         "STEPS_LOGGED_CLS":           ("done" if (data.get("steps_logged_row") or [False]*7)[weekday] else ""),
         "STEPS_LOGGED_STATE_TEXT":    ("\u2713 logged" if (data.get("steps_logged_row") or [False]*7)[weekday] else "not logged"),
         "STEPS_TARGET_LABEL":         f"{DAILY_STEPS_GOAL:,} steps",
+        # Sleep manual toggle (Oura sleep fetch is commented out).
+        "SLEEP_LOGGED_CLS":           ("done" if (data.get("sleep_logged_row") or [False]*7)[weekday] else ""),
+        "SLEEP_LOGGED_STATE_TEXT":    ("\u2713 logged" if (data.get("sleep_logged_row") or [False]*7)[weekday] else "not logged"),
+        "SLEEP_TARGET_LABEL":         f"{SLEEP_STAR_THRESHOLD_DEFAULT:g}h+",
         "MORNING_COLLECTED":   "true" if today_morning_earned else "false",
         "NIGHT_COLLECTED":     "true" if today_night_earned else "false",
         "CORE_COLLECTED":      "true" if today_core_earned else "false",
