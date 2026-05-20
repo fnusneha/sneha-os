@@ -272,6 +272,9 @@ def gather_dashboard_data(
     # massage_logged is the manual toggle that paired with sauna in
     # Recover's OR-logic when Stretch moved into Base's AND-rule.
     massage_logged_row = [bool(r.get("massage_logged")) if r else False for r in week]
+    # protein_logged joins Base AND-rule (steps + sleep + cal +
+    # stretch + protein — all 5 required).
+    protein_logged_row = [bool(r.get("protein_logged")) if r else False for r in week]
 
     # Cycle phase for the header chip + coach line ("Luteal-EM", "D19").
     # sync.py only writes cycle_phase when it runs — and cron fires 4×/day,
@@ -380,6 +383,7 @@ def gather_dashboard_data(
         "steps_logged_row": steps_logged_row,
         "sleep_logged_row": sleep_logged_row,
         "massage_logged_row": massage_logged_row,
+        "protein_logged_row": protein_logged_row,
         "cycle_row": cycle_row,
         "morning_star_row": morning_star_row,
         "night_star_row": night_star_row,

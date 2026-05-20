@@ -2465,13 +2465,23 @@ body.view-year  .month-only { display: none !important; }
                 style="margin-top:8px;">
           <span class="manual-ico">&#x1F35A;</span>
           <div class="manual-text">
-            <span class="manual-label">Cal Logged</span>
+            <span class="manual-label">Calories</span>
             <span class="manual-hint">{{CAL_TARGET_LABEL}} kcal</span>
           </div>
           <span class="manual-state" id="cal_logged-state">{{CAL_LOGGED_STATE_TEXT}}</span>
         </button>
-        <!-- Stretch — moved from Recover into Base's AND-rule. Now part
-             of the daily foundations (Steps + Sleep + Cal + Stretch). -->
+        <!-- Protein — daily floor, joins the Base AND-rule. -->
+        <button type="button" class="manual-toggle {{PROTEIN_LOGGED_CLS}}" id="toggle-protein_logged"
+                onclick="toggleManual('protein_logged', this)"
+                style="margin-top:8px;">
+          <span class="manual-ico">&#x1F969;</span>
+          <div class="manual-text">
+            <span class="manual-label">Protein</span>
+            <span class="manual-hint">{{PROTEIN_TARGET_LABEL}}</span>
+          </div>
+          <span class="manual-state" id="protein_logged-state">{{PROTEIN_LOGGED_STATE_TEXT}}</span>
+        </button>
+        <!-- Stretch — moved from Recover into Base's AND-rule. -->
         <button type="button" class="manual-toggle {{STRETCH_CLS}}" id="toggle-stretch"
                 onclick="toggleManual('stretch', this)"
                 style="margin-top:8px;">
@@ -3287,12 +3297,13 @@ body.view-year  .month-only { display: none !important; }
     'sauna': 'recover',
     'massage': 'recover',
     // Stretch moved from Recover → Base. It now contributes to the
-    // Base AND-rule (Steps + Sleep + Cal + Stretch — all 4 required)
-    // instead of the Recover OR-rule.
+    // Base AND-rule (all 5 toggles required) instead of the Recover
+    // OR-rule.
     'stretch': 'base',
     'cal_logged': 'base',
     'steps_logged': 'base',
     'sleep_logged': 'base',
+    'protein_logged': 'base',
     'strength_logged': 'burn',
     'cardio_logged': 'burn',
   };

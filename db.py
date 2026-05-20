@@ -230,6 +230,19 @@ class Db:
                 (d, value),
             )
 
+    def set_protein_logged(self, d: date, value: bool) -> None:
+        """Manual protein-logged toggle (Base stage).
+
+        Tap once protein intake has hit the daily floor (DAILY_PROTEIN_TARGET).
+        Joins steps / sleep / calories / stretch in the Base AND-rule.
+        """
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT INTO daily_entries (date, protein_logged) VALUES (%s, %s) "
+                "ON CONFLICT (date) DO UPDATE SET protein_logged = EXCLUDED.protein_logged",
+                (d, value),
+            )
+
     def set_massage_logged(self, d: date, value: bool) -> None:
         """Manual massage-logged toggle (Recover stage).
 
@@ -389,7 +402,7 @@ _ENTRY_COLUMNS = {
     "notes",
     "sauna", "stretch_logged", "cal_logged",
     "strength_logged", "cardio_logged", "steps_logged", "sleep_logged",
-    "massage_logged",
+    "massage_logged", "protein_logged",
     "morning_star", "night_star",
     "morning_checks", "night_checks",
 }

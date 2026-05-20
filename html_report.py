@@ -33,7 +33,7 @@ log = logging.getLogger(__name__)
 # ═══════════════════════════════════════════════════════════════════
 
 from constants import (
-    DAILY_STEPS_GOAL, DAILY_CAL_TARGET,
+    DAILY_STEPS_GOAL, DAILY_CAL_TARGET, DAILY_PROTEIN_TARGET,
     MAX_DAILY_STARS, MAX_WEEKLY_STARS,
     MEDAL_BRONZE, MEDAL_SILVER, MEDAL_GOLD,
     SLEEP_STAR_THRESHOLD_DEFAULT,
@@ -152,17 +152,20 @@ def _quest_item(stage: str, index: int, icon: str, name: str,
 # ═══════════════════════════════════════════════════════════════════
 
 def _base_earned(data: dict, weekday: int) -> bool:
-    """🏔 Base star — steps AND sleep AND calories AND stretch (all four).
+    """🏔 Base star — steps AND sleep AND cal AND protein AND stretch.
 
-    Stretch moved into Base so the bundle now covers the four daily
-    non-workout foundations. Recover then shrank to massage OR sauna.
+    Five-of-five AND rule: the daily non-workout foundations bundle.
+    Protein joined alongside Stretch as the bundle expanded.
     """
     daily = data["score"].get("daily", {}).get(weekday, {})
     stretch_ok = _row_has(data.get("stretch_row", []), weekday)
+    p_row = data.get("protein_logged_row", []) or []
+    protein_ok = bool(p_row[weekday]) if weekday < len(p_row) else False
     return (
         bool(daily.get("steps"))
         and bool(daily.get("sleep"))
         and bool(daily.get("cal"))
+        and protein_ok
         and stretch_ok
     )
 
@@ -1939,6 +1942,10 @@ def generate_html_report(
         "SLEEP_LOGGED_CLS":           ("done" if (data.get("sleep_logged_row") or [False]*7)[weekday] else ""),
         "SLEEP_LOGGED_STATE_TEXT":    ("\u2713 logged" if (data.get("sleep_logged_row") or [False]*7)[weekday] else "not logged"),
         "SLEEP_TARGET_LABEL":         f"{SLEEP_STAR_THRESHOLD_DEFAULT:g}h+",
+        # Protein — manual daily-floor toggle alongside Cal Logged.
+        "PROTEIN_LOGGED_CLS":         ("done" if (data.get("protein_logged_row") or [False]*7)[weekday] else ""),
+        "PROTEIN_LOGGED_STATE_TEXT":  ("\u2713 logged" if (data.get("protein_logged_row") or [False]*7)[weekday] else "not logged"),
+        "PROTEIN_TARGET_LABEL":       f"{DAILY_PROTEIN_TARGET:g}g+",
         "MORNING_COLLECTED":   "true" if today_morning_earned else "false",
         "NIGHT_COLLECTED":     "true" if today_night_earned else "false",
         "CORE_COLLECTED":      "true" if today_core_earned else "false",
@@ -1968,7 +1975,7 @@ def generate_html_report(
         "BASE_ITEMS_HTML":      core3["base"]["items_html"],
         "BASE_STAR_CLS":        "earned" if core3["base"]["earned"] else "",
         "BASE_STAR_GLYPH":      "\u2B50" if core3["base"]["earned"] else "\u2606",
-        "BASE_SUB":             "Steps · Sleep · Calories · Stretch · all 4 required",
+        "BASE_SUB":             "Steps · Sleep · Calories · Protein · Stretch · all 5 required",
         "BASE_STAGE_STATE":     "earned" if core3["base"]["earned"] else "",
         "BASE_COLLAPSED":       "collapsed" if core3["base"]["earned"] else "",
         "BURN_ITEMS_HTML":      core3["burn"]["items_html"],

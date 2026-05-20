@@ -49,7 +49,11 @@ WEEKLY_STEPS_GOAL = 48_000
 WEEKLY_STRENGTH_GOAL = 3
 WEEKLY_CARDIO_GOAL = 1
 
-# Daily calorie ceiling used by the Cal Logged toggle.
+# Daily protein floor used by the Protein toggle. Pure UI hint —
+# star fires on the manual toggle, not on any numeric comparison.
+DAILY_PROTEIN_TARGET = 120  # grams
+
+# Daily calorie ceiling used by the Calories toggle.
 # Pure UI hint — the actual star fires on the manual toggle, not on
 # any numeric comparison. Tweak here and both the Calories item hint
 # and the Cal Logged button label pick it up automatically.

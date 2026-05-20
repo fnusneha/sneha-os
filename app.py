@@ -326,6 +326,8 @@ def api_manual():
         db.set_sleep_logged(d, value)
     elif field == "massage":
         db.set_massage_logged(d, value)
+    elif field == "protein_logged":
+        db.set_protein_logged(d, value)
     else:
         return jsonify(ok=False, error=f"unknown field {field!r}"), 400
 
