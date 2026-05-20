@@ -3291,19 +3291,22 @@ body.view-year  .month-only { display: none !important; }
 
   // True iff the given core stage currently meets its star rule.
   //   recover/burn: OR-logic over q-items and manual toggles (any done)
-  //   base:         AND-logic \u2014 every sub-goal (Steps + Sleep q-items
-  //                 AND Cal Logged toggle) must be done.
+  //   base:         AND-logic \u2014 every q-item AND every manual toggle
+  //                 must be done. Base may have ZERO q-items now that
+  //                 Steps + Sleep + Calories are all manual toggles \u2014
+  //                 the earlier "if qitems.length === 0 return false"
+  //                 short-circuit was a bug that left the Base star
+  //                 dark even when all 3 toggles were on.
   function isStageEarned(stage) {
     const stageEl = document.getElementById('stage-' + stage);
     if (!stageEl) return false;
+    const qitems = stageEl.querySelectorAll('.q-item.core-pending, .q-item.core-done');
+    const toggles = stageEl.querySelectorAll('.manual-toggle');
     if (stage === 'base') {
-      const qitems = stageEl.querySelectorAll('.q-item.core-pending, .q-item.core-done');
-      if (qitems.length === 0) return false;
+      // Truly-empty stage (no sub-goals at all) can't be "earned".
+      if (qitems.length === 0 && toggles.length === 0) return false;
       const allQDone = Array.from(qitems).every(el => el.classList.contains('core-done'));
-      // Treat each manual toggle inside Base as also required.
-      const toggles = stageEl.querySelectorAll('.manual-toggle');
-      const allTogglesDone = toggles.length === 0 ||
-        Array.from(toggles).every(b => b.classList.contains('done'));
+      const allTogglesDone = Array.from(toggles).every(b => b.classList.contains('done'));
       return allQDone && allTogglesDone;
     }
     // OR-logic for burn + recover.
