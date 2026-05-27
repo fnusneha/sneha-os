@@ -152,10 +152,11 @@ def _quest_item(stage: str, index: int, icon: str, name: str,
 # ═══════════════════════════════════════════════════════════════════
 
 def _base_earned(data: dict, weekday: int) -> bool:
-    """🏔 Base star — steps AND sleep AND cal AND protein AND stretch.
+    """🏔 Base star — steps AND sleep AND protein AND stretch.
 
-    Five-of-five AND rule: the daily non-workout foundations bundle.
-    Protein joined alongside Stretch as the bundle expanded.
+    Four-of-four AND rule. Calories was removed from the bundle —
+    the protein floor + the daily kcal-aware app she logs in already
+    cover that surface; the duplicate kcal toggle was clutter.
     """
     daily = data["score"].get("daily", {}).get(weekday, {})
     stretch_ok = _row_has(data.get("stretch_row", []), weekday)
@@ -164,7 +165,6 @@ def _base_earned(data: dict, weekday: int) -> bool:
     return (
         bool(daily.get("steps"))
         and bool(daily.get("sleep"))
-        and bool(daily.get("cal"))
         and protein_ok
         and stretch_ok
     )
@@ -1975,7 +1975,7 @@ def generate_html_report(
         "BASE_ITEMS_HTML":      core3["base"]["items_html"],
         "BASE_STAR_CLS":        "earned" if core3["base"]["earned"] else "",
         "BASE_STAR_GLYPH":      "\u2B50" if core3["base"]["earned"] else "\u2606",
-        "BASE_SUB":             "Steps · Sleep · Calories · Protein · Stretch · all 5 required",
+        "BASE_SUB":             "Steps · Sleep · Protein · Stretch · all 4 required",
         "BASE_STAGE_STATE":     "earned" if core3["base"]["earned"] else "",
         "BASE_COLLAPSED":       "collapsed" if core3["base"]["earned"] else "",
         "BURN_ITEMS_HTML":      core3["burn"]["items_html"],

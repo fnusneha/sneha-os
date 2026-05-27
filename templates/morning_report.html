@@ -2460,16 +2460,11 @@ body.view-year  .month-only { display: none !important; }
              auto-fetch which kept returning empty. User taps once
              food is logged in whatever app they prefer. Same pattern
              as the Sauna / Stretch toggles inside Recover. -->
-        <button type="button" class="manual-toggle {{CAL_LOGGED_CLS}}" id="toggle-cal_logged"
-                onclick="toggleManual('cal_logged', this)"
-                style="margin-top:8px;">
-          <span class="manual-ico">&#x1F35A;</span>
-          <div class="manual-text">
-            <span class="manual-label">Calories</span>
-            <span class="manual-hint">{{CAL_TARGET_LABEL}} kcal</span>
-          </div>
-          <span class="manual-state" id="cal_logged-state">{{CAL_LOGGED_STATE_TEXT}}</span>
-        </button>
+        <!-- Calories toggle removed from Base — Protein floor covers
+             the nutrition surface and the kcal-aware app she logs in
+             already shows numbers. Star rule shrank to 4-of-4.
+             cal_logged DB column + /api/manual route stay in place so
+             historical data and any other callers don't break. -->
         <!-- Protein — daily floor, joins the Base AND-rule. -->
         <button type="button" class="manual-toggle {{PROTEIN_LOGGED_CLS}}" id="toggle-protein_logged"
                 onclick="toggleManual('protein_logged', this)"

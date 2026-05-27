@@ -41,11 +41,11 @@ CYCLE_LENGTH = 28
 # ═══════════════════════════════════════════════════════════════════
 # Daily + weekly goals
 # ═══════════════════════════════════════════════════════════════════
-DAILY_STEPS_GOAL = 10_000
+DAILY_STEPS_GOAL = 8_000
 # Weekly = 6 × daily — one rest day baked in. Scales alongside the
 # daily goal so the weekly bar stays on the same "6 active days"
 # curve regardless of where the daily lands.
-WEEKLY_STEPS_GOAL = 60_000
+WEEKLY_STEPS_GOAL = 48_000
 WEEKLY_STRENGTH_GOAL = 3
 WEEKLY_CARDIO_GOAL = 1
 
