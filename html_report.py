@@ -851,12 +851,18 @@ def _build_core3(data: dict, weekday: int) -> dict:
     burn_items: list = []     # body is just the two manual toggles
     recover_items: list = []  # body is just the two manual toggles
 
-    # Earned flags are computed from source-of-truth booleans, NOT from
-    # items list contents — so trimming items_html for visual simplicity
-    # above doesn't accidentally weaken the star rules.
-    base_earned    = steps_done and sleep_done and cal_done
+    # Earned flags computed from source-of-truth booleans so the rules
+    # match _base_earned / _burn_earned / _recover_earned at the top of
+    # this module. Previously this local copy was 3-input (steps ∧
+    # sleep ∧ cal) which silently kept the Base star dark after the
+    # Calories+Protein+Stretch reshuffle.
+    protein_row = data.get("protein_logged_row", []) or []
+    protein_ok  = bool(protein_row[weekday]) if weekday < len(protein_row) else False
+    massage_row = data.get("massage_logged_row", []) or []
+    massage_ok  = bool(massage_row[weekday]) if weekday < len(massage_row) else False
+    base_earned    = steps_done and sleep_done and protein_ok and bool(stretch_v)
     burn_earned    = strength_done or cardio_done
-    recover_earned = bool(stretch_v) or bool(sauna_v)
+    recover_earned = massage_ok or bool(sauna_v)
 
     def _items_html(group_key: str, items: list, offset: int) -> str:
         return "\n".join(
