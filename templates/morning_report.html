@@ -1449,6 +1449,99 @@ body {
 }
 .bonus-sep { color: var(--dim); font-size: 11px; opacity: 0.4; }
 
+/* ── Strongest at 40 — 5-year DEXA arc ──
+   Long-game card that anchors the daily effort stars in the years-out
+   why. Hardcoded numbers; refresh after each DEXA scan. */
+.strongest-card {
+  margin-top: 22px;
+  padding: 18px 18px 14px;
+  background: rgba(255,255,255,0.025);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 14px;
+}
+.strongest-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin-bottom: 4px;
+  gap: 10px;
+}
+.strongest-title {
+  font-family: 'Fraunces', serif;
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+.strongest-title-pre { color: var(--text); }
+.strongest-title-em  { color: var(--mint); font-weight: 600; }
+.strongest-sep       { color: var(--dim); margin: 0 2px; }
+.strongest-arc {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--dim);
+  text-transform: uppercase;
+}
+.strongest-sub {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  font-style: italic;
+  letter-spacing: 0.02em;
+  margin-bottom: 18px;
+}
+.strongest-rows { display: flex; flex-direction: column; gap: 10px; }
+.strongest-row {
+  padding: 8px 12px 10px;
+  background: rgba(255,255,255,0.025);
+  border-radius: 8px;
+}
+.strongest-row-tight { padding: 10px 12px; }
+.strongest-row-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  color: var(--muted);
+  gap: 12px;
+}
+.strongest-row-name {
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+.strongest-row-vals {
+  color: var(--gold);
+  letter-spacing: 0.01em;
+  text-align: right;
+}
+.strongest-row-vals strong {
+  color: var(--mint);
+  font-weight: 700;
+}
+.strongest-row-vals-ok {
+  color: var(--mint);
+}
+.strongest-arrow { color: var(--dim); margin: 0 2px; }
+.strongest-bar {
+  margin-top: 7px;
+  height: 3px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.strongest-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--gold), rgba(245,200,66,0.6));
+  border-radius: 2px;
+  box-shadow: 0 0 6px rgba(245,200,66,0.25);
+}
+.strongest-footer {
+  margin-top: 14px;
+  text-align: center;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: 0.06em;
+}
+
 /* ── Manual toggle (stretch + sauna, inside the Recover stage body) ── */
 .manual-toggle {
   display: flex;
@@ -2693,6 +2786,61 @@ body.view-year  .month-only { display: none !important; }
         <span class="bonus-name">Sauna</span>
       </button>
     </div>
+  </div>
+
+  <!-- ═══ STRONGEST AT 40 — 5-year body-composition arc ═══
+       Hardcoded snapshot of the long-game DEXA targets so the
+       dashboard always grounds the daily stars in the years-out
+       why. Numbers refresh manually after each DEXA scan; the
+       "next DEXA" footer prompts the cadence. -->
+  <div class="strongest-card">
+    <div class="strongest-head">
+      <div class="strongest-title">
+        <span class="strongest-title-pre">strongest</span>
+        <span class="strongest-sep">&middot;</span>
+        <span class="strongest-title-em">at 40</span>
+      </div>
+      <span class="strongest-arc">5 YR ARC</span>
+    </div>
+    <div class="strongest-sub">muscle first &middot; lean second &middot; strong forever</div>
+
+    <div class="strongest-rows">
+      <div class="strongest-row">
+        <div class="strongest-row-head">
+          <span class="strongest-row-name">lean mass</span>
+          <span class="strongest-row-vals">80.1 lbs <span class="strongest-arrow">&rarr;</span> <strong>88 lbs</strong></span>
+        </div>
+        <div class="strongest-bar"><div class="strongest-bar-fill" style="width:18%"></div></div>
+      </div>
+      <div class="strongest-row">
+        <div class="strongest-row-head">
+          <span class="strongest-row-name">body fat</span>
+          <span class="strongest-row-vals">34.1% <span class="strongest-arrow">&rarr;</span> <strong>25%</strong></span>
+        </div>
+        <div class="strongest-bar"><div class="strongest-bar-fill" style="width:28%"></div></div>
+      </div>
+      <div class="strongest-row">
+        <div class="strongest-row-head">
+          <span class="strongest-row-name">weight</span>
+          <span class="strongest-row-vals">129.9 lbs <span class="strongest-arrow">&rarr;</span> <strong>122 lbs</strong></span>
+        </div>
+        <div class="strongest-bar"><div class="strongest-bar-fill" style="width:22%"></div></div>
+      </div>
+      <div class="strongest-row strongest-row-tight">
+        <div class="strongest-row-head">
+          <span class="strongest-row-name">visceral fat</span>
+          <span class="strongest-row-vals">0.86 lbs <span class="strongest-arrow">&rarr;</span> <strong>&lt;0.7 lbs</strong></span>
+        </div>
+      </div>
+      <div class="strongest-row strongest-row-tight">
+        <div class="strongest-row-head">
+          <span class="strongest-row-name">bone Z-score</span>
+          <span class="strongest-row-vals strongest-row-vals-ok">+2.1 &middot; maintain &#x2713;</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="strongest-footer">next DEXA &middot; Aug 2026</div>
   </div>
 
   </div>
