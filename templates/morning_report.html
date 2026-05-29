@@ -330,6 +330,18 @@ body {
 .hero-stage.pending .hero-stage-ico { filter: grayscale(0.7); opacity: 0.45; }
 .hero-stage.pending .hero-stage-name  { color: var(--dim); }
 .hero-stage.pending .hero-stage-check { color: var(--dim); opacity: 0.5; }
+/* "rest" — only used by Strength on rest days. Greys out the cell but
+   tags it with the word "rest" so the reduced denominator is obvious. */
+.hero-stage.rest .hero-stage-ico { filter: grayscale(0.9); opacity: 0.35; }
+.hero-stage.rest .hero-stage-name { color: var(--dim); }
+.hero-stage.rest .hero-stage-check {
+  font-size: 8px;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+  font-family: 'DM Mono', monospace;
+  font-weight: 600;
+}
 /* Forward-looking nudge bubble */
 .hero-nudge {
   padding: 10px 14px;
@@ -1285,6 +1297,157 @@ body {
   border-radius: 1px;
   box-shadow: 0 0 4px rgba(245,200,66,0.6);
 }
+
+/* ── Morning / Night ritual strip ──
+   Sits ABOVE the hero. Two pill-shaped buttons (Morning · Night)
+   with a small check/circle indicator. Tracked but not scored, so
+   visually quieter than the manual-toggle buttons below. */
+.ritual-strip {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px;
+  padding: 6px 4px 12px;
+  font-family: 'DM Mono', monospace;
+}
+.ritual-strip-pills { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+.ritual-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, transform 0.1s;
+}
+.ritual-pill:active { transform: scale(0.97); }
+.ritual-pill .ritual-ico { font-size: 13px; }
+.ritual-pill .ritual-label { color: var(--text); }
+.ritual-pill .ritual-check {
+  color: var(--muted);
+  font-weight: 600;
+}
+.ritual-pill.done {
+  background: rgba(245,200,66,0.10);
+  border-color: rgba(245,200,66,0.32);
+}
+.ritual-pill.done .ritual-check { color: var(--gold); }
+.ritual-sep { color: var(--dim); font-size: 11px; opacity: 0.5; }
+.ritual-strip-note {
+  font-size: 9px;
+  color: var(--dim);
+  letter-spacing: 0.08em;
+  text-transform: lowercase;
+  font-family: 'DM Mono', monospace;
+}
+
+/* ── Effort Star card (Protein / Strength / Sleep / Steps / Stretch).
+   Each card is a flat single-row toggle: icon + name (+ optional
+   badge) + tappable status pill on the right. No body content unless
+   the card needs sub-controls (Strength has the Rest-day toggle). */
+.star-stage .stage-header {
+  /* Slightly tighter than full Morning/Night ritual headers — these
+     are simpler rows with no checklist body in most cases. */
+  padding: 12px 14px;
+  display: flex; align-items: center; gap: 12px;
+}
+.star-stage .stage-info { flex: 1; min-width: 0; }
+.star-stage .stage-name-row {
+  display: flex; align-items: center; gap: 8px;
+}
+/* Inline mini-badge (e.g. "3x/wk" on the Strength card). */
+.stage-badge {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(251,113,133,0.18);
+  color: #fda4af;
+  font-weight: 600;
+}
+/* Right-edge clickable status pill — mirrors the manual-toggle state
+   pill but lives inside the stage-header so the whole row reads
+   "icon · name · status · chevron". */
+.stage-pill {
+  font-size: 11px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-family: 'DM Mono', monospace;
+  background: rgba(255,255,255,0.06);
+  color: var(--muted);
+  letter-spacing: 0.02em;
+  font-weight: 500;
+  text-align: center;
+  min-width: 70px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, transform 0.1s;
+  flex-shrink: 0;
+}
+.stage-pill:active { transform: scale(0.96); }
+.star-stage.earned .stage-pill {
+  background: rgba(245,200,66,0.2);
+  color: var(--gold);
+  font-weight: 600;
+}
+.star-stage.rest-day .stage-pill {
+  background: rgba(148,163,184,0.15);
+  color: var(--muted);
+  font-style: italic;
+}
+/* Colour the left border per card so the flat list still reads as
+   five distinct rails. Subtle — keeps the cards uniform but
+   recognisable at a glance. */
+.stage-protein  { border-left: 3px solid #6ee7b7; }   /* mint */
+.stage-strength { border-left: 3px solid #fb7185; }   /* coral */
+.stage-sleep    { border-left: 3px solid #a78bfa; }   /* violet */
+.stage-steps    { border-left: 3px solid #7dd3fc; }   /* sky */
+.stage-stretch  { border-left: 3px solid #fbbf24; }   /* amber */
+
+/* ── Bonus row (Cardio · Massage · Sauna) ──
+   Lives at the bottom of the Today view. Three pill chips, optional
+   logs only — no border colour, no scoring weight. */
+.bonus-row {
+  margin-top: 18px;
+  padding: 12px 14px 14px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 12px;
+}
+.bonus-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--dim);
+  margin-bottom: 10px;
+  text-transform: uppercase;
+}
+.bonus-pills { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.bonus-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, transform 0.1s;
+}
+.bonus-pill:active { transform: scale(0.96); }
+.bonus-pill .bonus-ico { font-size: 13px; }
+.bonus-pill.done {
+  background: rgba(110,231,183,0.10);
+  border-color: rgba(110,231,183,0.30);
+  color: var(--mint);
+  font-weight: 600;
+}
+.bonus-sep { color: var(--dim); font-size: 11px; opacity: 0.4; }
 
 /* ── Manual toggle (stretch + sauna, inside the Recover stage body) ── */
 .manual-toggle {
@@ -2389,188 +2552,146 @@ body.view-year  .month-only { display: none !important; }
 
   <!-- ════════════ TODAY VIEW ════════════ -->
   <div class="today-only">
+
+  <!-- ═══ MORNING / NIGHT RITUAL STRIP ═══
+       Tracked but unscored. Tap to toggle morning_star / night_star
+       via /api/manual; flips the check / circle indicator on the strip
+       and the corresponding pill in the hero (visually invisible — the
+       hero only shows the 5 effort stars now, so these don't bump the
+       count). Same one-tap UX as the manual-toggle buttons below. -->
+  <div class="ritual-strip">
+    <div class="ritual-strip-pills">
+      <button type="button" class="ritual-pill {{MORNING_RITUAL_PILL_CLS}}"
+              id="ritual-morning"
+              onclick="toggleManual('morning_star', this)">
+        <span class="ritual-ico">&#x2600;&#xFE0F;</span>
+        <span class="ritual-label">Morning</span>
+        <span class="ritual-check" id="ritual-morning-check">{{MORNING_RITUAL_PILL_GLYPH}}</span>
+      </button>
+      <span class="ritual-sep">&middot;</span>
+      <button type="button" class="ritual-pill {{NIGHT_RITUAL_PILL_CLS}}"
+              id="ritual-night"
+              onclick="toggleManual('night_star', this)">
+        <span class="ritual-ico">&#x1F319;</span>
+        <span class="ritual-label">Night</span>
+        <span class="ritual-check" id="ritual-night-check">{{NIGHT_RITUAL_PILL_GLYPH}}</span>
+      </button>
+    </div>
+    <span class="ritual-strip-note">rituals &middot; not scored</span>
+  </div>
+
   <!-- ═══ TODAY HERO ═══ -->
   {{TODAY_HERO_HTML}}
 
-  <!-- ═══ DAILY QUEST ═══ -->
-  <div class="quest-section">
-    <div class="card-title">&#x2B50; Daily Quest</div>
+  <!-- ═══ EFFORT STARS — 5 flat cards, one per star ═══ -->
+  <div class="stage-divider">effort &middot; stars</div>
 
-    <!-- Morning Ritual — expanded until the star is collected. -->
-    <div class="stage amber-stage stage-active {{MORNING_COLLAPSED}}" id="stage-morning">
-      <div class="stage-header" onclick="toggleStage('stage-morning')">
-        <span class="stage-icon">&#x2600;&#xFE0F;</span>
-        <div class="stage-info">
-          <div class="stage-name">Morning Ritual</div>
-          <div class="stage-sub" id="sub-morning">4 checkpoints</div>
-        </div>
-        <div class="stage-star" id="star-morning">&#x2606;</div>
-        <span class="stage-chevron">&#x25BC;</span>
+  <!-- 1. Protein (130g+) -->
+  <div class="stage star-stage stage-active {{PROTEIN_STAGE_STATE}} {{PROTEIN_COLLAPSED}} stage-protein" id="stage-protein">
+    <div class="stage-header" onclick="toggleStage('stage-protein')">
+      <span class="stage-icon">&#x1F969;</span>
+      <div class="stage-info">
+        <div class="stage-name">Protein</div>
+        <div class="stage-sub" id="sub-protein">{{PROTEIN_HINT}}</div>
       </div>
-      <div class="stage-summary" id="summary-morning"></div>
-      <div class="stage-body">
-        {{MORNING_RITUAL_HTML}}
-        <button class="collect-btn amber-btn" id="collect-morning" onclick="collectStar('morning','amber')">&#x2B50; Collect Morning Star</button>
-      </div>
+      <span class="stage-pill" id="pill-protein"
+            onclick="event.stopPropagation(); toggleManual('protein_logged', this)">{{PROTEIN_LOGGED_STATE_TEXT}}</span>
+      <span class="stage-chevron">&#x25BC;</span>
     </div>
+  </div>
 
-    <!-- ─── body · core ─── -->
-    <div class="stage-divider">body &middot; core</div>
-
-    <!-- Base — steps + sleep + calories (all 3 required).
-         Expanded until all 3 are in; collapsed once the sub-star lights. -->
-    <div class="stage mint-stage stage-active {{BASE_STAGE_STATE}} {{BASE_COLLAPSED}}" id="stage-base">
-      <div class="stage-header" onclick="toggleStage('stage-base')">
-        <span class="stage-icon">&#x1F3D4;&#xFE0F;</span>
-        <div class="stage-info">
-          <div class="stage-name">Base</div>
-          <div class="stage-sub" id="sub-base">{{BASE_SUB}}</div>
+  <!-- 2. Strength (3x/wk · lift days only). On rest days, the pill
+       shows "rest day" instead of the standard pending state. -->
+  <div class="stage star-stage stage-active {{STRENGTH_STAGE_STATE}} {{STRENGTH_COLLAPSED}} stage-strength {{STRENGTH_REST_CLS}}" id="stage-strength">
+    <div class="stage-header" onclick="toggleStage('stage-strength')">
+      <span class="stage-icon">&#x1F4AA;</span>
+      <div class="stage-info">
+        <div class="stage-name-row">
+          <span class="stage-name">Strength</span>
+          <span class="stage-badge stage-badge-strength" title="3 sessions per week">3x/wk</span>
         </div>
-        <div class="stage-star {{BASE_STAR_CLS}}" id="star-base">{{BASE_STAR_GLYPH}}</div>
-        <span class="stage-chevron">&#x25BC;</span>
+        <div class="stage-sub" id="sub-strength">{{STRENGTH_HINT}}</div>
       </div>
-      <div class="stage-body">
-        <!-- Manual Steps toggle — Oura step fetch is commented out so
-             this is the source of truth. Hint line surfaces the target
-             same way Cal Logged surfaces "≤1,520 kcal". -->
-        <button type="button" class="manual-toggle {{STEPS_LOGGED_CLS}}" id="toggle-steps_logged"
-                onclick="toggleManual('steps_logged', this)"
-                style="margin-bottom:8px;">
-          <span class="manual-ico">&#x1F45F;</span>
-          <div class="manual-text">
-            <span class="manual-label">Steps</span>
-            <span class="manual-hint">{{STEPS_TARGET_LABEL}}</span>
-          </div>
-          <span class="manual-state" id="steps_logged-state">{{STEPS_LOGGED_STATE_TEXT}}</span>
-        </button>
-        <!-- Manual Sleep toggle — Oura sleep fetch is commented out;
-             user taps after a night that hit the threshold. -->
-        <button type="button" class="manual-toggle {{SLEEP_LOGGED_CLS}}" id="toggle-sleep_logged"
-                onclick="toggleManual('sleep_logged', this)"
-                style="margin-bottom:8px;">
-          <span class="manual-ico">&#x1F634;</span>
-          <div class="manual-text">
-            <span class="manual-label">Sleep</span>
-            <span class="manual-hint">{{SLEEP_TARGET_LABEL}}</span>
-          </div>
-          <span class="manual-state" id="sleep_logged-state">{{SLEEP_LOGGED_STATE_TEXT}}</span>
-        </button>
-        {{BASE_ITEMS_HTML}}
-        <!-- Manual Cal Logged toggle — replaces the old Garmin/MFP
-             auto-fetch which kept returning empty. User taps once
-             food is logged in whatever app they prefer. Same pattern
-             as the Sauna / Stretch toggles inside Recover. -->
-        <!-- Calories toggle removed from Base — Protein floor covers
-             the nutrition surface and the kcal-aware app she logs in
-             already shows numbers. Star rule shrank to 4-of-4.
-             cal_logged DB column + /api/manual route stay in place so
-             historical data and any other callers don't break. -->
-        <!-- Protein — daily floor, joins the Base AND-rule. -->
-        <button type="button" class="manual-toggle {{PROTEIN_LOGGED_CLS}}" id="toggle-protein_logged"
-                onclick="toggleManual('protein_logged', this)"
-                style="margin-top:8px;">
-          <span class="manual-ico">&#x1F969;</span>
-          <div class="manual-text">
-            <span class="manual-label">Protein</span>
-            <span class="manual-hint">{{PROTEIN_TARGET_LABEL}}</span>
-          </div>
-          <span class="manual-state" id="protein_logged-state">{{PROTEIN_LOGGED_STATE_TEXT}}</span>
-        </button>
-        <!-- Stretch — moved from Recover into Base's AND-rule. -->
-        <button type="button" class="manual-toggle {{STRETCH_CLS}}" id="toggle-stretch"
-                onclick="toggleManual('stretch', this)"
-                style="margin-top:8px;">
-          <span class="manual-ico">&#x1F9D8;</span>
-          <div class="manual-text"><span class="manual-label">Stretch</span></div>
-          <span class="manual-state" id="stretch-state">{{STRETCH_STATE_TEXT}}</span>
-        </button>
-      </div>
+      <span class="stage-pill" id="pill-strength"
+            onclick="event.stopPropagation(); toggleManual('strength_logged', this)">{{STRENGTH_LOGGED_STATE_TEXT}}</span>
+      <span class="stage-chevron">&#x25BC;</span>
     </div>
-
-    <!-- Burn — strength OR cardio (pick one).
-         Expanded until a session is logged; collapsed once earned. -->
-    <div class="stage mint-stage stage-active {{BURN_STAGE_STATE}} {{BURN_COLLAPSED}}" id="stage-burn">
-      <div class="stage-header" onclick="toggleStage('stage-burn')">
-        <span class="stage-icon">&#x1F525;</span>
-        <div class="stage-info">
-          <div class="stage-name">Burn</div>
-          <div class="stage-sub" id="sub-burn">{{BURN_SUB}}</div>
-        </div>
-        <div class="stage-star {{BURN_STAR_CLS}}" id="star-burn">{{BURN_STAR_GLYPH}}</div>
-        <span class="stage-chevron">&#x25BC;</span>
-      </div>
-      <div class="stage-body">
-        {{BURN_ITEMS_HTML}}
-        <!-- Manual Strength + Cardio toggles — replaced the Garmin
-             activity fetch which sometimes returned empty (and lift
-             sessions in particular didn't always sync from the watch).
-             Same one-tap pattern as Cal Logged / Sauna / Stretch. -->
-        <button type="button" class="manual-toggle {{STRENGTH_LOGGED_CLS}}" id="toggle-strength_logged"
-                onclick="toggleManual('strength_logged', this)"
-                style="margin-top:8px;">
-          <span class="manual-ico">&#x1F4AA;</span>
-          <div class="manual-text"><span class="manual-label">Strength</span></div>
-          <span class="manual-state" id="strength_logged-state">{{STRENGTH_LOGGED_STATE_TEXT}}</span>
-        </button>
-        <button type="button" class="manual-toggle {{CARDIO_LOGGED_CLS}}" id="toggle-cardio_logged"
-                onclick="toggleManual('cardio_logged', this)"
-                style="margin-top:8px;">
-          <span class="manual-ico">&#x1F6B4;</span>
-          <div class="manual-text"><span class="manual-label">Cardio</span></div>
-          <span class="manual-state" id="cardio_logged-state">{{CARDIO_LOGGED_STATE_TEXT}}</span>
-        </button>
-      </div>
+    <!-- Rest-day toggle lives in the body — collapsed by default,
+         tapped open from the strength card. Lets the user mark today
+         as a rest day so Strength doesn't count against them. -->
+    <div class="stage-body" style="padding:8px 14px 12px;">
+      <button type="button" class="manual-toggle {{REST_DAY_CLS}}" id="toggle-rest_day"
+              onclick="toggleManual('rest_day', this)">
+        <span class="manual-ico">&#x1F634;</span>
+        <div class="manual-text"><span class="manual-label">Rest day &middot; skip Strength</span></div>
+        <span class="manual-state" id="rest_day-state">{{REST_DAY_STATE_TEXT}}</span>
+      </button>
     </div>
+  </div>
 
-    <!-- Recover — massage OR sauna / steam (pick one). Stretch moved
-         into Base's AND-rule so Recover is now strictly body-care
-         rituals. Either toggle earns the Recover star. -->
-    <div class="stage mint-stage stage-active {{RECOVER_STAGE_STATE}} {{RECOVER_COLLAPSED}}" id="stage-recover">
-      <div class="stage-header" onclick="toggleStage('stage-recover')">
-        <span class="stage-icon">&#x1F33F;</span>
-        <div class="stage-info">
-          <div class="stage-name">Recover</div>
-          <div class="stage-sub" id="sub-recover">{{RECOVER_SUB}}</div>
-        </div>
-        <div class="stage-star {{RECOVER_STAR_CLS}}" id="star-recover">{{RECOVER_STAR_GLYPH}}</div>
-        <span class="stage-chevron">&#x25BC;</span>
+  <!-- 3. Sleep (7h+ · recovery) -->
+  <div class="stage star-stage stage-active {{SLEEP_STAGE_STATE}} {{SLEEP_COLLAPSED}} stage-sleep" id="stage-sleep">
+    <div class="stage-header" onclick="toggleStage('stage-sleep')">
+      <span class="stage-icon">&#x1F634;</span>
+      <div class="stage-info">
+        <div class="stage-name">Sleep</div>
+        <div class="stage-sub" id="sub-sleep">{{SLEEP_HINT}}</div>
       </div>
-      <div class="stage-body">
-        <button type="button" class="manual-toggle {{MASSAGE_CLS}}" id="toggle-massage"
-                onclick="toggleManual('massage', this)">
-          <span class="manual-ico">&#x1F486;&#x200D;&#x2640;&#xFE0F;</span>
-          <div class="manual-text"><span class="manual-label">Massage</span></div>
-          <span class="manual-state" id="massage-state">{{MASSAGE_STATE_TEXT}}</span>
-        </button>
-        <button type="button" class="manual-toggle {{SAUNA_CLS}}" id="toggle-sauna"
-                onclick="toggleManual('sauna', this)"
-                style="margin-top:8px;">
-          <span class="manual-ico">&#x2668;&#xfe0f;</span>
-          <div class="manual-text"><span class="manual-label">Sauna / Steam</span></div>
-          <span class="manual-state" id="sauna-state">{{SAUNA_STATE_TEXT}}</span>
-        </button>
-      </div>
+      <span class="stage-pill" id="pill-sleep"
+            onclick="event.stopPropagation(); toggleManual('sleep_logged', this)">{{SLEEP_LOGGED_STATE_TEXT}}</span>
+      <span class="stage-chevron">&#x25BC;</span>
     </div>
+  </div>
 
-    <!-- ─── wind down ─── -->
-    <div class="stage-divider">wind down</div>
+  <!-- 4. Steps (8,000+) -->
+  <div class="stage star-stage stage-active {{STEPS_STAGE_STATE}} {{STEPS_COLLAPSED}} stage-steps" id="stage-steps">
+    <div class="stage-header" onclick="toggleStage('stage-steps')">
+      <span class="stage-icon">&#x1F45F;</span>
+      <div class="stage-info">
+        <div class="stage-name">Steps</div>
+        <div class="stage-sub" id="sub-steps">{{STEPS_HINT}}</div>
+      </div>
+      <span class="stage-pill" id="pill-steps"
+            onclick="event.stopPropagation(); toggleManual('steps_logged', this)">{{STEPS_LOGGED_STATE_TEXT}}</span>
+      <span class="stage-chevron">&#x25BC;</span>
+    </div>
+  </div>
 
-    <!-- Night Ritual — expanded until the star is collected. -->
-    <div class="stage violet-stage stage-active {{NIGHT_COLLAPSED}}" id="stage-night">
-      <div class="stage-header" onclick="toggleStage('stage-night')">
-        <span class="stage-icon">&#x1F319;</span>
-        <div class="stage-info">
-          <div class="stage-name">Night Ritual</div>
-          <div class="stage-sub" id="sub-night">4 checkpoints</div>
-        </div>
-        <div class="stage-star" id="star-night">&#x2606;</div>
-        <span class="stage-chevron">&#x25BC;</span>
+  <!-- 5. Stretch (back-friendly mobility) -->
+  <div class="stage star-stage stage-active {{STRETCH_STAGE_STATE}} {{STRETCH_COLLAPSED}} stage-stretch" id="stage-stretch">
+    <div class="stage-header" onclick="toggleStage('stage-stretch')">
+      <span class="stage-icon">&#x1F9D8;</span>
+      <div class="stage-info">
+        <div class="stage-name">Stretch</div>
+        <div class="stage-sub" id="sub-stretch">{{STRETCH_HINT}}</div>
       </div>
-      <div class="stage-summary" id="summary-night"></div>
-      <div class="stage-body" id="night-body">
-        {{NIGHT_RITUAL_HTML}}
-        <button class="collect-btn violet-btn" id="collect-night" onclick="collectStar('night','violet')">&#x2B50; Collect Night Star</button>
-      </div>
+      <span class="stage-pill" id="pill-stretch"
+            onclick="event.stopPropagation(); toggleManual('stretch', this)">{{STRETCH_STATE_TEXT}}</span>
+      <span class="stage-chevron">&#x25BC;</span>
+    </div>
+  </div>
+
+  <!-- ═══ BONUS — Cardio, Massage, Sauna (optional, NOT SCORED) ═══ -->
+  <div class="bonus-row" id="bonus-row">
+    <div class="bonus-label">BONUS &middot; NOT SCORED</div>
+    <div class="bonus-pills">
+      <button type="button" class="bonus-pill {{CARDIO_LOGGED_CLS}}" id="bonus-cardio"
+              onclick="toggleManual('cardio_logged', this)">
+        <span class="bonus-ico">&#x1F3C3;&#x200D;&#x2640;&#xFE0F;</span>
+        <span class="bonus-name">Cardio</span>
+      </button>
+      <span class="bonus-sep">&middot;</span>
+      <button type="button" class="bonus-pill {{MASSAGE_CLS}}" id="bonus-massage"
+              onclick="toggleManual('massage', this)">
+        <span class="bonus-ico">&#x1F486;&#x200D;&#x2640;&#xFE0F;</span>
+        <span class="bonus-name">Massage</span>
+      </button>
+      <span class="bonus-sep">&middot;</span>
+      <button type="button" class="bonus-pill {{SAUNA_CLS}}" id="bonus-sauna"
+              onclick="toggleManual('sauna', this)">
+        <span class="bonus-ico">&#x2668;&#xFE0F;</span>
+        <span class="bonus-name">Sauna</span>
+      </button>
     </div>
   </div>
 
@@ -3288,50 +3409,51 @@ body.view-year  .month-only { display: none !important; }
   // Manual toggle field \u2192 which Core stage it belongs to.
   // Used to figure out which stage's "earned" state to recompute
   // after a tap. Each stage has its own truth rule (see isStageEarned).
+  // Each effort star is now its OWN stage — Protein / Strength /
+  // Sleep / Steps / Stretch. No more Base/Burn/Recover bundles.
+  // Bonus fields (cardio_logged, massage, sauna) and the Morning/Night
+  // ritual strip are tracked but unscored — they don't have a "stage"
+  // entry so syncStageState short-circuits for them; we just flip the
+  // local UI state and persist via /api/manual.
   const STAGE_BY_FIELD = {
-    'sauna': 'recover',
-    'massage': 'recover',
-    // Stretch moved from Recover → Base. It now contributes to the
-    // Base AND-rule (all 5 toggles required) instead of the Recover
-    // OR-rule.
-    'stretch': 'base',
-    'cal_logged': 'base',
-    'steps_logged': 'base',
-    'sleep_logged': 'base',
-    'protein_logged': 'base',
-    'strength_logged': 'burn',
-    'cardio_logged': 'burn',
+    'protein_logged':  'protein',
+    'strength_logged': 'strength',
+    'sleep_logged':    'sleep',
+    'steps_logged':    'steps',
+    'stretch':         'stretch',
+    // Unscored — visual-only routing (no stage card to light up).
+    'morning_star':    null,
+    'night_star':      null,
+    'cardio_logged':   null,
+    'massage':         null,
+    'sauna':           null,
+    'rest_day':        null,
   };
+  // Each star stage maps to the matching hero pillar in the hero card.
   const STAGE_HERO_LABEL = {
-    'recover': 'RECOVER',
-    'burn':    'BURN',
-    'base':    'BASE',
+    'protein':  'PROTEIN',
+    'strength': 'STRENGTH',
+    'sleep':    'SLEEP',
+    'steps':    'STEPS',
+    'stretch':  'STRETCH',
   };
 
-  // True iff the given core stage currently meets its star rule.
-  //   recover/burn: OR-logic over q-items and manual toggles (any done)
-  //   base:         AND-logic \u2014 every q-item AND every manual toggle
-  //                 must be done. Base may have ZERO q-items now that
-  //                 Steps + Sleep + Calories are all manual toggles \u2014
-  //                 the earlier "if qitems.length === 0 return false"
-  //                 short-circuit was a bug that left the Base star
-  //                 dark even when all 3 toggles were on.
+  // True iff the given effort-star stage currently meets its rule.
+  // Each new stage has exactly ONE toggle (the stage-pill inside the
+  // header). The pill's parent `.star-stage` carries the `earned`
+  // class when the pill is `.done`. Simple: pill done \u2194 stage earned.
+  // Strength is a special case \u2014 on rest days the pill is "rest day"
+  // (the stage carries .rest-day) and the star is excluded from the
+  // count entirely; isStageEarned returns false in that case.
   function isStageEarned(stage) {
     const stageEl = document.getElementById('stage-' + stage);
     if (!stageEl) return false;
-    const qitems = stageEl.querySelectorAll('.q-item.core-pending, .q-item.core-done');
-    const toggles = stageEl.querySelectorAll('.manual-toggle');
-    if (stage === 'base') {
-      // Truly-empty stage (no sub-goals at all) can't be "earned".
-      if (qitems.length === 0 && toggles.length === 0) return false;
-      const allQDone = Array.from(qitems).every(el => el.classList.contains('core-done'));
-      const allTogglesDone = Array.from(toggles).every(b => b.classList.contains('done'));
-      return allQDone && allTogglesDone;
+    if (stage === 'strength' && stageEl.classList.contains('rest-day')) {
+      return false;  // never lights on a rest day
     }
-    // OR-logic for burn + recover.
-    if (stageEl.querySelector('.manual-toggle.done')) return true;
-    if (stageEl.querySelector('.q-item.core-done')) return true;
-    return false;
+    const pill = stageEl.querySelector('.stage-pill');
+    if (!pill) return false;
+    return pill.classList.contains('done');
   }
 
   // Reconcile every UI surface that reflects a Core stage's star:
@@ -3438,31 +3560,69 @@ body.view-year  .month-only { display: none !important; }
   // syncs to server. On failure reverts and shows the existing toast.
   // After a successful flip, recomputes Recover star + Today hero +
   // weekly count so the user doesn't have to pull-to-refresh.
+  // Update the visual label inside a tapped element based on what
+  // kind of pill it is. Each surface has its own copy ("\u2713 logged" vs
+  // "not logged" for star pills, "\u2713 rest day" vs "not rest" for the
+  // rest-day toggle, "\u2713" / "\u25cb" for the ritual strip).
+  function _setPillText(el, next) {
+    if (!el) return;
+    // Generic manual-toggle (used by rest_day button) \u2014 has a child .manual-state.
+    const ms = el.querySelector('.manual-state');
+    if (ms) {
+      if (el.id === 'toggle-rest_day') ms.textContent = next ? '\u2713 rest day' : 'not rest';
+      else                              ms.textContent = next ? '\u2713 logged' : 'not logged';
+      return;
+    }
+    // Stage pill on the right of a star-stage header.
+    if (el.classList.contains('stage-pill')) {
+      el.textContent = next ? '\u2713 logged' : 'not logged';
+      return;
+    }
+    // Bonus-row chip \u2014 just the .done class toggles the gold colour,
+    // text is the activity name and doesn't change.
+    if (el.classList.contains('bonus-pill')) return;
+    // Ritual strip pill \u2014 flip the inner check glyph.
+    if (el.classList.contains('ritual-pill')) {
+      const ck = el.querySelector('.ritual-check');
+      if (ck) ck.textContent = next ? '\u2713' : '\u25cb';
+      return;
+    }
+  }
+
   window.toggleManual = function(field, btn) {
     if (!btn) return;
 
-    // Route the toggle to the right Core stage so the right star /
-    // hero pill / weekly count updates. Without this, tapping
-    // Strength/Cardio/Cal Logged was silently no-op-ing the Burn /
-    // Base stars (the old code hardcoded "stage-recover").
+    // `stage` is null for unscored fields (Morning/Night strip, the
+    // Bonus row chips, and the Rest-day toggle). For those we still
+    // flip the pill + persist, but skip the syncStageState step that
+    // updates the hero count / star / collapse \u2014 they don't have a
+    // star to flip.
     const stage = STAGE_BY_FIELD[field];
-    if (!stage) {
-      console.warn('toggleManual: unknown field', field);
-      return;
-    }
-    const earnedBefore = isStageEarned(stage);
+    const earnedBefore = stage ? isStageEarned(stage) : null;
 
     const currentlyDone = btn.classList.contains('done');
     const next = !currentlyDone;
 
-    // Optimistic toggle so the tap feels instant.
+    // Optimistic flip \u2014 feels instant. Visual update varies by pill type.
     btn.classList.toggle('done', next);
-    const stateEl = btn.querySelector('.manual-state');
-    if (stateEl) stateEl.textContent = next ? '\u2713 logged' : 'not logged';
+    _setPillText(btn, next);
     btn.classList.add('saving');
 
-    // Reconcile every surface for this stage.
-    syncStageState(stage, earnedBefore);
+    // Special case: Rest-day toggle changes Strength's rest-day class
+    // and therefore changes whether the Strength star can earn at all.
+    // Flip that class + re-sync the Strength stage too.
+    if (field === 'rest_day') {
+      const strengthEl = document.getElementById('stage-strength');
+      if (strengthEl) {
+        const wasRest = strengthEl.classList.contains('rest-day');
+        const strengthPrev = isStageEarned('strength');
+        strengthEl.classList.toggle('rest-day', next);
+        syncStageState('strength', strengthPrev);
+        // Keep hero "of N" denominator in sync \u2014 handled inside syncStageState.
+      }
+    }
+
+    if (stage) syncStageState(stage, earnedBefore);
 
     const todayLocal = (typeof localDateISO === 'function') ? localDateISO() : null;
     fetch('/api/manual', {
@@ -3476,13 +3636,19 @@ body.view-year  .month-only { display: none !important; }
       })
       .catch(err => {
         btn.classList.remove('saving');
-        // Capture post-flip earned state BEFORE reverting the button,
-        // revert it, then re-sync so the stage star / hero / week
-        // count all snap back too.
-        const earnedAfterFlip = isStageEarned(stage);
+        // Revert the optimistic flip + roll any star/strength state back.
+        const earnedAfterFlip = stage ? isStageEarned(stage) : null;
         btn.classList.toggle('done', currentlyDone);
-        if (stateEl) stateEl.textContent = currentlyDone ? '\u2713 logged' : 'not logged';
-        syncStageState(stage, earnedAfterFlip);
+        _setPillText(btn, currentlyDone);
+        if (field === 'rest_day') {
+          const strengthEl = document.getElementById('stage-strength');
+          if (strengthEl) {
+            const strengthPrev = isStageEarned('strength');
+            strengthEl.classList.toggle('rest-day', currentlyDone);
+            syncStageState('strength', strengthPrev);
+          }
+        }
+        if (stage) syncStageState(stage, earnedAfterFlip);
         const fieldLabel = field.charAt(0).toUpperCase() + field.slice(1);
         if (typeof showError === 'function') {
           showError(fieldLabel + ' save failed: ' + (err && err.message || err));

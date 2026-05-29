@@ -151,33 +151,82 @@ def _quest_item(stage: str, index: int, icon: str, name: str,
 # STAR COUNTING
 # ═══════════════════════════════════════════════════════════════════
 
-def _base_earned(data: dict, weekday: int) -> bool:
-    """🏔 Base star — steps AND sleep AND protein AND stretch.
+# ───────────────────────────────────────────────────────────────────
+# New star architecture
+# ───────────────────────────────────────────────────────────────────
+# Five EFFORT stars, each their own thing (no more bundles):
+#     Protein · Strength · Sleep · Steps · Stretch
+#
+# Morning + Night moved to a compact ritual strip at the very top —
+# tracked but unscored, they no longer feed the count.
+# Cardio / Massage / Sauna sit in a "Bonus · not scored" row at the
+# bottom — optional logs that don't move the star count either way.
+#
+# On rest days (rest_day toggle is on), Strength is excluded from the
+# denominator: max becomes 4 instead of 5, so a Perfect Day is 4/4 on
+# rest days vs 5/5 on lift days.
 
-    Four-of-four AND rule. Calories was removed from the bundle —
-    the protein floor + the daily kcal-aware app she logs in already
-    cover that surface; the duplicate kcal toggle was clutter.
-    """
-    daily = data["score"].get("daily", {}).get(weekday, {})
-    stretch_ok = _row_has(data.get("stretch_row", []), weekday)
-    p_row = data.get("protein_logged_row", []) or []
-    protein_ok = bool(p_row[weekday]) if weekday < len(p_row) else False
+def _is_rest_day(data: dict, weekday: int) -> bool:
+    row = data.get("rest_day_row", []) or []
+    return bool(row[weekday]) if weekday < len(row) else False
+
+
+def _max_stars_for_day(data: dict, weekday: int) -> int:
+    """5 on a lift day, 4 on a rest day (Strength is dropped)."""
+    return 4 if _is_rest_day(data, weekday) else 5
+
+
+def _protein_star_earned(data: dict, weekday: int) -> bool:
+    row = data.get("protein_logged_row", []) or []
+    return bool(row[weekday]) if weekday < len(row) else False
+
+
+def _strength_star_earned(data: dict, weekday: int) -> bool:
+    """Strength counts unless today is marked a rest day."""
+    if _is_rest_day(data, weekday):
+        return False
+    row = data.get("strength_logged_row", []) or []
+    manual = bool(row[weekday]) if weekday < len(row) else False
+    # Legacy fallback: historical days populated by the old Garmin
+    # sync still earn the star via strength_row notes.
+    return manual or _row_has(data.get("strength_row", []), weekday)
+
+
+def _sleep_star_earned(data: dict, weekday: int) -> bool:
+    row = data.get("sleep_logged_row", []) or []
+    return bool(row[weekday]) if weekday < len(row) else False
+
+
+def _steps_star_earned(data: dict, weekday: int) -> bool:
+    row = data.get("steps_logged_row", []) or []
+    return bool(row[weekday]) if weekday < len(row) else False
+
+
+def _stretch_star_earned(data: dict, weekday: int) -> bool:
+    # stretch_row is the ✓-encoded view of stretch_logged (see data_gather).
+    return _row_has(data.get("stretch_row", []), weekday)
+
+
+# ── Backward-compat shims for legacy callers (modal breakdown / app.py
+#    monthly grid). They map the old bundle names to the new effort
+#    stars so nothing crashes while we migrate everything else.
+def _base_earned(data: dict, weekday: int) -> bool:
+    """Legacy bundle — kept so older callers don't crash. Returns True
+    iff Protein + Sleep + Steps + Stretch are all earned (the bundle
+    closest in spirit to the old Base AND-rule, minus the now-deleted
+    Calories sub-goal). Not used for the new effort-star count."""
     return (
-        bool(daily.get("steps"))
-        and bool(daily.get("sleep"))
-        and protein_ok
-        and stretch_ok
+        _protein_star_earned(data, weekday)
+        and _sleep_star_earned(data, weekday)
+        and _steps_star_earned(data, weekday)
+        and _stretch_star_earned(data, weekday)
     )
 
 
 def _burn_earned(data: dict, weekday: int) -> bool:
-    """🔥 Burn star — strength OR cardio session logged.
-
-    Manual toggles are the primary path (replaced Garmin's activity
-    fetch). Legacy strength_row / cardio_row notes still count for
-    historical days populated by the old Garmin sync, so past star
-    grid stays intact.
-    """
+    """Legacy bundle — Strength-or-Cardio. Strength is the only one
+    that contributes to the star count; cardio is bonus. Kept for
+    callers that asked 'did anything Burn-shaped happen today'."""
     s_row = data.get("strength_logged_row", []) or []
     c_row = data.get("cardio_logged_row", []) or []
     manual_strength = bool(s_row[weekday]) if weekday < len(s_row) else False
@@ -190,19 +239,11 @@ def _burn_earned(data: dict, weekday: int) -> bool:
 
 
 def _recover_earned(data: dict, weekday: int) -> bool:
-    """🌿 Recover star — massage OR sauna logged.
-
-    Stretch moved into Base. The Recover bundle is now strictly the
-    body-care rituals (massage / sauna) — pick one to earn the star.
-    Legacy stretch_row data still flowed through Base via the
-    AND-rule, so the past star grid stays intact.
-    """
+    """Legacy bundle — Massage or Sauna (bonus pair). Stretch is now
+    a Base-side effort star, not a Recover sub-goal."""
     m_row = data.get("massage_logged_row", []) or []
-    manual_massage = bool(m_row[weekday]) if weekday < len(m_row) else False
-    return (
-        manual_massage
+    return bool(m_row[weekday] if weekday < len(m_row) else False) \
         or _row_has(data.get("sauna_row", []), weekday)
-    )
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -389,24 +430,22 @@ def _build_day_details_payload(data: dict, weekday: int) -> dict:
 
 
 def _compute_day_stars(data: dict, wd: int) -> int:
-    """Return total stars earned on weekday `wd` (0=Mon, 6=Sun).
+    """Return total effort stars earned on weekday `wd` (0=Mon, 6=Sun).
 
-    Five possible stars: Morning, Base, Burn, Recover, Night.
+    Five possible: Protein, Strength, Sleep, Steps, Stretch.
+    On rest days, _strength_star_earned returns False, so the natural
+    max becomes 4 (Protein + Sleep + Steps + Stretch).
+
+    Morning + Night rituals are NOT counted here \u2014 they're tracked
+    visually in the top strip but don't move the star total.
     """
-    morning_star_row = data.get("morning_star_row", [])
-    night_star_row = data.get("night_star_row", [])
-    s = 0
-    if wd < len(morning_star_row) and str(morning_star_row[wd]).strip() == "\u2713":
-        s += 1
-    if _base_earned(data, wd):
-        s += 1
-    if _burn_earned(data, wd):
-        s += 1
-    if _recover_earned(data, wd):
-        s += 1
-    if wd < len(night_star_row) and str(night_star_row[wd]).strip() == "\u2713":
-        s += 1
-    return s
+    return sum([
+        _protein_star_earned(data, wd),
+        _strength_star_earned(data, wd),
+        _sleep_star_earned(data, wd),
+        _steps_star_earned(data, wd),
+        _stretch_star_earned(data, wd),
+    ])
 
 
 def _pick_best_day(data: dict, weekday: int) -> tuple[int, dict] | None:
@@ -465,11 +504,11 @@ def _build_today_hero(
     data: dict,
     weekday: int,
     stars_today: int,
-    morning_done: bool,
-    base_done: bool,
-    burn_done: bool,
-    recover_done: bool,
-    night_done: bool,
+    protein_done: bool,
+    strength_done: bool,
+    sleep_done: bool,
+    steps_done: bool,
+    stretch_done: bool,
     *,
     cycle_icon: str,
     cycle_label: str,
@@ -478,24 +517,31 @@ def _build_today_hero(
     coach_line: str,
     season_earned: bool,
     season_month_short: str,
+    max_stars: int = 5,
 ) -> str:
     """Today-is-the-hero card — sits at the very top of Quest Hub.
 
     Layout (top → bottom):
-      1. Eyebrow:  "TODAY   WED APR 22"
+      1. Eyebrow:  "TODAY   FRI MAY 29"
          + optional 🎫 <month> chip below the date if this month's
            Season Pass is complete.
-      2. 5 big ★ icons, lit/dim according to earned count
-      3. Huge "2 of 5" numeral + "STARS EARNED · 3 TO GO" caption
-      4. 5-stage strip: Morning · Base · Burn · Recover · Night,
-         each with icon + name + ✓/○ indicator (mint when done)
-      5. Forward-looking nudge: "3 more for a Perfect Day ✨"
+      2. max_stars big ★ icons, lit/dim according to earned count
+      3. Huge "0 of 5" numeral + "EFFORT STARS · 5 TO GO" caption
+         (or "of 4" on rest days when Strength is excluded)
+      4. 5-pillar strip: Protein · Strength · Sleep · Steps · Stretch,
+         each with icon + name + ✓/○ indicator (mint when done).
+         Strength shows "rest" on rest days instead of pending.
+      5. Forward-looking nudge: "5 more for a Perfect Day ✨"
       6. Thin divider
-      7. Cycle chip + "since Apr 1" (period start) + coach line
+      7. Cycle chip + "since May 21" (period start) + coach line
+
+    Morning + Night rituals live in a separate compact strip above the
+    hero — they're tracked but no longer scored.
     """
     today = data["today"]
     date_str = today.strftime("%a %b %d").upper()
-    to_go = max(0, MAX_DAILY_STARS - stars_today)
+    to_go = max(0, max_stars - stars_today)
+    is_rest = _is_rest_day(data, weekday)
 
     # Season-pass chip below the date — glows gold when this month
     # is complete, matches the "🎫 Apr" indicator from the Week card
@@ -506,24 +552,33 @@ def _build_today_hero(
         if season_earned else ""
     )
 
-    # 5 star glyphs: filled for earned, hollow for pending.
+    # max_stars star glyphs: filled for earned, hollow for pending.
     stars_html = "".join(
         f'<span class="hero-star {"lit" if i < stars_today else "dim"}">\u2605</span>'
-        for i in range(MAX_DAILY_STARS)
+        for i in range(max_stars)
     )
 
-    # 5-stage strip. "done" stages glow mint; "pending" stays dim.
-    stages = [
-        ("\u2600\ufe0f",           "Morning", morning_done),
-        ("\U0001f3d4\ufe0f",       "Base",    base_done),
-        ("\U0001f525",             "Burn",    burn_done),
-        ("\U0001f33f",             "Recover", recover_done),
-        ("\U0001f319",             "Night",   night_done),
+    # 5-pillar strip — one cell per effort star. Strength gets a
+    # special "rest" state on rest days (neither pending nor scored)
+    # so the reduced denominator is visible at a glance.
+    pillars = [
+        ("\U0001f969",  "Protein",  protein_done,  False),
+        ("\U0001f4aa",  "Strength", strength_done, is_rest),
+        ("\U0001f634",  "Sleep",    sleep_done,    False),
+        ("\U0001f45f",  "Steps",    steps_done,    False),
+        ("\U0001f9d8",  "Stretch",  stretch_done,  False),
     ]
     stage_cells = []
-    for icon, name, done in stages:
-        cls = "hero-stage done" if done else "hero-stage pending"
-        check = "\u2713" if done else "\u25cb"
+    for icon, name, done, rest_strength in pillars:
+        if rest_strength:
+            cls   = "hero-stage rest"
+            check = "rest"
+        elif done:
+            cls   = "hero-stage done"
+            check = "\u2713"
+        else:
+            cls   = "hero-stage pending"
+            check = "\u25cb"
         stage_cells.append(
             f'<div class="{cls}">'
             f'  <div class="hero-stage-ico">{icon}</div>'
@@ -532,13 +587,14 @@ def _build_today_hero(
             f'</div>'
         )
 
-    # Forward-looking nudge — never shames. Three states:
-    if stars_today >= MAX_DAILY_STARS:
-        nudge = '<div class="hero-nudge perfect">\u2728 Perfect Day. You hit every star \U0001f31f</div>'
+    # Forward-looking nudge — never shames. Three states.
+    if stars_today >= max_stars:
+        nudge_label = "Perfect Rest Day" if is_rest else "Perfect Day"
+        nudge = f'<div class="hero-nudge perfect">\u2728 {nudge_label}. You hit every star \U0001f31f</div>'
     elif stars_today == 0:
         nudge = (
             '<div class="hero-nudge start">'
-            f'  <strong>{MAX_DAILY_STARS}</strong> stars to earn today '
+            f'  <strong>{max_stars}</strong> stars to earn today '
             '\u2728</div>'
         )
     else:
@@ -591,9 +647,9 @@ def _build_today_hero(
         f'  <div class="hero-stars">{stars_html}</div>'
         '  <div class="hero-count-wrap">'
         f'    <span class="hero-count-num">{stars_today}</span>'
-        f'    <span class="hero-count-of">of {MAX_DAILY_STARS}</span>'
+        f'    <span class="hero-count-of">of {max_stars}</span>'
         '  </div>'
-        f'  <div class="hero-caption">Stars earned \u00b7 {to_go} to go</div>'
+        f'  <div class="hero-caption">Effort stars \u00b7 {to_go} to go</div>'
         f'  <div class="hero-stages">{"".join(stage_cells)}</div>'
         f'  {nudge}'
         f'  {cycle_section}'
@@ -1723,15 +1779,24 @@ def generate_html_report(
 
     weekly_stars = sum(_compute_day_stars(data, wd) for wd in range(weekday + 1))
 
-    # Today's slot states for the hero row (5 circles)
+    # Today's slot states for the hero row (5 effort stars + 2
+    # unscored Morning/Night rituals tracked in the top strip).
     today_morning_earned = (weekday < len(morning_star_row) and
                             str(morning_star_row[weekday]).strip() == "\u2713")
     today_night_earned = (weekday < len(night_star_row) and
                           str(night_star_row[weekday]).strip() == "\u2713")
+    today_protein_earned  = _protein_star_earned(data, weekday)
+    today_strength_earned = _strength_star_earned(data, weekday)
+    today_sleep_earned    = _sleep_star_earned(data, weekday)
+    today_steps_earned    = _steps_star_earned(data, weekday)
+    today_stretch_earned  = _stretch_star_earned(data, weekday)
+    # Legacy bundles kept for downstream Week/Month placeholders that
+    # haven't been rewired yet. Each maps to the closest new behaviour.
     today_base_earned    = _base_earned(data, weekday)
     today_burn_earned    = _burn_earned(data, weekday)
     today_recover_earned = _recover_earned(data, weekday)
     today_core_earned    = today_base_earned and today_burn_earned and today_recover_earned
+    today_max_stars      = _max_stars_for_day(data, weekday)
 
     # Season pass done indices (from season_pass.done_indices in DB)
     season_done_indices = data.get("season_done_indices", set())
@@ -1802,16 +1867,14 @@ def generate_html_report(
     else:
         season_badge_cls, season_badge_text = "badge-behind", "Behind"
 
-    # Today's hero: stars + forward-looking nudge + (new) cycle/coach
-    # + (new) season chip when this month's pass is locked in.
-    stars_today = (
-        int(today_morning_earned) + int(today_base_earned) + int(today_burn_earned)
-        + int(today_recover_earned) + int(today_night_earned)
-    )
+    # Today's hero: 5 effort stars + nudge + cycle pill + season chip.
+    # Morning + Night are now compact ritual trackers above the hero,
+    # not part of the star count.
+    stars_today = _compute_day_stars(data, weekday)
     today_hero_html = _build_today_hero(
         data, weekday, stars_today,
-        today_morning_earned, today_base_earned, today_burn_earned,
-        today_recover_earned, today_night_earned,
+        today_protein_earned, today_strength_earned, today_sleep_earned,
+        today_steps_earned, today_stretch_earned,
         cycle_icon=cycle_icon,
         cycle_label=cycle_label,
         cycle_pill_cls=cycle_pill_cls,
@@ -1819,6 +1882,7 @@ def generate_html_report(
         coach_line=coach_line,
         season_earned=season_earned,
         season_month_short=today.strftime("%b"),
+        max_stars=today_max_stars,
     )
     comeback_html = _build_comeback_line(weekly_stars, weekday)
 
@@ -1973,31 +2037,36 @@ def generate_html_report(
         # Daily quest stages
         # Stage collapse defaults: expanded when the star hasn't been
         # earned yet (so the user sees what's left to do), collapsed
-        # when earned (already done → get out of the way). Uniform
-        # behaviour across all 5 stage cards.
-        "MORNING_COLLAPSED":   "collapsed" if today_morning_earned else "",
-        "MORNING_RITUAL_HTML": morning_ritual_html,
-        # Core 3: Base / Burn / Recover rendered as peer stage cards.
-        "BASE_ITEMS_HTML":      core3["base"]["items_html"],
-        "BASE_STAR_CLS":        "earned" if core3["base"]["earned"] else "",
-        "BASE_STAR_GLYPH":      "\u2B50" if core3["base"]["earned"] else "\u2606",
-        "BASE_SUB":             "Steps · Sleep · Protein · Stretch · all 4 required",
-        "BASE_STAGE_STATE":     "earned" if core3["base"]["earned"] else "",
-        "BASE_COLLAPSED":       "collapsed" if core3["base"]["earned"] else "",
-        "BURN_ITEMS_HTML":      core3["burn"]["items_html"],
-        "BURN_STAR_CLS":        "earned" if core3["burn"]["earned"] else "",
-        "BURN_STAR_GLYPH":      "\u2B50" if core3["burn"]["earned"] else "\u2606",
-        "BURN_SUB":             "Strength or Cardio · pick one",
-        "BURN_STAGE_STATE":     "earned" if core3["burn"]["earned"] else "",
-        "BURN_COLLAPSED":       "collapsed" if core3["burn"]["earned"] else "",
-        "RECOVER_ITEMS_HTML":   core3["recover"]["items_html"],
-        "RECOVER_STAR_CLS":     "earned" if core3["recover"]["earned"] else "",
-        "RECOVER_STAR_GLYPH":   "\u2B50" if core3["recover"]["earned"] else "\u2606",
-        "RECOVER_SUB":          "Massage or Sauna · pick one",
-        "RECOVER_STAGE_STATE":  "earned" if core3["recover"]["earned"] else "",
-        "RECOVER_COLLAPSED":    "collapsed" if core3["recover"]["earned"] else "",
-        "NIGHT_COLLAPSED":     "collapsed" if today_night_earned else "",
-        "NIGHT_RITUAL_HTML":   night_ritual_html,
+        # Morning / Night ritual STRIP (top of Today view). Tracked
+        # but unscored — the strip flips the ✓/○ glyph; the old full
+        # ritual stages are gone.
+        "MORNING_RITUAL_PILL_CLS":   "done" if today_morning_earned else "pending",
+        "MORNING_RITUAL_PILL_GLYPH": "\u2713" if today_morning_earned else "\u25cb",
+        "NIGHT_RITUAL_PILL_CLS":     "done" if today_night_earned else "pending",
+        "NIGHT_RITUAL_PILL_GLYPH":   "\u2713" if today_night_earned else "\u25cb",
+
+        # 5 Effort Star cards. Each star is its own card with one
+        # tappable pill. Auto-collapse on earn (matches Morning/Night
+        # ritual behaviour from before).
+        "PROTEIN_STAGE_STATE":  "earned" if today_protein_earned else "",
+        "PROTEIN_COLLAPSED":    "collapsed" if today_protein_earned else "",
+        "PROTEIN_HINT":         f"{DAILY_PROTEIN_TARGET}g+ \u00b7 muscle defense",
+        "STRENGTH_STAGE_STATE": "earned" if today_strength_earned else "",
+        "STRENGTH_COLLAPSED":   "collapsed" if today_strength_earned else "",
+        "STRENGTH_HINT":        "rest day \u00b7 skipped" if _is_rest_day(data, weekday) else "lift days only",
+        "STRENGTH_REST_CLS":    "rest-day" if _is_rest_day(data, weekday) else "",
+        "SLEEP_STAGE_STATE":    "earned" if today_sleep_earned else "",
+        "SLEEP_COLLAPSED":      "collapsed" if today_sleep_earned else "",
+        "SLEEP_HINT":           f"{SLEEP_STAR_THRESHOLD_DEFAULT:g}h+ \u00b7 recovery",
+        "STEPS_STAGE_STATE":    "earned" if today_steps_earned else "",
+        "STEPS_COLLAPSED":      "collapsed" if today_steps_earned else "",
+        "STEPS_HINT":           f"{DAILY_STEPS_GOAL:,}+",
+        "STRETCH_STAGE_STATE":  "earned" if today_stretch_earned else "",
+        "STRETCH_COLLAPSED":    "collapsed" if today_stretch_earned else "",
+        "STRETCH_HINT":         "back-friendly mobility",
+        # Rest-day manual toggle (inside Strength card body).
+        "REST_DAY_CLS":         "done" if _is_rest_day(data, weekday) else "",
+        "REST_DAY_STATE_TEXT":  "\u2713 rest day" if _is_rest_day(data, weekday) else "not rest",
         # Today's targets
         "TODAY_STEPS":         f"{today_steps:,}",
         "STEPS_BAR_PCT":       str(_pct(today_steps, DAILY_STEPS_GOAL)),

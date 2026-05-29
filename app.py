@@ -172,13 +172,13 @@ def _gather_monthly_stars(data: dict) -> "tuple[dict, int]":
     rows = _db().get_entries_in_range(month_start, month_end)
     by_date = {r["date"]: r for r in rows}
 
-    # Build a synthetic per-day "data" mini-dict so we can reuse the
-    # existing _base/_burn/_recover/_compute_day_stars helpers. Those
-    # helpers read by weekday index from *_row lists, so we construct
-    # a one-off data where index 0 = this specific day.
-    from html_report import (
-        _base_earned, _burn_earned, _recover_earned,
-    )
+    # Monthly star tally — uses the same 5 effort stars the hero counts:
+    # Protein · Strength · Sleep · Steps · Stretch. Morning / Night are
+    # tracked but unscored. On rest days, Strength is excluded (max 4).
+    # Legacy days that pre-date the manual toggles fall back to the
+    # original Oura / Garmin numeric thresholds so the past star grid
+    # stays intact.
+    from constants import SLEEP_STAR_THRESHOLD_DEFAULT as SLEEP_T, DAILY_STEPS_GOAL
     stars_by_date: dict = {}
     total = 0
     for d in range(1, days_in_month + 1):
@@ -188,18 +188,25 @@ def _gather_monthly_stars(data: dict) -> "tuple[dict, int]":
         row = by_date.get(dt)
         if not row:
             continue
-        # Build a 1-slot data dict keyed at index 0.
-        from constants import SLEEP_STAR_THRESHOLD_DEFAULT as SLEEP_T, DAILY_STEPS_GOAL
-        steps_ok   = (row.get("steps") or 0) >= DAILY_STEPS_GOAL
-        sleep_hrs  = row.get("sleep_hours")
-        sleep_ok   = bool(sleep_hrs and float(sleep_hrs) >= SLEEP_T)
-        cal_ok     = bool((row.get("calories") or 0) > 0)
-        base_ok    = steps_ok and sleep_ok and cal_ok
-        burn_ok    = bool(row.get("strength_note") or row.get("cardio_note"))
-        recover_ok = bool(row.get("stretch_logged") or row.get("sauna"))
-        morning_ok = bool(row.get("morning_star"))
-        night_ok   = bool(row.get("night_star"))
-        stars = sum(map(int, [morning_ok, base_ok, burn_ok, recover_ok, night_ok]))
+        # Protein, Sleep, Steps, Stretch — primary manual flag with a
+        # numeric fallback for historical days.
+        protein_ok = bool(row.get("protein_logged"))
+        sleep_ok = bool(row.get("sleep_logged"))
+        if not sleep_ok:
+            sleep_hrs = row.get("sleep_hours")
+            sleep_ok = bool(sleep_hrs and float(sleep_hrs) >= SLEEP_T)
+        steps_ok = bool(row.get("steps_logged"))
+        if not steps_ok:
+            steps_ok = (row.get("steps") or 0) >= DAILY_STEPS_GOAL
+        stretch_ok = bool(row.get("stretch_logged"))
+        # Strength — manual flag OR legacy strength_note, but cancelled
+        # if today's row is marked a rest day.
+        is_rest = bool(row.get("rest_day"))
+        strength_ok = (
+            (not is_rest)
+            and (bool(row.get("strength_logged")) or bool(row.get("strength_note")))
+        )
+        stars = sum(map(int, [protein_ok, strength_ok, sleep_ok, steps_ok, stretch_ok]))
         stars_by_date[dt] = stars
         total += stars
     return stars_by_date, total
@@ -328,6 +335,8 @@ def api_manual():
         db.set_massage_logged(d, value)
     elif field == "protein_logged":
         db.set_protein_logged(d, value)
+    elif field == "rest_day":
+        db.set_rest_day(d, value)
     else:
         return jsonify(ok=False, error=f"unknown field {field!r}"), 400
 

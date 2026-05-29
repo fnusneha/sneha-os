@@ -230,6 +230,20 @@ class Db:
                 (d, value),
             )
 
+    def set_rest_day(self, d: date, value: bool) -> None:
+        """Mark today as a rest day (no Strength expected).
+
+        When True, the Strength sub-star is removed from the daily-stars
+        denominator: max becomes 4 instead of 5 and Perfect Day fires
+        at 4 / 4 on rest days vs 5 / 5 on lift days.
+        """
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT INTO daily_entries (date, rest_day) VALUES (%s, %s) "
+                "ON CONFLICT (date) DO UPDATE SET rest_day = EXCLUDED.rest_day",
+                (d, value),
+            )
+
     def set_protein_logged(self, d: date, value: bool) -> None:
         """Manual protein-logged toggle (Base stage).
 
@@ -402,7 +416,7 @@ _ENTRY_COLUMNS = {
     "notes",
     "sauna", "stretch_logged", "cal_logged",
     "strength_logged", "cardio_logged", "steps_logged", "sleep_logged",
-    "massage_logged", "protein_logged",
+    "massage_logged", "protein_logged", "rest_day",
     "morning_star", "night_star",
     "morning_checks", "night_checks",
 }
