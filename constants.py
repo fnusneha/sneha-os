@@ -51,7 +51,7 @@ WEEKLY_CARDIO_GOAL = 1
 
 # Daily protein floor used by the Protein toggle. Pure UI hint —
 # star fires on the manual toggle, not on any numeric comparison.
-DAILY_PROTEIN_TARGET = 120  # grams
+DAILY_PROTEIN_TARGET = 130  # grams
 
 # Daily calorie ceiling used by the Calories toggle.
 # Pure UI hint — the actual star fires on the manual toggle, not on
@@ -67,8 +67,8 @@ DAILY_CAL_TARGET = 1_520
 # "why did I get the star this week but not last week at the same 6.5h"
 # moments. The low-energy phase set is kept so the coach line can still
 # tailor advice, but it no longer changes the star bar.
-SLEEP_STAR_THRESHOLD_DEFAULT = 6.0
-SLEEP_STAR_THRESHOLD_LOW_ENERGY = 6.0
+SLEEP_STAR_THRESHOLD_DEFAULT = 7.0
+SLEEP_STAR_THRESHOLD_LOW_ENERGY = 7.0
 LOW_ENERGY_PHASES = {"Menstrual", "Luteal-PMS"}
 
 # ═══════════════════════════════════════════════════════════════════
