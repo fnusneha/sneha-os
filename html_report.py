@@ -1500,19 +1500,55 @@ def _build_agenda_card(data: dict) -> str:
 
 
 def _build_weekly_rollups(data: dict) -> str:
-    """Weekly Rollups card: steps / sleep / strength / cardio tallies.
+    """Weekly Rollups card — one row per Today-tab effort star, aggregated
+    across the whole week. Rebuilt after the 5-star refactor so this card
+    mirrors the Today categories instead of the old Steps / Sleep /
+    Strength / Cardio split.
 
-    Shows the aggregate against a soft goal:
-      • Steps     → total / (DAILY_STEPS_GOAL × 7)
-      • Avg sleep → simple average of logged nights
-      • Strength  → count / WEEKLY_STRENGTH_GOAL
-      • Cardio    → count / WEEKLY_CARDIO_GOAL (mint ✓ when met)
+    Rows (5):
+      • Protein  → days hit 130g+ / days_elapsed
+      • Strength → sessions / WEEKLY_STRENGTH_GOAL
+      • Sleep    → nights hit 7h / days_elapsed  (+ avg)
+      • Steps    → days hit 10k / days_elapsed   (+ total)
+      • Stretch  → days logged / days_elapsed
+
+    Cardio drops out — it now lives in the unscored Bonus row on Today
+    and shouldn't pretend to be a weekly KPI.
     """
-    total_steps    = data.get("total_steps") or 0
-    avg_sleep      = data.get("avg_sleep")
-    strength_count = data.get("strength_count") or 0
-    cardio_count   = data.get("cardio_count") or 0
-    week_steps_goal = DAILY_STEPS_GOAL * 7   # 70k on a 10k/day target
+    protein_row      = data.get("protein_logged_row", []) or []
+    sleep_logged_row = data.get("sleep_logged_row", []) or []
+    steps_logged_row = data.get("steps_logged_row", []) or []
+    stretch_row      = data.get("stretch_row", []) or []
+    sleep_values     = data.get("sleep_values", []) or []
+    steps_row        = data.get("steps_row", []) or []
+
+    today    = data.get("today")
+    today_wd = today.weekday() if today else 6
+    days_elapsed = max(1, today_wd + 1)
+
+    # Days hit each star — manual flag first, then legacy fallback for
+    # historical days populated before the toggle migrations.
+    protein_days = sum(1 for i, v in enumerate(protein_row) if i <= today_wd and v)
+    sleep_days_manual = sum(1 for i, v in enumerate(sleep_logged_row) if i <= today_wd and v)
+    sleep_days_legacy = sum(1 for s in sleep_values if s and s >= SLEEP_STAR_THRESHOLD_DEFAULT)
+    sleep_days   = max(sleep_days_manual, sleep_days_legacy)
+    steps_days_manual = sum(1 for i, v in enumerate(steps_logged_row) if i <= today_wd and v)
+    steps_days_legacy = 0
+    for i, raw in enumerate(steps_row):
+        if i > today_wd:
+            continue
+        try:
+            if int(str(raw).replace(",", "").strip() or 0) >= DAILY_STEPS_GOAL:
+                steps_days_legacy += 1
+        except ValueError:
+            pass
+    steps_days   = max(steps_days_manual, steps_days_legacy)
+    stretch_days = sum(1 for i, v in enumerate(stretch_row) if i <= today_wd and str(v).strip())
+
+    avg_sleep       = data.get("avg_sleep")
+    total_steps     = data.get("total_steps") or 0
+    strength_count  = data.get("strength_count") or 0
+    week_steps_goal = DAILY_STEPS_GOAL * 7
 
     def _row(icon: str, label: str, value_html: str, done: bool) -> str:
         done_cls = "done" if done else ""
@@ -1524,25 +1560,30 @@ def _build_weekly_rollups(data: dict) -> str:
             '</div>'
         )
 
-    # Steps
-    steps_done = total_steps >= week_steps_goal
-    steps_goal_k = f"{week_steps_goal // 1000}k"
-    steps_val = f"{total_steps:,} / {steps_goal_k}"
-    # Sleep
-    sleep_val = f"{avg_sleep:.1f}h" if avg_sleep is not None else "—"
-    sleep_done = bool(avg_sleep and avg_sleep >= SLEEP_STAR_THRESHOLD_DEFAULT)
-    # Strength / Cardio
+    protein_val  = f"{protein_days} of {days_elapsed}"
+    protein_done = protein_days >= days_elapsed
+
     strength_done = strength_count >= WEEKLY_STRENGTH_GOAL
-    cardio_done   = cardio_count   >= WEEKLY_CARDIO_GOAL
-    strength_val = f"{strength_count} of {WEEKLY_STRENGTH_GOAL}"
-    cardio_prefix = "\u2713 " if cardio_done else ""
-    cardio_val = f"{cardio_prefix}{cardio_count} of {WEEKLY_CARDIO_GOAL}"
+    strength_val  = f"{strength_count} of {WEEKLY_STRENGTH_GOAL}"
+
+    if avg_sleep is not None:
+        sleep_val = f"{sleep_days}/{days_elapsed} · avg {avg_sleep:.1f}h"
+    else:
+        sleep_val = f"{sleep_days} of {days_elapsed}"
+    sleep_done = sleep_days >= days_elapsed
+
+    steps_val  = f"{steps_days}/{days_elapsed} · {total_steps:,}"
+    steps_done = steps_days >= days_elapsed or total_steps >= week_steps_goal
+
+    stretch_val  = f"{stretch_days} of {days_elapsed}"
+    stretch_done = stretch_days >= days_elapsed
 
     rows = "".join([
-        _row("\U0001f45f", "Steps",     steps_val,    steps_done),
-        _row("\U0001f634", "Avg sleep", sleep_val,    sleep_done),
-        _row("\U0001f4aa", "Strength",  strength_val, strength_done),
-        _row("\U0001f6b4", "Cardio",    cardio_val,   cardio_done),
+        _row("\U0001f969", "Protein",  protein_val,  protein_done),
+        _row("\U0001f4aa", "Strength", strength_val, strength_done),
+        _row("\U0001f634", "Sleep",    sleep_val,    sleep_done),
+        _row("\U0001f45f", "Steps",    steps_val,    steps_done),
+        _row("\U0001f9d8", "Stretch",  stretch_val,  stretch_done),
     ])
     return (
         '<div class="card rollups-card">'
