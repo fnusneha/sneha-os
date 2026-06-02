@@ -832,6 +832,38 @@ body {
   font-weight: 400;
 }
 
+/* Unscored ritual strip at the very top of the day-details modal —
+   Morning ✓ · Night ○. Smaller and dimmer than the effort chips,
+   matches the strip on the Today tab. */
+.dm-rituals {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  margin: 8px 0 14px;
+  letter-spacing: 0.02em;
+}
+.dm-ritual { white-space: nowrap; }
+.dm-ritual.done { color: var(--gold); }
+.dm-ritual-sep { color: var(--dim); opacity: 0.5; }
+
+/* Bonus subheader inside the modal's flat list — visually quieter
+   than the row above so it reads as a "this doesn't score" section. */
+.dm-bonus-head {
+  margin-top: 14px;
+  border-top: 1px solid rgba(255,255,255,0.05);
+  padding-top: 10px;
+  color: var(--dim);
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.dm-bonus-row .dm-core-name { color: var(--muted); }
+.dm-bonus-row .dm-core-val  { color: var(--muted); }
+
 .dm-stages {
   display: flex;
   flex-direction: column;
@@ -3028,36 +3060,21 @@ body.view-year  .month-only { display: none !important; }
         </div>
       </div>
 
-      <!-- 5-slot breakdown: Morning · Base · Burn · Recover · Night -->
-      <div class="dm-stages">
-        <div class="dm-stage" id="dm-stage-morning">
-          <span class="dm-stage-ico">☀️</span>
-          <span class="dm-stage-name">Morning</span>
-          <span class="dm-stage-state" id="dm-morning-state">—</span>
-        </div>
-        <div class="dm-stage" id="dm-stage-base">
-          <span class="dm-stage-ico">🏔️</span>
-          <span class="dm-stage-name">Base</span>
-          <span class="dm-stage-state" id="dm-base-state">—</span>
-        </div>
-        <div class="dm-stage" id="dm-stage-burn">
-          <span class="dm-stage-ico">🔥</span>
-          <span class="dm-stage-name">Burn</span>
-          <span class="dm-stage-state" id="dm-burn-state">—</span>
-        </div>
-        <div class="dm-stage" id="dm-stage-recover">
-          <span class="dm-stage-ico">🌿</span>
-          <span class="dm-stage-name">Recover</span>
-          <span class="dm-stage-state" id="dm-recover-state">—</span>
-        </div>
-        <div class="dm-stage" id="dm-stage-night">
-          <span class="dm-stage-ico">🌙</span>
-          <span class="dm-stage-name">Night</span>
-          <span class="dm-stage-state" id="dm-night-state">—</span>
-        </div>
+      <!-- Unscored ritual strip: Morning ✓ · Night ○ (mirror of the
+           strip at the very top of the Today tab). -->
+      <div class="dm-rituals" id="dm-rituals">
+        <span class="dm-ritual" id="dm-ritual-morning">&#x2600;&#xFE0F; Morning <span id="dm-morning-state">&mdash;</span></span>
+        <span class="dm-ritual-sep">&middot;</span>
+        <span class="dm-ritual" id="dm-ritual-night">&#x1F319; Night <span id="dm-night-state">&mdash;</span></span>
       </div>
 
-      <!-- Per-group item breakdown (Base + Burn + Recover) -->
+      <!-- 5 effort-star chips (Protein/Strength/Sleep/Steps/Stretch).
+           Rendered dynamically from the payload so adding/dropping a
+           star only needs a Python-side change. -->
+      <div class="dm-stages" id="dm-effort-stages"></div>
+
+      <!-- Flat list of all 5 effort stars + a Bonus section for the
+           unscored extras (Cardio/Massage/Sauna). -->
       <div class="dm-core-list" id="dm-core-list"></div>
 
       <div class="dm-cycle-row" id="dm-cycle-row">
@@ -3967,56 +3984,63 @@ body.view-year  .month-only { display: none !important; }
       d.is_today ? 'Today · ' + d.day_label : d.day_label;
     document.getElementById('dm-date').textContent = d.date_str || '';
     document.getElementById('dm-stars').textContent = d.stars;
+    const maxEl = document.querySelector('.dm-stars-max');
+    if (maxEl) maxEl.textContent = '/' + (d.max_stars || 5);
 
-    // 5 stage chips (was 3)
-    function setStage(id, done, doneText, notDoneText) {
-      const el = document.getElementById('dm-stage-' + id);
-      const st = document.getElementById('dm-' + id + '-state');
-      if (!el || !st) return;
-      if (done) { el.classList.add('earned'); st.textContent = doneText; }
-      else       { el.classList.remove('earned'); st.textContent = notDoneText; }
+    // Unscored ritual strip (Morning / Night). These don't move the
+    // star count — they're collected as habit context.
+    const morningRitual = document.getElementById('dm-ritual-morning');
+    const nightRitual   = document.getElementById('dm-ritual-night');
+    if (morningRitual) morningRitual.classList.toggle('done', !!d.morning_done);
+    if (nightRitual)   nightRitual.classList.toggle('done',   !!d.night_done);
+    const morningState = document.getElementById('dm-morning-state');
+    const nightState   = document.getElementById('dm-night-state');
+    if (morningState) morningState.textContent = d.morning_done ? '✓' : '○';
+    if (nightState)   nightState.textContent   = d.night_done   ? '✓' : '○';
+
+    // Render the 5 effort-star chips dynamically from the payload.
+    const stagesEl = document.getElementById('dm-effort-stages');
+    if (stagesEl) {
+      stagesEl.innerHTML = '';
+      (d.effort || []).forEach(row => {
+        const chip = document.createElement('div');
+        chip.className = 'dm-stage' + (row.done ? ' earned' : '');
+        chip.innerHTML =
+          '<span class="dm-stage-ico">' + row.icon + '</span>' +
+          '<span class="dm-stage-name">' + row.name + '</span>' +
+          '<span class="dm-stage-state">' +
+            (row.done ? '★ Earned'
+                      : (row.key === 'strength' && row.target === 'rest day' ? 'Rest day' : 'Not yet')) +
+          '</span>';
+        stagesEl.appendChild(chip);
+      });
     }
-    setStage('morning', d.morning_done, '⭐ Earned',  'Not collected');
-    setStage('base',    d.base_done,    '⭐ Earned',  'Incomplete');
-    setStage('burn',    d.burn_done,    '⭐ Earned',  'Pick strength or cardio');
-    setStage('recover', d.recover_done, '⭐ Earned',  'Pick stretch or sauna');
-    setStage('night',   d.night_done,   '⭐ Earned',  'Not collected');
 
-    // Per-group item breakdown. Each group (Base, Burn, Recover) gets
-    // its own subheader with the group's earn state, then its member
-    // rows underneath.
+    // Flat list: 5 effort rows, then a Bonus subheader, then 3 bonus
+    // rows (Cardio / Massage / Sauna). No more Base/Burn/Recover groups.
     const list = document.getElementById('dm-core-list');
     list.innerHTML = '';
-    (d.core_groups || []).forEach(group => {
-      const header = document.createElement('div');
-      header.className = 'dm-group-head' + (group.earned ? ' earned' : '');
-      header.innerHTML =
-        '<span class="dm-group-ico">' + group.icon + '</span>' +
-        '<span class="dm-group-name">' + group.name + '</span>' +
-        '<span class="dm-group-rule">' + (group.rule || '') + '</span>' +
-        '<span class="dm-group-star">' + (group.earned ? '\u2B50' : '\u2606') + '</span>';
-      list.appendChild(header);
-      (group.items || []).forEach(item => {
-        const row = document.createElement('div');
-        row.className = 'dm-core-item ' + (item.done ? 'done' : 'not-done');
-        row.innerHTML =
-          '<div class="dm-core-check">' + (item.done ? '\u2713' : '\u2022') + '</div>' +
-          '<div class="dm-core-name">' + item.name +
-            '<span class="dm-core-target">' + (item.target || '') + '</span>' +
-          '</div>' +
-          '<div class="dm-core-val">' + (item.value || '—') + '</div>';
-        list.appendChild(row);
-      });
-    });
-
-    // Cycle row
-    const cyRow = document.getElementById('dm-cycle-row');
-    const cyVal = document.getElementById('dm-cycle-val');
-    if (d.cycle) {
-      cyRow.classList.remove('empty');
-      cyVal.textContent = d.cycle;
-    } else {
-      cyRow.classList.add('empty');
+    function _appendRow(item, scored) {
+      const row = document.createElement('div');
+      row.className = 'dm-core-item ' + (item.done ? 'done' : 'not-done');
+      if (!scored) row.classList.add('dm-bonus-row');
+      row.innerHTML =
+        '<div class="dm-core-check">' + (item.done ? '✓' : '•') + '</div>' +
+        '<div class="dm-core-name">' + item.name +
+          (item.target ? '<span class="dm-core-target">' + item.target + '</span>' : '') +
+        '</div>' +
+        '<div class="dm-core-val">' + (item.value || '—') + '</div>';
+      list.appendChild(row);
+    }
+    (d.effort || []).forEach(item => _appendRow(item, true));
+    if ((d.bonus || []).length) {
+      const head = document.createElement('div');
+      head.className = 'dm-group-head dm-bonus-head';
+      head.innerHTML =
+        '<span class="dm-group-name">Bonus</span>' +
+        '<span class="dm-group-rule">not scored</span>';
+      list.appendChild(head);
+      (d.bonus || []).forEach(item => _appendRow(item, false));
     }
 
     // Show modal

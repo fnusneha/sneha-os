@@ -253,39 +253,43 @@ def _recover_earned(data: dict, weekday: int) -> bool:
 # ── Week Strip (7-day overview) ──────────────────────────────────
 
 def _build_day_details_payload(data: dict, weekday: int) -> dict:
-    """Build a JSON payload with per-day breakdown for the past/current days.
+    """Per-day breakdown for the modal that pops when you tap a day bubble.
 
-    Returned structure:
+    Shape mirrors the new 5-star Today tab:
+
       {
-        0: {                     # weekday index
+        wd: {
           "day_label": "Mon",
-          "date_num": 13,
-          "is_today": false,
-          "stars": 2,             # total stars earned that day
-          "morning_done": true,
-          "night_done": false,
-          "core_count": 5,
-          "core_items": [          # 7 items, each with name, done bool, value text
-            {"name": "Steps", "done": true, "value": "6,094"},
-            ...
-          ]
-        },
-        ...
+          "date_str":  "Mon, Jun 1",
+          "is_today":  bool,
+          "stars":     int,        # 0..max_stars (0..5 typical)
+          "max_stars": int,        # 5 on lift days, 4 on rest days
+          "morning_done": bool,    # unscored ritual
+          "night_done":   bool,    # unscored ritual
+          "is_rest_day":  bool,
+          "effort":   [ {key, icon, name, target, done, value}, ... ],  # 5 rows
+          "bonus":    [ {key, icon, name, done, value}, ... ],          # 3 rows
+          "cycle":    str,
+        }
       }
     """
     from datetime import timedelta
     morning_star_row = data.get("morning_star_row", [])
-    night_star_row = data.get("night_star_row", [])
-    steps_row = data.get("steps_row", [])
-    sleep_row = data.get("sleep_row", [])
-    cal_values = data.get("cal_values", []) or []
-    strength_row = data.get("strength_row", [])
-    cardio_row = data.get("cardio_row", [])
-    sauna_row = data.get("sauna_row", [])
-    stretch_row = data.get("stretch_row", [])
-    cycle_row = data.get("cycle_row", [])
+    night_star_row   = data.get("night_star_row", [])
+    steps_row        = data.get("steps_row", [])
+    sleep_row        = data.get("sleep_row", [])
+    cycle_row        = data.get("cycle_row", [])
+    strength_row     = data.get("strength_row", [])
+    cardio_row       = data.get("cardio_row", [])
+    sauna_row        = data.get("sauna_row", [])
+    stretch_row      = data.get("stretch_row", [])
+    cal_values       = data.get("cal_values", []) or []
 
-    # Compute the Monday date so we can show actual dates (e.g. "Mon, Apr 13")
+    s_log_row = data.get("strength_logged_row", []) or []
+    c_log_row = data.get("cardio_logged_row", []) or []
+    m_log_row = data.get("massage_logged_row", []) or []
+    p_log_row = data.get("protein_logged_row", []) or []
+
     today = data.get("today") or local_today()
     try:
         monday = today - timedelta(days=today.weekday())
@@ -298,133 +302,76 @@ def _build_day_details_payload(data: dict, weekday: int) -> dict:
             return v if v else ""
         return ""
 
-    # Target strings are read from shared constants so the modal can
-    # never drift from what the Core Missions section says.
-    sleep_target = f"\u2265 {SLEEP_STAR_THRESHOLD_DEFAULT:g}h"
+    sleep_target_str = f"\u2265 {SLEEP_STAR_THRESHOLD_DEFAULT:g}h"
 
     details = {}
     for wd in range(weekday + 1):  # only past + today (never future)
-        # Five-star breakdown for the day
         morning_done = _cell(morning_star_row, wd) == "\u2713"
-        night_done = _cell(night_star_row, wd) == "\u2713"
-        base_done = _base_earned(data, wd)
-        burn_done = _burn_earned(data, wd)
-        recover_done = _recover_earned(data, wd)
-        stars = sum([
-            int(morning_done),
-            int(base_done),
-            int(burn_done),
-            int(recover_done),
-            int(night_done),
-        ])
+        night_done   = _cell(night_star_row, wd)   == "\u2713"
 
-        daily = data["score"].get("daily", {}).get(wd, {})
-        steps_val = _cell(steps_row, wd)
-        sleep_val = _cell(sleep_row, wd)
-        cal_val = cal_values[wd] if wd < len(cal_values) and cal_values[wd] else None
+        protein_done  = _protein_star_earned(data, wd)
+        strength_done = _strength_star_earned(data, wd)
+        sleep_done    = _sleep_star_earned(data, wd)
+        steps_done    = _steps_star_earned(data, wd)
+        stretch_done  = _stretch_star_earned(data, wd)
+        rest_day      = _is_rest_day(data, wd)
 
-        # Sub-items grouped by Base / Burn / Recover for the modal.
-        base_items = [
-            {
-                "name": "🚶 Steps",
-                "done": bool(daily.get("steps")),
-                "value": f"{int(steps_val.replace(',','')):,}" if steps_val.replace(',','').isdigit() else (steps_val or "—"),
-                "target": f"\u2265 {DAILY_STEPS_GOAL:,}",
-            },
-            {
-                "name": "😴 Sleep",
-                "done": bool(daily.get("sleep")),
-                "value": f"{sleep_val}h" if sleep_val else "—",
-                "target": sleep_target,
-            },
-            {
-                "name": "🍽️ Calories",
-                "done": bool(daily.get("cal")),
-                "value": f"{cal_val:,}" if cal_val else "—",
-                "target": "logged",
-            },
+        stars     = _compute_day_stars(data, wd)
+        max_stars = _max_stars_for_day(data, wd)
+
+        # Per-row value strings (best-effort: show what the user logged
+        # or recorded for the day; "—" when nothing's there).
+        steps_val_raw = _cell(steps_row, wd)
+        steps_val = f"{int(steps_val_raw.replace(',', '')):,}" if steps_val_raw.replace(',', '').isdigit() else "logged" if steps_done else "—"
+        sleep_val_raw = _cell(sleep_row, wd)
+        sleep_val = f"{sleep_val_raw}h" if sleep_val_raw else ("logged" if sleep_done else "—")
+        protein_val = "logged" if protein_done else "—"
+        strength_legacy = _cell(strength_row, wd)
+        if rest_day:
+            strength_val = "rest day"
+        elif strength_done:
+            strength_val = strength_legacy or "logged"
+        else:
+            strength_val = "—"
+        stretch_val = "logged" if stretch_done else "—"
+
+        cardio_done  = bool(c_log_row[wd] if wd < len(c_log_row) else False) or _row_has(cardio_row, wd)
+        massage_done = bool(m_log_row[wd] if wd < len(m_log_row) else False)
+        sauna_done   = _row_has(sauna_row, wd)
+        cardio_val   = (_cell(cardio_row, wd) or "logged") if cardio_done else "—"
+        massage_val  = "logged" if massage_done else "—"
+        sauna_val    = "logged" if sauna_done else "—"
+
+        effort_rows = [
+            {"key": "protein",  "icon": "\U0001f969", "name": "Protein",  "target": f"{DAILY_PROTEIN_TARGET:g}g+",  "done": protein_done,  "value": protein_val},
+            {"key": "strength", "icon": "\U0001f4aa", "name": "Strength", "target": ("rest day" if rest_day else "1 session"), "done": strength_done, "value": strength_val},
+            {"key": "sleep",    "icon": "\U0001f634", "name": "Sleep",    "target": sleep_target_str,                 "done": sleep_done,    "value": sleep_val},
+            {"key": "steps",    "icon": "\U0001f45f", "name": "Steps",    "target": f"\u2265 {DAILY_STEPS_GOAL:,}",  "done": steps_done,    "value": steps_val},
+            {"key": "stretch",  "icon": "\U0001f9d8", "name": "Stretch",  "target": "1 session",                      "done": stretch_done,  "value": stretch_val},
         ]
-        # Burn items — manual toggles are primary; Garmin notes legacy
-        # fallback for past days.
-        s_log_row = data.get("strength_logged_row", []) or []
-        c_log_row = data.get("cardio_logged_row", []) or []
-        s_manual = bool(s_log_row[wd]) if wd < len(s_log_row) else False
-        c_manual = bool(c_log_row[wd]) if wd < len(c_log_row) else False
-        burn_items = [
-            {
-                "name": "💪 Strength",
-                "done": s_manual or _row_has(strength_row, wd),
-                "value": (_cell(strength_row, wd) or ("logged" if s_manual else "—")),
-                "target": "manual log",
-            },
-            {
-                "name": "🚴 Cardio",
-                "done": c_manual or _row_has(cardio_row, wd),
-                "value": (_cell(cardio_row, wd) or ("logged" if c_manual else "—")),
-                "target": "manual log",
-            },
-        ]
-        recover_items = [
-            {
-                "name": "🧘 Stretch",
-                "done": _row_has(stretch_row, wd),
-                "value": _cell(stretch_row, wd) or "—",
-                "target": "manual log",
-            },
-            {
-                "name": "♨️ Sauna / Steam",
-                "done": _row_has(sauna_row, wd),
-                "value": _cell(sauna_row, wd) or "—",
-                "target": "manual log",
-            },
+        bonus_rows = [
+            {"key": "cardio",  "icon": "\U0001f6b4", "name": "Cardio",  "done": cardio_done,  "value": cardio_val},
+            {"key": "massage", "icon": "\U0001f486", "name": "Massage", "done": massage_done, "value": massage_val},
+            {"key": "sauna",   "icon": "\u2668\ufe0f", "name": "Sauna",  "done": sauna_done, "value": sauna_val},
         ]
 
-        # Date label
         date_str = ""
         if monday:
             day_date = monday + timedelta(days=wd)
             date_str = day_date.strftime("%a, %b %-d") if hasattr(day_date, "strftime") else ""
 
         details[wd] = {
-            "day_label": DAY_LABELS[wd],
-            "date_str": date_str,
-            "is_today": wd == weekday,
-            "stars": stars,
-            "max_stars": MAX_DAILY_STARS,
-            # 5 slot booleans for the modal's star strip
+            "day_label":   DAY_LABELS[wd],
+            "date_str":    date_str,
+            "is_today":    wd == weekday,
+            "stars":       stars,
+            "max_stars":   max_stars,
             "morning_done": morning_done,
-            "base_done": base_done,
-            "burn_done": burn_done,
-            "recover_done": recover_done,
-            "night_done": night_done,
-            # 3 groups with their member items
-            "core_groups": [
-                {
-                    "key": "base",
-                    "icon": "🏔️",
-                    "name": "Base",
-                    "earned": base_done,
-                    "rule": "all 3 required",
-                    "items": base_items,
-                },
-                {
-                    "key": "burn",
-                    "icon": "🔥",
-                    "name": "Burn",
-                    "earned": burn_done,
-                    "rule": "pick one",
-                    "items": burn_items,
-                },
-                {
-                    "key": "recover",
-                    "icon": "🌿",
-                    "name": "Recover",
-                    "earned": recover_done,
-                    "rule": "pick one",
-                    "items": recover_items,
-                },
-            ],
-            "cycle": _cell(cycle_row, wd),
+            "night_done":  night_done,
+            "is_rest_day": rest_day,
+            "effort":      effort_rows,
+            "bonus":       bonus_rows,
+            "cycle":       _cell(cycle_row, wd),
         }
     return details
 
