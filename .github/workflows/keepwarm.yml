@@ -1,20 +1,20 @@
-name: Keep Render warm
+name: Keep Render warm (A)
 
 # Render's free tier puts the service to sleep after ~15 min of no
 # traffic; first request after sleep takes 30–60 s (cold start).
-# This workflow pings /healthz every ~10 min during the user's active
-# hours so the container stays awake and the dashboard opens instantly.
+# This workflow pings /healthz every 5 min (GitHub Actions hard min)
+# during active hours so Render's 15-min sleep timer never elapses.
 #
 # Cron is UTC. 7am–11pm Pacific = 14:00–06:00 UTC (spans midnight).
-# Running every 10 minutes for ~16 hours = ~96 pings/day × 30 days =
-# ~2880 runs/month, well under the 2000 free-minute budget since each
-# run is <10 s.
+# Pair this with keepwarm-b.yml — offset by 2 min — so if GH Actions
+# delays one of them (which happens often on busy days), the other
+# still has a chance of landing inside Render's sleep window. With
+# both running, p50 gap should stay under 10 min in practice.
 
 on:
   schedule:
-    # Every 10 minutes, on the 3rd/13th/23rd/… minute so it doesn't
-    # collide with the top-of-hour rush on shared Actions runners.
-    - cron: "3,13,23,33,43,53 14-23,0-6 * * *"
+    # Every 5 minutes, on :00 :05 :10 … :55 minutes.
+    - cron: "*/5 14-23,0-6 * * *"
   workflow_dispatch:
 
 concurrency:
