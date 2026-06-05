@@ -1281,12 +1281,53 @@ def _build_pins_html(data: dict = None) -> str:
     # Combine: doc habit pins + live travel pins
     all_pins = habit_pins_with_year + cal_pins
 
-    # Sort by year, then month, then pinned-first, then start date
+    # Sort chronologically within each month. The two pin sources use
+    # different date string formats — habits emit ISO ("2026-06-01") and
+    # cal trips emit natural language ("June 5, 2026") — so a string
+    # comparison gives garbage (every ISO date sorts before every
+    # natural date because '2' < 'J'). Parse both into (y, m, d) tuples
+    # so the order matches the calendar.
+    from datetime import datetime as _dt
+
+    def _parsed_day(start_date: str, month_idx: int, year: int) -> tuple[int, int, int]:
+        if not start_date:
+            return (year, month_idx, 0)
+        s = str(start_date).strip()
+        # ISO first (cheap, no exception path): "2026-06-01"
+        if len(s) >= 10 and s[4] == "-" and s[7] == "-":
+            try:
+                return (int(s[:4]), int(s[5:7]) - 1, int(s[8:10]))
+            except ValueError:
+                pass
+        # Natural language: "June 5, 2026" / "January 19, 2026"
+        for fmt in ("%B %d, %Y", "%b %d, %Y", "%B %d %Y"):
+            try:
+                d = _dt.strptime(s, fmt)
+                return (d.year, d.month - 1, d.day)
+            except ValueError:
+                continue
+        return (year, month_idx, 0)
+
     def sort_key(pin):
         month_idx = MONTH_ORDER.index(pin[3]) if pin[3] in MONTH_ORDER else 99
         start_date = pin[6] if len(pin) > 6 else ""
-        year = pin[7] if len(pin) > 7 else current_year
-        return (year, month_idx, not pin[1], start_date)
+        year = pin[-1] if isinstance(pin[-1], int) else current_year
+        source = pin[5] if len(pin) > 5 else ""
+        y, m, d = _parsed_day(start_date, month_idx, year)
+        # Habit pins emit a synthetic "1st of the month" date (the doc
+        # rarely says exactly when in the month a yearly habit happens).
+        # That synthetic day-1 would otherwise beat real dated trips in
+        # the same month (Juneteenth as a habit landing before Sierra
+        # Valley Weekend on Jun 5-7, for example). Push habits to the
+        # END of the month so dated cal pins always order first; among
+        # habits themselves the (label) tiebreak below stays stable.
+        if source == "habit":
+            d = 99
+        # Pinned-first only tiebreaks when two items land on the SAME
+        # day (e.g. a back-dated habit + a same-day trip). Otherwise
+        # date order wins so a pinned habit can't jump above an earlier
+        # un-pinned trip in the same month.
+        return (y, m, d, not pin[1], pin[2])
 
     all_pins.sort(key=sort_key)
 
