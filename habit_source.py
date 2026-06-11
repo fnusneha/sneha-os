@@ -159,8 +159,24 @@ def _parse_habit_line(line: str) -> dict | None:
     cadence = ""
     cad_match = _CADENCE_RE.search(s)
     if cad_match:
-        cadence = cad_match.group(0).strip("()")
+        cadence = cad_match.group(0).strip("()").strip()
         s = s[:cad_match.start()] + s[cad_match.end():]
+
+    # Normalize single-unit "every X" forms to their idiomatic
+    # adjective so the chip reads as "weekly" instead of "every week"
+    # ("every week" / "every month" / "every day" / "every year").
+    # Multi-unit forms like "every 2 weeks" stay verbatim because the
+    # number is meaningful there.
+    _CADENCE_NORMALIZE = {
+        "every week":   "weekly",
+        "every month":  "monthly",
+        "every day":    "daily",
+        "every year":   "annually",
+        "every quarter": "quarterly",
+    }
+    cadence_low = cadence.lower().strip()
+    if cadence_low in _CADENCE_NORMALIZE:
+        cadence = _CADENCE_NORMALIZE[cadence_low]
 
     # Strip cadence prefix words from name: "Daily ", "Monthly ", "Weekly ", etc.
     for prefix in ["Daily ", "Weekly ", "Monthly ", "Bi-Monthly ", "Quarterly ", "Annual ", "Biannually "]:
