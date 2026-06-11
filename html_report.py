@@ -1107,7 +1107,9 @@ def _build_season_pass(data: dict) -> tuple[str, int, int, str]:
     doc_quarterly = data.get("quarterly_habits", [])
 
     if doc_monthly:
-        # Merge monthly + quarterly into one Season Pass list
+        # Merge monthly + quarterly into one Season Pass list. Each tuple
+        # carries a 6th `optional` field sourced from the habit parser so
+        # we can flag rows the user marked "optional" in her Habit Doc.
         habits = []
         for h in doc_monthly + doc_quarterly:
             habits.append((
@@ -1116,35 +1118,53 @@ def _build_season_pass(data: dict) -> tuple[str, int, int, str]:
                 h.get("cadence", "monthly"),
                 "due",        # default status — completion tracked in localStorage
                 "due",
+                bool(h.get("optional", False)),
             ))
     else:
-        # Hardcoded fallback (original list)
+        # Hardcoded fallback (original list — no optional flags).
         habits = [
-            ("\U0001f486", "Deep Tissue Massage",     "every 3 weeks",  "Due",  "due"),
-            ("\u2728",     "Facial",                   "monthly",        "Due",  "due"),
-            ("\U0001f9ea", "Renpho Body Check",        "every 2 weeks",  "Due",  "due"),
-            ("\U0001f4b0", "Finance Check",            "monthly",        "Due",  "due"),
-            ("\U0001f9e0", "Emotional Check-In",       "monthly",        "Due",  "due"),
-            ("\u2708\ufe0f", "Travel Maintenance",     "monthly",        "Due",  "due"),
-            ("\U0001f5d3", "Digital Cleanup",           "bi-monthly",    "Due",  "due"),
-            ("\U0001f5d3", "Deep Cleaning & Refills",   "monthly",       "Due",  "due"),
+            ("\U0001f486", "Deep Tissue Massage",     "every 3 weeks",  "Due",  "due", False),
+            ("\u2728",     "Facial",                   "monthly",        "Due",  "due", False),
+            ("\U0001f9ea", "Renpho Body Check",        "every 2 weeks",  "Due",  "due", False),
+            ("\U0001f4b0", "Finance Check",            "monthly",        "Due",  "due", False),
+            ("\U0001f9e0", "Emotional Check-In",       "monthly",        "Due",  "due", False),
+            ("\u2708\ufe0f", "Travel Maintenance",     "monthly",        "Due",  "due", False),
+            ("\U0001f5d3", "Digital Cleanup",           "bi-monthly",    "Due",  "due", False),
+            ("\U0001f5d3", "Deep Cleaning & Refills",   "monthly",       "Due",  "due", False),
         ]
 
     season_done_indices = data.get("season_done_indices", set())
-    done_count = sum(1 for i in range(len(habits)) if i in season_done_indices)
-    total = len(habits)
+    # Optional items don't gate the "X of Y complete" headline — only
+    # required items count toward the total. Keeps the progress bar
+    # honest when half the list is flagged optional.
+    required_indices = [i for i, h in enumerate(habits) if not h[5]]
+    total = len(required_indices)
+    done_count = sum(1 for i in required_indices if i in season_done_indices)
 
     rows = []
-    for i, (icon, name, cadence, _last_text, status) in enumerate(habits):
+    for i, (icon, name, cadence, _last_text, status, optional) in enumerate(habits):
         is_done = i in season_done_indices
-        si_cls = "season-item si-done" if is_done else "season-item"
+        classes = ["season-item"]
+        if is_done:
+            classes.append("si-done")
+        if optional:
+            classes.append("si-optional")
+        cls = " ".join(classes)
+        # Optional chip rendered alongside the cadence so the row is
+        # unmistakably "extra credit" without changing the click action.
+        meta_html = _esc(cadence)
+        if optional:
+            meta_html = (
+                f'<span class="si-optional-chip">optional</span> '
+                f'{meta_html}'
+            )
         status_label = cadence
         rows.append(
-            f'<div class="{si_cls}" onclick="toggleSeasonItem(this,{i})">'
+            f'<div class="{cls}" onclick="toggleSeasonItem(this,{i})">'
             f'<div class="si-check"></div>'
             f'<div class="si-info">'
             f'<div class="si-name">{icon} {_esc(name)}</div>'
-            f'<div class="si-meta">{_esc(cadence)}</div>'
+            f'<div class="si-meta">{meta_html}</div>'
             f'</div>'
             f'<span class="si-status si-status-{status}">{_esc(status_label)}</span>'
             f'</div>'

@@ -47,6 +47,14 @@ _EMOJI_RE = re.compile(
 
 # Cadence from parentheses: "(every 3 weeks)", "(every 2 weeks)", etc.
 _CADENCE_RE = re.compile(r'\(every\s+\d+\s+\w+\)')
+# Match "optional" anywhere on the line — accepts a few common doc
+# formats user might type (parens, brackets, dash, or just the word).
+# Captured separately from cadence so the (every 2 weeks) chip stays
+# untouched. Stored as a boolean on the habit dict.
+_OPTIONAL_RE = re.compile(
+    r'\s*(?:[—\-–—]?\s*\(?\[?\s*optional\s*\]?\)?)',
+    re.IGNORECASE,
+)
 
 # Link extraction: [here](URL) or [*here*](URL)
 _LINK_RE = re.compile(r'\[\*?here\*?\]\((https?://[^)]+)\)')
@@ -127,6 +135,14 @@ def _parse_habit_line(line: str) -> dict | None:
     s = re.sub(r'^Habit:\s*', '', s, flags=re.IGNORECASE)
     s = re.sub(r'^Habit:\s*', '', s, flags=re.IGNORECASE)  # double for "Habit: Habit: Annual..."
 
+    # Detect the "optional" marker — handled as its own bool so it
+    # doesn't get smushed into the cadence string. Strip it from the
+    # name in any of the common shapes (e.g. "(optional)", "- optional",
+    # "[optional]") so the name renders clean.
+    optional = bool(_OPTIONAL_RE.search(s))
+    if optional:
+        s = _OPTIONAL_RE.sub("", s).strip()
+
     # Extract cadence from parentheses
     cadence = ""
     cad_match = _CADENCE_RE.search(s)
@@ -161,6 +177,7 @@ def _parse_habit_line(line: str) -> dict | None:
         "cadence": cadence,
         "link": link,
         "months": months,
+        "optional": optional,
     }
 
 
