@@ -398,6 +398,28 @@ def api_refresh_travel():
         return jsonify(ok=False, error=str(exc)), 500
 
 
+@app.post("/api/refresh-habits")
+def api_refresh_habits():
+    """Force-refresh the Habit Tracker Doc cache.
+
+    Mirrors /api/refresh-travel — bypass the 24-hour habit_source disk
+    cache so doc edits (renames, cadence changes, optional flags) land
+    in the next /dashboard, /month, or /year render without waiting
+    for the daily cron.
+    """
+    try:
+        from google_auth import get_google_creds
+        from habit_source import fetch_habits_from_doc, clear_cache
+        clear_cache()
+        creds = get_google_creds()
+        habits = fetch_habits_from_doc(creds, force_refresh=True)
+        counts = {k: len(v) for k, v in habits.items()}
+        return jsonify(ok=True, counts=counts)
+    except Exception as exc:
+        log.exception("habits refresh failed")
+        return jsonify(ok=False, error=str(exc)), 500
+
+
 @app.get("/api/today")
 def api_today():
     """Compact JSON snapshot of today's numbers. Used by the Android

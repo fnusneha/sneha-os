@@ -46,7 +46,19 @@ _EMOJI_RE = re.compile(
 )
 
 # Cadence from parentheses: "(every 3 weeks)", "(every 2 weeks)", etc.
-_CADENCE_RE = re.compile(r'\(every\s+\d+\s+\w+\)')
+# Cadence in parens — accepts:
+#   (every 2 weeks), (every 3 months)   ← original form, number + unit
+#   (every week), (every month)         ← shorthand without "1 "
+#   (monthly), (bi-monthly), (weekly), (annual), (every 4 weeks)
+# Without the "every (\d+)?" branch, "(every week)" used to leak into
+# the habit name and the cadence chip would render as empty.
+_CADENCE_RE = re.compile(
+    r'\(\s*(?:'
+    r'every\s+(?:\d+\s+)?\w+'                       # every (N )?week|month|day…
+    r'|(?:bi-?)?(?:weekly|monthly|quarterly|annually|annual|daily)'
+    r')\s*\)',
+    re.IGNORECASE,
+)
 # Match "optional" anywhere on the line — accepts a few common doc
 # formats user might type (parens, brackets, dash, or just the word).
 # Captured separately from cadence so the (every 2 weeks) chip stays
