@@ -1398,7 +1398,10 @@ def _build_pins_html(data: dict = None) -> str:
                 icon = "\U0001f4cd" if (default_pinned and not is_future_year) else content_icon
 
                 if source == "cal":
-                    tag = '<span class="pin-src pin-src-cal">CAL</span>'
+                    # Source is the Travel Master Planner sheet — "TRAVEL"
+                    # is the honest label. Kept the pin-src-cal CSS class
+                    # name to avoid bleeding into the stylesheet.
+                    tag = '<span class="pin-src pin-src-cal">TRAVEL</span>'
                 else:
                     tag = '<span class="pin-src pin-src-habit">HABIT</span>'
 
