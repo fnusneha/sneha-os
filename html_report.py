@@ -172,8 +172,15 @@ def _is_rest_day(data: dict, weekday: int) -> bool:
 
 
 def _max_stars_for_day(data: dict, weekday: int) -> int:
-    """5 on a lift day, 4 on a rest day (Strength is dropped)."""
-    return 4 if _is_rest_day(data, weekday) else 5
+    """2 on a lift day, 1 on a rest day (Strength is dropped).
+
+    Sleep / Steps / Stretch are tracked as tier-2 optional context and
+    do NOT contribute to the daily star ceiling — the whole point of
+    the 2-star reshape is to reduce decision fatigue by anchoring on
+    two things that matter most (Protein + Strength) and letting the
+    rest be genuinely optional.
+    """
+    return 1 if _is_rest_day(data, weekday) else 2
 
 
 def _protein_star_earned(data: dict, weekday: int) -> bool:
@@ -342,17 +349,22 @@ def _build_day_details_payload(data: dict, weekday: int) -> dict:
         massage_val  = "logged" if massage_done else "—"
         sauna_val    = "logged" if sauna_done else "—"
 
+        # 2 scored effort stars \u2014 Protein + Strength.
         effort_rows = [
             {"key": "protein",  "icon": "\U0001f969", "name": "Protein",  "target": f"{DAILY_PROTEIN_TARGET:g}g+",  "done": protein_done,  "value": protein_val},
             {"key": "strength", "icon": "\U0001f4aa", "name": "Strength", "target": ("rest day" if rest_day else "1 session"), "done": strength_done, "value": strength_val},
-            {"key": "sleep",    "icon": "\U0001f634", "name": "Sleep",    "target": sleep_target_str,                 "done": sleep_done,    "value": sleep_val},
-            {"key": "steps",    "icon": "\U0001f45f", "name": "Steps",    "target": f"\u2265 {DAILY_STEPS_GOAL:,}",  "done": steps_done,    "value": steps_val},
-            {"key": "stretch",  "icon": "\U0001f9d8", "name": "Stretch",  "target": "1 session",                      "done": stretch_done,  "value": stretch_val},
         ]
+        # 6 unscored bonus rows \u2014 Sleep/Steps/Stretch (demoted from
+        # scored) + Cardio/Massage/Sauna (already bonus). Split shape
+        # kept identical to effort rows so the modal renderer can loop
+        # over them the same way.
         bonus_rows = [
-            {"key": "cardio",  "icon": "\U0001f6b4", "name": "Cardio",  "done": cardio_done,  "value": cardio_val},
-            {"key": "massage", "icon": "\U0001f486", "name": "Massage", "done": massage_done, "value": massage_val},
-            {"key": "sauna",   "icon": "\u2668\ufe0f", "name": "Sauna",  "done": sauna_done, "value": sauna_val},
+            {"key": "sleep",   "icon": "\U0001f634",   "name": "Sleep",   "done": sleep_done,   "value": sleep_val},
+            {"key": "steps",   "icon": "\U0001f45f",   "name": "Steps",   "done": steps_done,   "value": steps_val},
+            {"key": "stretch", "icon": "\U0001f9d8",   "name": "Stretch", "done": stretch_done, "value": stretch_val},
+            {"key": "cardio",  "icon": "\U0001f6b4",   "name": "Cardio",  "done": cardio_done,  "value": cardio_val},
+            {"key": "massage", "icon": "\U0001f486",   "name": "Massage", "done": massage_done, "value": massage_val},
+            {"key": "sauna",   "icon": "\u2668\ufe0f", "name": "Sauna",   "done": sauna_done,   "value": sauna_val},
         ]
 
         date_str = ""
@@ -379,20 +391,15 @@ def _build_day_details_payload(data: dict, weekday: int) -> dict:
 def _compute_day_stars(data: dict, wd: int) -> int:
     """Return total effort stars earned on weekday `wd` (0=Mon, 6=Sun).
 
-    Five possible: Protein, Strength, Sleep, Steps, Stretch.
-    On rest days, _strength_star_earned returns False, so the natural
-    max becomes 4 (Protein + Sleep + Steps + Stretch).
+    Two possible: Protein + Strength. Sleep / Steps / Stretch were
+    demoted to tier-2 optional context \u2014 they're still tracked as
+    manual toggles for history but don't add to the star total. Rest
+    days drop Strength, so the natural rest-day max is 1 (Protein only).
 
-    Morning + Night rituals are NOT counted here \u2014 they're tracked
-    visually in the top strip but don't move the star total.
+    Morning + Night rituals are also not counted \u2014 they're the ritual
+    strip at the top of Today, not scored.
     """
-    return sum([
-        _protein_star_earned(data, wd),
-        _strength_star_earned(data, wd),
-        _sleep_star_earned(data, wd),
-        _steps_star_earned(data, wd),
-        _stretch_star_earned(data, wd),
-    ])
+    return int(_protein_star_earned(data, wd)) + int(_strength_star_earned(data, wd))
 
 
 def _pick_best_day(data: dict, weekday: int) -> tuple[int, dict] | None:
@@ -464,7 +471,7 @@ def _build_today_hero(
     coach_line: str,
     season_earned: bool,
     season_month_short: str,
-    max_stars: int = 5,
+    max_stars: int = 2,
 ) -> str:
     """Today-is-the-hero card — sits at the very top of Quest Hub.
 
@@ -505,15 +512,13 @@ def _build_today_hero(
         for i in range(max_stars)
     )
 
-    # 5-pillar strip — one cell per effort star. Strength gets a
-    # special "rest" state on rest days (neither pending nor scored)
-    # so the reduced denominator is visible at a glance.
+    # 2-pillar strip — Protein + Strength are the scored anchors.
+    # Sleep / Steps / Stretch are tier-2 and live in a separate quieter
+    # section below the hero, not in this scored strip. Strength gets
+    # a "rest" state on rest days so the reduced denominator is visible.
     pillars = [
         ("\U0001f969",  "Protein",  protein_done,  False),
         ("\U0001f4aa",  "Strength", strength_done, is_rest),
-        ("\U0001f634",  "Sleep",    sleep_done,    False),
-        ("\U0001f45f",  "Steps",    steps_done,    False),
-        ("\U0001f9d8",  "Stretch",  stretch_done,  False),
     ]
     stage_cells = []
     for icon, name, done, rest_strength in pillars:
@@ -1589,9 +1594,16 @@ def _build_weekly_rollups(data: dict) -> str:
     stretch_val  = f"{stretch_days} of {days_elapsed}"
     stretch_done = stretch_days >= days_elapsed
 
-    rows = "".join([
+    # Scored anchors first (Protein + Strength), then tier-2 rows in a
+    # muted section below. The 2-star Today reshape means only the top
+    # two decide the weekly star total; Sleep/Steps/Stretch still show
+    # here as "you tracked this many days" context without pretending
+    # to be scored KPIs.
+    scored_rows = "".join([
         _row("\U0001f969", "Protein",  protein_val,  protein_done),
         _row("\U0001f4aa", "Strength", strength_val, strength_done),
+    ])
+    tier2_rows = "".join([
         _row("\U0001f634", "Sleep",    sleep_val,    sleep_done),
         _row("\U0001f45f", "Steps",    steps_val,    steps_done),
         _row("\U0001f9d8", "Stretch",  stretch_val,  stretch_done),
@@ -1599,7 +1611,9 @@ def _build_weekly_rollups(data: dict) -> str:
     return (
         '<div class="card rollups-card">'
         '  <div class="card-title">\U0001f4ca Weekly Rollups</div>'
-        f'  <div class="rollups-list">{rows}</div>'
+        f'  <div class="rollups-list">{scored_rows}</div>'
+        '  <div class="rollups-tier2-label">also tracked &middot; not scored</div>'
+        f'  <div class="rollups-list rollups-list-tier2">{tier2_rows}</div>'
         '</div>'
     )
 

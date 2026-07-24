@@ -84,13 +84,13 @@ LOW_ENERGY_PHASES = {"Menstrual", "Luteal-PMS"}
 # The 3 Core sub-stars (Base / Burn / Recover) auto-light when their
 # criteria are met. No manual collect needed — they're deterministic
 # from the logged data.
-MAX_DAILY_STARS = 5
-MAX_WEEKLY_STARS = 35     # 5 × 7
+MAX_DAILY_STARS = 2       # Protein + Strength (rest days cap at 1)
+MAX_WEEKLY_STARS = 10     # 3 lift days × 2 + 4 rest days × 1
 
 # Weekly medal tiers (choose realistic targets; 35 is theoretical max).
-MEDAL_BRONZE = 21   # 🥉 ~3 stars/day average — solid baseline week
-MEDAL_SILVER = 28   # 🥈 ~4 stars/day average — good week
-MEDAL_GOLD   = 33   # 🥇 near-perfect (leave 2 stars of wiggle room)
+MEDAL_BRONZE = 5    # 🥉 ~50% of the theoretical max — solid baseline week
+MEDAL_SILVER = 7    # 🥈 ~70% — good week
+MEDAL_GOLD   = 9    # 🥇 ~90% — near-perfect, leave one miss of wiggle room
 
 # ═══════════════════════════════════════════════════════════════════
 # Garmin activity type sets

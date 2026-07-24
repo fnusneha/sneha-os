@@ -297,10 +297,13 @@ body {
 /* 5-stage strip: Morning · Base · Burn · Recover · Night */
 .hero-stages {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 4px;
+  /* 2 pillars now (Protein + Strength) — was 5 before the 2-star
+     reshape. Reduced column count so each cell has more breathing
+     room instead of squishing to 1/5th the hero width. */
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
   margin-bottom: 14px;
-  padding: 10px 6px;
+  padding: 12px 10px;
   border-radius: 12px;
   background: rgba(255,255,255,0.02);
   border: 1px solid rgba(255,255,255,0.05);
@@ -2560,6 +2563,23 @@ body {
 .rollups-card { padding: 14px 16px; margin-bottom: 14px; }
 .rollups-card .card-title { margin-bottom: 10px; }
 .rollups-list { display: flex; flex-direction: column; gap: 2px; }
+
+/* Tier-2 subheader inside Weekly Rollups. Sleep/Steps/Stretch got
+   demoted from scored stars to bonus tracking on the Today tab, so
+   this section visually mirrors that split — muted eyebrow label +
+   dimmer row text so it reads as "for reference" not "must hit". */
+.rollups-tier2-label {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,0.05);
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.rollups-list-tier2 .rollup-row { opacity: 0.75; }
+
 .rollup-row {
   display: grid;
   grid-template-columns: 26px 1fr auto;
@@ -2775,45 +2795,31 @@ body.view-year  .month-only { display: none !important; }
     </div>
   </div>
 
-  <!-- 3. Sleep (7h+ · recovery) -->
-  <div class="stage star-stage stage-active {{SLEEP_STAGE_STATE}} {{SLEEP_COLLAPSED}} stage-sleep" id="stage-sleep">
-    <div class="stage-header" onclick="toggleStage('stage-sleep')">
-      <span class="stage-icon">&#x1F634;</span>
-      <div class="stage-info">
-        <div class="stage-name">Sleep</div>
-        <div class="stage-sub" id="sub-sleep">{{SLEEP_HINT}}</div>
-      </div>
-      <span class="stage-pill" id="pill-sleep"
-            onclick="event.stopPropagation(); toggleManual('sleep_logged', this)">{{SLEEP_LOGGED_STATE_TEXT}}</span>
-      <span class="stage-chevron">&#x25BC;</span>
-    </div>
-  </div>
-
-  <!-- 4. Steps (8,000+) -->
-  <div class="stage star-stage stage-active {{STEPS_STAGE_STATE}} {{STEPS_COLLAPSED}} stage-steps" id="stage-steps">
-    <div class="stage-header" onclick="toggleStage('stage-steps')">
-      <span class="stage-icon">&#x1F45F;</span>
-      <div class="stage-info">
-        <div class="stage-name">Steps</div>
-        <div class="stage-sub" id="sub-steps">{{STEPS_HINT}}</div>
-      </div>
-      <span class="stage-pill" id="pill-steps"
-            onclick="event.stopPropagation(); toggleManual('steps_logged', this)">{{STEPS_LOGGED_STATE_TEXT}}</span>
-      <span class="stage-chevron">&#x25BC;</span>
-    </div>
-  </div>
-
-  <!-- 5. Stretch (back-friendly mobility) -->
-  <div class="stage star-stage stage-active {{STRETCH_STAGE_STATE}} {{STRETCH_COLLAPSED}} stage-stretch" id="stage-stretch">
-    <div class="stage-header" onclick="toggleStage('stage-stretch')">
-      <span class="stage-icon">&#x1F9D8;</span>
-      <div class="stage-info">
-        <div class="stage-name">Stretch</div>
-        <div class="stage-sub" id="sub-stretch">{{STRETCH_HINT}}</div>
-      </div>
-      <span class="stage-pill" id="pill-stretch"
-            onclick="event.stopPropagation(); toggleManual('stretch', this)">{{STRETCH_STATE_TEXT}}</span>
-      <span class="stage-chevron">&#x25BC;</span>
+  <!-- ═══ ALSO TODAY — Sleep · Steps · Stretch (not scored) ═══
+       Demoted from scored stars to tier-2 optional context after the
+       2-anchor reshape. Still tap-to-log so the history keeps flowing,
+       just visually quieter so they don't compete with Protein +
+       Strength for attention. -->
+  <div class="bonus-row" id="also-today-row">
+    <div class="bonus-label">ALSO TODAY &middot; NOT SCORED</div>
+    <div class="bonus-pills">
+      <button type="button" class="bonus-pill {{SLEEP_LOGGED_CLS}}" id="bonus-sleep"
+              onclick="toggleManual('sleep_logged', this)">
+        <span class="bonus-ico">&#x1F634;</span>
+        <span class="bonus-name">Sleep 7h+</span>
+      </button>
+      <span class="bonus-sep">&middot;</span>
+      <button type="button" class="bonus-pill {{STEPS_LOGGED_CLS}}" id="bonus-steps"
+              onclick="toggleManual('steps_logged', this)">
+        <span class="bonus-ico">&#x1F45F;</span>
+        <span class="bonus-name">Steps 8k+</span>
+      </button>
+      <span class="bonus-sep">&middot;</span>
+      <button type="button" class="bonus-pill {{STRETCH_CLS}}" id="bonus-stretch"
+              onclick="toggleManual('stretch', this)">
+        <span class="bonus-ico">&#x1F9D8;</span>
+        <span class="bonus-name">Stretch</span>
+      </button>
     </div>
   </div>
 
@@ -3374,7 +3380,7 @@ body.view-year  .month-only { display: none !important; }
   // Bumps the weekly stars count + progress bar + medal markers on
   // optimistic collect. 5 stars/day × 7 = 35 weekly max; medal tiers
   // at 21 / 28 / 33 (bronze / silver / gold).
-  const MAX_WEEKLY_STARS = 35;
+  const MAX_WEEKLY_STARS = 10;
   const MEDAL_THRESHOLDS = [21, 28, 33];
   function updateWeeklyPulse(delta) {
     const numEl = document.getElementById('wp-stars-num');
@@ -3602,12 +3608,15 @@ body.view-year  .month-only { display: none !important; }
   // entry so syncStageState short-circuits for them; we just flip the
   // local UI state and persist via /api/manual.
   const STAGE_BY_FIELD = {
+    // Only Protein + Strength move a scored star after the 2-star
+    // reshape. Everything else still POSTs to /api/manual (history
+    // stays intact) but has no stage card to light — mapped to null
+    // so syncStageState is a no-op for those toggles.
     'protein_logged':  'protein',
     'strength_logged': 'strength',
-    'sleep_logged':    'sleep',
-    'steps_logged':    'steps',
-    'stretch':         'stretch',
-    // Unscored — visual-only routing (no stage card to light up).
+    'sleep_logged':    null,
+    'steps_logged':    null,
+    'stretch':         null,
     'morning_star':    null,
     'night_star':      null,
     'cardio_logged':   null,
@@ -3617,11 +3626,11 @@ body.view-year  .month-only { display: none !important; }
   };
   // Each star stage maps to the matching hero pillar in the hero card.
   const STAGE_HERO_LABEL = {
+    // Only Protein + Strength are scored stars after the 2-star
+    // reshape, so only these have matching hero pillars to update.
+    // sleep / steps / stretch got demoted to unscored bonus toggles.
     'protein':  'PROTEIN',
     'strength': 'STRENGTH',
-    'sleep':    'SLEEP',
-    'steps':    'STEPS',
-    'stretch':  'STRETCH',
   };
 
   // True iff the given effort-star stage currently meets its rule.
