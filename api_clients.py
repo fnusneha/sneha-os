@@ -11,7 +11,11 @@ import re
 from datetime import date, timedelta, datetime
 
 import requests
-from googleapiclient.discovery import build
+# Note: `from googleapiclient.discovery import build` is deferred to
+# each call site below. googleapiclient pulls in google.api_core which
+# takes ~1.3s to import — eagerly loading it at module import time made
+# every Render cold-start noticeably slower. Only fetch_cycle_day and
+# the calendar helpers actually need it, so the import is done inline.
 
 from constants import (
     OURA_BASE, GARMIN_TOKEN_DIR, CALENDAR_ID, CYCLE_LENGTH,
@@ -306,6 +310,7 @@ def fetch_cycle_day(day: str, creds=None) -> int | None:
         return None
 
     try:
+        from googleapiclient.discovery import build  # lazy — see top of file
         cal = build("calendar", "v3", credentials=creds, cache_discovery=False)
         target = datetime.strptime(day, "%Y-%m-%d").date()
 
@@ -441,6 +446,7 @@ def fetch_week_calendar_notes(monday: date, sunday: date, creds) -> str | None:
         A string like "Birthday + Dentist", or None if no notable events.
     """
     try:
+        from googleapiclient.discovery import build  # lazy — see top of file
         cal = build("calendar", "v3", credentials=creds, cache_discovery=False)
 
         time_min = monday.isoformat() + "T00:00:00Z"

@@ -19,7 +19,9 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from googleapiclient.discovery import build
+# googleapiclient is heavy (~1.3s import) and only needed inside
+# fetch_habits_from_doc. Deferring to an inline import keeps
+# app.py / data_gather.py boot fast for Render cold starts.
 
 log = logging.getLogger(__name__)
 
@@ -355,6 +357,7 @@ def fetch_habits_from_doc(creds, force_refresh: bool = False) -> dict:
 
     # Fetch via Drive API (export as plain text) — doesn't require Docs API
     try:
+        from googleapiclient.discovery import build  # lazy — see top of file
         drive = build("drive", "v3", credentials=creds, cache_discovery=False)
         # Export the doc as plain text
         response = drive.files().export(

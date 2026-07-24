@@ -15,7 +15,9 @@ import time
 from datetime import date, datetime
 from pathlib import Path
 
-from googleapiclient.discovery import build
+# googleapiclient is heavy (~1.3s import) and only needed inside the
+# two fetch functions below. Deferring to inline imports keeps the
+# app.py / data_gather.py import chain fast for Render cold starts.
 
 log = logging.getLogger(__name__)
 
@@ -299,6 +301,7 @@ def fetch_travel_pins(creds, force_refresh: bool = False) -> list[dict]:
             return cached
 
     try:
+        from googleapiclient.discovery import build  # lazy — see top of file
         service = build("sheets", "v4", credentials=creds, cache_discovery=False)
         result = service.spreadsheets().values().get(
             spreadsheetId=TRAVEL_SHEET_ID,
@@ -342,6 +345,7 @@ def fetch_library_cycling(creds, force_refresh: bool = False) -> list[dict]:
             pass
 
     try:
+        from googleapiclient.discovery import build  # lazy — see top of file
         service = build("sheets", "v4", credentials=creds, cache_discovery=False)
         result = service.spreadsheets().values().get(
             spreadsheetId=TRAVEL_SHEET_ID,
