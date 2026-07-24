@@ -1,0 +1,28 @@
+name: Keep Render warm (safety net)
+
+# Backup keep-warm alongside UptimeRobot. If UptimeRobot ever pauses
+# or the monitor gets deleted, this catches it — Render still won't
+# sleep. Fires every 5 min (GH Actions hard minimum) during active
+# hours. GH Actions cron is delivery-not-guaranteed, so treat this as
+# a *safety net*, not the primary keep-warm.
+
+on:
+  schedule:
+    - cron: "*/5 14-23,0-6 * * *"   # 07:00–23:00 PT
+  workflow_dispatch:
+
+concurrency:
+  group: keepwarm
+  cancel-in-progress: true
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Ping /healthz
+        run: |
+          code=$(curl -sS -o /dev/null --max-time 90 \
+            -w "%{http_code}" https://sneha-os.onrender.com/healthz)
+          echo "healthz returned $code"
+          [ "$code" = "200" ] || exit 1
