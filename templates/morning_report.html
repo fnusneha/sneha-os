@@ -1577,6 +1577,217 @@ body {
   letter-spacing: 0.06em;
 }
 
+/* ── Collapsible Strongest@40 (headline grid + expand body) ── */
+/* Default (.collapsed) shows just the head + 4-col headline; body is
+   height-collapsed. Tap the card to toggle. */
+.strongest-card { cursor: pointer; transition: background 0.15s; }
+.strongest-card:hover { background: rgba(255,255,255,0.035); }
+.strongest-sub-collapsed {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: 0.06em;
+}
+.strongest-headline-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(255,255,255,0.10);
+}
+.hg-cell { text-align: center; }
+.hg-val {
+  font-family: 'Fraunces', serif;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--gold);
+  line-height: 1;
+}
+.hg-lbl {
+  margin-top: 4px;
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  color: var(--dim);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.strongest-body {
+  max-height: 800px;
+  overflow: hidden;
+  transition: max-height 0.35s ease, opacity 0.25s ease, margin-top 0.25s ease;
+  opacity: 1;
+  margin-top: 14px;
+}
+.strongest-card.collapsed .strongest-body {
+  max-height: 0;
+  opacity: 0;
+  margin-top: 0;
+}
+/* When expanded, dim the "tap to expand" hint and show the sub-tagline
+   inside the body ("muscle first · lean second · strong forever"). */
+.strongest-card:not(.collapsed) .strongest-sub-collapsed { display: none; }
+.strongest-card.collapsed .strongest-body .strongest-sub { display: none; }
+
+/* ── Context card (rituals + cycle) ── */
+.context-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+.context-rituals {
+  display: flex;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.context-rituals .ritual-pill { flex: 1; }
+.context-cycle {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 10px;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+}
+.context-cycle-status { color: var(--text); flex-shrink: 0; }
+.context-cycle-note {
+  color: var(--dim);
+  font-size: 9px;
+  text-align: right;
+  line-height: 1.4;
+}
+
+/* ── Section header (used above "the two that matter" + "supports recovery") ── */
+.section-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 18px 4px 8px;
+  font-family: 'DM Mono', monospace;
+}
+.section-header-label {
+  font-size: 11px;
+  color: var(--text);
+  letter-spacing: 0.06em;
+}
+.section-header-count {
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+}
+.section-header-count strong {
+  color: var(--gold);
+  font-family: 'Fraunces', serif;
+  font-size: 13px;
+  font-weight: 600;
+}
+.section-header-quiet .section-header-label {
+  color: var(--dim);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ── Recovery chips (Sleep / Steps / Stretch — 3 equal columns) ── */
+.recovery-chips {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.recovery-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 10px 6px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+  color: var(--text);
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+.recovery-chip:active { transform: scale(0.97); }
+.recovery-chip.done {
+  background: linear-gradient(135deg, rgba(245,200,66,0.15), rgba(110,231,183,0.08));
+  border-color: rgba(245,200,66,0.35);
+}
+.recovery-ico { font-size: 16px; line-height: 1; }
+.recovery-name {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text);
+}
+.recovery-target {
+  font-size: 9px;
+  color: var(--dim);
+  font-family: 'DM Mono', monospace;
+  letter-spacing: 0.02em;
+  min-height: 12px;
+}
+.recovery-chip.done .recovery-target { color: var(--gold); }
+
+/* ── Collapsible Bonus (Cardio · Massage · Sauna) ── */
+.bonus-collapsed {
+  background: rgba(255,255,255,0.025);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  margin: 14px 0 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.bonus-collapsed:hover { background: rgba(255,255,255,0.04); }
+.bonus-collapsed-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.bonus-collapsed-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+.bonus-collapsed-summary {
+  flex: 1;
+  text-align: right;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bonus-sum-item.done { color: var(--gold); }
+.bonus-sum-sep { opacity: 0.4; margin: 0 2px; }
+.bonus-collapsed-chevron {
+  color: var(--dim);
+  font-size: 11px;
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+.bonus-collapsed:not(.collapsed) .bonus-collapsed-chevron { transform: rotate(180deg); }
+.bonus-collapsed-body {
+  max-height: 200px;
+  overflow: hidden;
+  transition: max-height 0.3s ease, opacity 0.2s ease, margin-top 0.2s ease;
+  opacity: 1;
+  margin-top: 10px;
+}
+.bonus-collapsed.collapsed .bonus-collapsed-body {
+  max-height: 0;
+  opacity: 0;
+  margin-top: 0;
+}
+
 /* ── Manual toggle (stretch + sauna, inside the Recover stage body) ── */
 .manual-toggle {
   display: flex;
@@ -2454,7 +2665,16 @@ body {
   font-size: 10px;
   color: var(--dim);
 }
-.footer-updated { margin-bottom: 10px; }
+.footer-updated { margin-bottom: 4px; }
+/* Optional arc-tie-in — ties daily Protein+Strength stars to the
+   Strongest@40 body-comp goals. Small, dim, easy to ignore. */
+.footer-tie {
+  margin-bottom: 10px;
+  font-size: 9px;
+  color: var(--dim);
+  letter-spacing: 0.04em;
+  font-style: italic;
+}
 .deploy-btn {
   display: inline-flex;
   align-items: center;
@@ -2719,14 +2939,14 @@ body.view-year  .month-only { display: none !important; }
   <!-- ════════════ TODAY VIEW ════════════ -->
   <div class="today-only">
 
-  <!-- ═══ MORNING / NIGHT RITUAL STRIP ═══
-       Tracked but unscored. Tap to toggle morning_star / night_star
-       via /api/manual; flips the check / circle indicator on the strip
-       and the corresponding pill in the hero (visually invisible — the
-       hero only shows the 5 effort stars now, so these don't bump the
-       count). Same one-tap UX as the manual-toggle buttons below. -->
-  <div class="ritual-strip">
-    <div class="ritual-strip-pills">
+  <!-- ═══ CONTEXT CARD ═══
+       Compact card that replaces both the old ritual-strip AND the
+       big hero. Row 1 = Morning/Night ritual toggles (unscored, same
+       tap-to-flip UX). Row 2 = cycle status + coach guidance so the
+       body-state context is available at a glance without eating a
+       whole screen. -->
+  <div class="context-card">
+    <div class="context-rituals">
       <button type="button" class="ritual-pill {{MORNING_RITUAL_PILL_CLS}}"
               id="ritual-morning"
               onclick="toggleManual('morning_star', this)">
@@ -2734,7 +2954,6 @@ body.view-year  .month-only { display: none !important; }
         <span class="ritual-label">Morning</span>
         <span class="ritual-check" id="ritual-morning-check">{{MORNING_RITUAL_PILL_GLYPH}}</span>
       </button>
-      <span class="ritual-sep">&middot;</span>
       <button type="button" class="ritual-pill {{NIGHT_RITUAL_PILL_CLS}}"
               id="ritual-night"
               onclick="toggleManual('night_star', this)">
@@ -2743,14 +2962,91 @@ body.view-year  .month-only { display: none !important; }
         <span class="ritual-check" id="ritual-night-check">{{NIGHT_RITUAL_PILL_GLYPH}}</span>
       </button>
     </div>
-    <span class="ritual-strip-note">rituals &middot; not scored</span>
+    <div class="context-cycle">
+      <span class="context-cycle-status">{{CYCLE_STATUS_INLINE}}</span>
+      <span class="context-cycle-note">{{CYCLE_GUIDANCE_INLINE}}</span>
+    </div>
   </div>
 
-  <!-- ═══ TODAY HERO ═══ -->
-  {{TODAY_HERO_HTML}}
+  <!-- ═══ STRONGEST AT 40 (collapsed by default) ═══
+       Moved from the bottom to sit right under the context card so
+       the daily numbers below are always framed by the years-out
+       goal. Default state is collapsed — just headline numbers in a
+       4-col grid. Tap the header to expand the full progress bars +
+       visceral fat + next-DEXA line. -->
+  <div class="strongest-card collapsed" id="strongest-card" onclick="toggleStrongest(this)">
+    <div class="strongest-head">
+      <div class="strongest-title">
+        <span class="strongest-title-pre">strongest</span>
+        <span class="strongest-sep">&middot;</span>
+        <span class="strongest-title-em">at 40</span>
+      </div>
+      <span class="strongest-sub-collapsed">5 yr arc &middot; tap to expand</span>
+    </div>
+    <div class="strongest-headline-grid">
+      <div class="hg-cell">
+        <div class="hg-val">88</div>
+        <div class="hg-lbl">lean lbs</div>
+      </div>
+      <div class="hg-cell">
+        <div class="hg-val">25%</div>
+        <div class="hg-lbl">body fat</div>
+      </div>
+      <div class="hg-cell">
+        <div class="hg-val">122</div>
+        <div class="hg-lbl">weight</div>
+      </div>
+      <div class="hg-cell">
+        <div class="hg-val">+2.1</div>
+        <div class="hg-lbl">bone z</div>
+      </div>
+    </div>
+    <div class="strongest-body">
+      <div class="strongest-sub">muscle first &middot; lean second &middot; strong forever</div>
+      <div class="strongest-rows">
+        <div class="strongest-row">
+          <div class="strongest-row-head">
+            <span class="strongest-row-name">lean mass</span>
+            <span class="strongest-row-vals">80.1 lbs <span class="strongest-arrow">&rarr;</span> <strong>88 lbs</strong></span>
+          </div>
+          <div class="strongest-bar"><div class="strongest-bar-fill" style="width:18%"></div></div>
+        </div>
+        <div class="strongest-row">
+          <div class="strongest-row-head">
+            <span class="strongest-row-name">body fat</span>
+            <span class="strongest-row-vals">34.1% <span class="strongest-arrow">&rarr;</span> <strong>25%</strong></span>
+          </div>
+          <div class="strongest-bar"><div class="strongest-bar-fill" style="width:28%"></div></div>
+        </div>
+        <div class="strongest-row">
+          <div class="strongest-row-head">
+            <span class="strongest-row-name">weight</span>
+            <span class="strongest-row-vals">129.9 lbs <span class="strongest-arrow">&rarr;</span> <strong>122 lbs</strong></span>
+          </div>
+          <div class="strongest-bar"><div class="strongest-bar-fill" style="width:22%"></div></div>
+        </div>
+        <div class="strongest-row strongest-row-tight">
+          <div class="strongest-row-head">
+            <span class="strongest-row-name">visceral fat</span>
+            <span class="strongest-row-vals">0.86 lbs <span class="strongest-arrow">&rarr;</span> <strong>&lt;0.7 lbs</strong></span>
+          </div>
+        </div>
+        <div class="strongest-row strongest-row-tight">
+          <div class="strongest-row-head">
+            <span class="strongest-row-name">bone Z-score</span>
+            <span class="strongest-row-vals strongest-row-vals-ok">+2.1 &middot; maintain &#x2713;</span>
+          </div>
+        </div>
+      </div>
+      <div class="strongest-footer">next DEXA &middot; Aug 2026</div>
+    </div>
+  </div>
 
-  <!-- ═══ EFFORT STARS — 5 flat cards, one per star ═══ -->
-  <div class="stage-divider">effort &middot; stars</div>
+  <!-- ═══ "THE TWO THAT MATTER" — Protein + Strength ═══ -->
+  <div class="section-header">
+    <span class="section-header-label">the two that matter</span>
+    <span class="section-header-count">stars <strong>{{STARS_TODAY_NUM}}</strong>/{{MAX_STARS_TODAY_NUM}}</span>
+  </div>
 
   <!-- 1. Protein (130g+) -->
   <div class="stage star-stage stage-active {{PROTEIN_STAGE_STATE}} {{PROTEIN_COLLAPSED}} stage-protein" id="stage-protein">
@@ -2800,106 +3096,72 @@ body.view-year  .month-only { display: none !important; }
        2-anchor reshape. Still tap-to-log so the history keeps flowing,
        just visually quieter so they don't compete with Protein +
        Strength for attention. -->
-  <div class="bonus-row" id="also-today-row">
-    <div class="bonus-label">ALSO TODAY &middot; NOT SCORED</div>
-    <div class="bonus-pills">
-      <button type="button" class="bonus-pill {{SLEEP_LOGGED_CLS}}" id="bonus-sleep"
-              onclick="toggleManual('sleep_logged', this)">
-        <span class="bonus-ico">&#x1F634;</span>
-        <span class="bonus-name">Sleep 7h+</span>
-      </button>
-      <span class="bonus-sep">&middot;</span>
-      <button type="button" class="bonus-pill {{STEPS_LOGGED_CLS}}" id="bonus-steps"
-              onclick="toggleManual('steps_logged', this)">
-        <span class="bonus-ico">&#x1F45F;</span>
-        <span class="bonus-name">Steps 8k+</span>
-      </button>
-      <span class="bonus-sep">&middot;</span>
-      <button type="button" class="bonus-pill {{STRETCH_CLS}}" id="bonus-stretch"
-              onclick="toggleManual('stretch', this)">
-        <span class="bonus-ico">&#x1F9D8;</span>
-        <span class="bonus-name">Stretch</span>
-      </button>
-    </div>
+  <!-- ═══ SUPPORTS RECOVERY — Sleep / Steps / Stretch ═══
+       Three small equal-width chips in a single row. Visually smaller
+       than the Protein/Strength cards above so the demotion from
+       scored to bonus is unambiguous. Still tap-to-log; still stored
+       in the DB. -->
+  <div class="section-header section-header-quiet">
+    <span class="section-header-label">supports recovery</span>
+  </div>
+  <div class="recovery-chips">
+    <button type="button" class="recovery-chip {{SLEEP_LOGGED_CLS}}" id="chip-sleep"
+            onclick="toggleManual('sleep_logged', this)">
+      <span class="recovery-ico">&#x1F634;</span>
+      <span class="recovery-name">Sleep</span>
+      <span class="recovery-target">7h+</span>
+    </button>
+    <button type="button" class="recovery-chip {{STEPS_LOGGED_CLS}}" id="chip-steps"
+            onclick="toggleManual('steps_logged', this)">
+      <span class="recovery-ico">&#x1F45F;</span>
+      <span class="recovery-name">Steps</span>
+      <span class="recovery-target">8k+</span>
+    </button>
+    <button type="button" class="recovery-chip {{STRETCH_CLS}}" id="chip-stretch"
+            onclick="toggleManual('stretch', this)">
+      <span class="recovery-ico">&#x1F9D8;</span>
+      <span class="recovery-name">Stretch</span>
+      <span class="recovery-target">&nbsp;</span>
+    </button>
   </div>
 
-  <!-- ═══ BONUS — Cardio, Massage, Sauna (optional, NOT SCORED) ═══ -->
-  <div class="bonus-row" id="bonus-row">
-    <div class="bonus-label">BONUS &middot; NOT SCORED</div>
-    <div class="bonus-pills">
-      <button type="button" class="bonus-pill {{CARDIO_LOGGED_CLS}}" id="bonus-cardio"
-              onclick="toggleManual('cardio_logged', this)">
-        <span class="bonus-ico">&#x1F3C3;&#x200D;&#x2640;&#xFE0F;</span>
-        <span class="bonus-name">Cardio</span>
-      </button>
-      <span class="bonus-sep">&middot;</span>
-      <button type="button" class="bonus-pill {{MASSAGE_CLS}}" id="bonus-massage"
-              onclick="toggleManual('massage', this)">
-        <span class="bonus-ico">&#x1F486;&#x200D;&#x2640;&#xFE0F;</span>
-        <span class="bonus-name">Massage</span>
-      </button>
-      <span class="bonus-sep">&middot;</span>
-      <button type="button" class="bonus-pill {{SAUNA_CLS}}" id="bonus-sauna"
-              onclick="toggleManual('sauna', this)">
-        <span class="bonus-ico">&#x2668;&#xFE0F;</span>
-        <span class="bonus-name">Sauna</span>
-      </button>
+  <!-- ═══ BONUS — Cardio / Massage / Sauna (collapsed by default) ═══
+       Single-row card that expands into the full three-pill row on
+       tap. Header shows an inline summary so at-a-glance status is
+       still available without expanding. -->
+  <div class="bonus-collapsed collapsed" id="bonus-collapsed" onclick="toggleBonus(this)">
+    <div class="bonus-collapsed-head">
+      <span class="bonus-collapsed-label">+ Bonus</span>
+      <span class="bonus-collapsed-summary">
+        <span class="bonus-sum-item {{CARDIO_LOGGED_CLS}}">&#x1F3C3;&#x200D;&#x2640;&#xFE0F; Cardio</span>
+        <span class="bonus-sum-sep">&middot;</span>
+        <span class="bonus-sum-item {{MASSAGE_CLS}}">&#x1F486;&#x200D;&#x2640;&#xFE0F; Massage</span>
+        <span class="bonus-sum-sep">&middot;</span>
+        <span class="bonus-sum-item {{SAUNA_CLS}}">&#x2668;&#xFE0F; Sauna</span>
+      </span>
+      <span class="bonus-collapsed-chevron">&#x25BE;</span>
     </div>
-  </div>
-
-  <!-- ═══ STRONGEST AT 40 — 5-year body-composition arc ═══
-       Hardcoded snapshot of the long-game DEXA targets so the
-       dashboard always grounds the daily stars in the years-out
-       why. Numbers refresh manually after each DEXA scan; the
-       "next DEXA" footer prompts the cadence. -->
-  <div class="strongest-card">
-    <div class="strongest-head">
-      <div class="strongest-title">
-        <span class="strongest-title-pre">strongest</span>
-        <span class="strongest-sep">&middot;</span>
-        <span class="strongest-title-em">at 40</span>
-      </div>
-      <span class="strongest-arc">5 YR ARC</span>
-    </div>
-    <div class="strongest-sub">muscle first &middot; lean second &middot; strong forever</div>
-
-    <div class="strongest-rows">
-      <div class="strongest-row">
-        <div class="strongest-row-head">
-          <span class="strongest-row-name">lean mass</span>
-          <span class="strongest-row-vals">80.1 lbs <span class="strongest-arrow">&rarr;</span> <strong>88 lbs</strong></span>
-        </div>
-        <div class="strongest-bar"><div class="strongest-bar-fill" style="width:18%"></div></div>
-      </div>
-      <div class="strongest-row">
-        <div class="strongest-row-head">
-          <span class="strongest-row-name">body fat</span>
-          <span class="strongest-row-vals">34.1% <span class="strongest-arrow">&rarr;</span> <strong>25%</strong></span>
-        </div>
-        <div class="strongest-bar"><div class="strongest-bar-fill" style="width:28%"></div></div>
-      </div>
-      <div class="strongest-row">
-        <div class="strongest-row-head">
-          <span class="strongest-row-name">weight</span>
-          <span class="strongest-row-vals">129.9 lbs <span class="strongest-arrow">&rarr;</span> <strong>122 lbs</strong></span>
-        </div>
-        <div class="strongest-bar"><div class="strongest-bar-fill" style="width:22%"></div></div>
-      </div>
-      <div class="strongest-row strongest-row-tight">
-        <div class="strongest-row-head">
-          <span class="strongest-row-name">visceral fat</span>
-          <span class="strongest-row-vals">0.86 lbs <span class="strongest-arrow">&rarr;</span> <strong>&lt;0.7 lbs</strong></span>
-        </div>
-      </div>
-      <div class="strongest-row strongest-row-tight">
-        <div class="strongest-row-head">
-          <span class="strongest-row-name">bone Z-score</span>
-          <span class="strongest-row-vals strongest-row-vals-ok">+2.1 &middot; maintain &#x2713;</span>
-        </div>
+    <div class="bonus-collapsed-body">
+      <div class="bonus-pills">
+        <button type="button" class="bonus-pill {{CARDIO_LOGGED_CLS}}" id="bonus-cardio"
+                onclick="event.stopPropagation(); toggleManual('cardio_logged', this)">
+          <span class="bonus-ico">&#x1F3C3;&#x200D;&#x2640;&#xFE0F;</span>
+          <span class="bonus-name">Cardio</span>
+        </button>
+        <span class="bonus-sep">&middot;</span>
+        <button type="button" class="bonus-pill {{MASSAGE_CLS}}" id="bonus-massage"
+                onclick="event.stopPropagation(); toggleManual('massage', this)">
+          <span class="bonus-ico">&#x1F486;&#x200D;&#x2640;&#xFE0F;</span>
+          <span class="bonus-name">Massage</span>
+        </button>
+        <span class="bonus-sep">&middot;</span>
+        <button type="button" class="bonus-pill {{SAUNA_CLS}}" id="bonus-sauna"
+                onclick="event.stopPropagation(); toggleManual('sauna', this)">
+          <span class="bonus-ico">&#x2668;&#xFE0F;</span>
+          <span class="bonus-name">Sauna</span>
+        </button>
       </div>
     </div>
-
-    <div class="strongest-footer">next DEXA &middot; Aug 2026</div>
   </div>
 
   </div>
@@ -3114,6 +3376,7 @@ body.view-year  .month-only { display: none !important; }
   <!-- ═══ 8. FOOTER ═══ -->
   <div class="footer">
     <div class="footer-updated">{{TAB_NAME}} &middot; v{{BUILD_DATE}}</div>
+    <div class="footer-tie">protein + strength &rarr; lean mass &uarr;, body fat &darr;</div>
     <button class="deploy-btn" id="deploy-btn" onclick="deployDay()">&#x1F680; Deploy</button>
   </div>
 
@@ -3178,6 +3441,39 @@ body.view-year  .month-only { display: none !important; }
     if (el.classList.contains('stage-complete')) return;
     el.classList.toggle('collapsed');
   };
+
+  // Strongest@40 card — pure client-side collapse/expand. Persists to
+  // localStorage so a user who opens it once doesn't have to re-open
+  // on every visit.
+  const STRONGEST_KEY = 'sneha-strongest-open';
+  window.toggleStrongest = function(el) {
+    if (!el) return;
+    el.classList.toggle('collapsed');
+    try {
+      localStorage.setItem(STRONGEST_KEY, el.classList.contains('collapsed') ? '0' : '1');
+    } catch(e) {}
+  };
+  // Bonus (Cardio/Massage/Sauna) — same pattern. stopPropagation on
+  // the inner pills so tapping a pill doesn't collapse the card.
+  const BONUS_KEY = 'sneha-bonus-open';
+  window.toggleBonus = function(el) {
+    if (!el) return;
+    el.classList.toggle('collapsed');
+    try {
+      localStorage.setItem(BONUS_KEY, el.classList.contains('collapsed') ? '0' : '1');
+    } catch(e) {}
+  };
+  // Restore last-open state on page load.
+  (function restoreCollapsibles() {
+    try {
+      const strongestOpen = localStorage.getItem(STRONGEST_KEY) === '1';
+      const s = document.getElementById('strongest-card');
+      if (s && strongestOpen) s.classList.remove('collapsed');
+      const bonusOpen = localStorage.getItem(BONUS_KEY) === '1';
+      const b = document.getElementById('bonus-collapsed');
+      if (b && bonusOpen) b.classList.remove('collapsed');
+    } catch(e) {}
+  })();
 
   // ── Routine state persistence ──
   function loadRoutineState() {

@@ -2111,6 +2111,21 @@ def generate_html_report(
         "NIGHT_RITUAL_PILL_CLS":     "done" if today_night_earned else "pending",
         "NIGHT_RITUAL_PILL_GLYPH":   "\u2713" if today_night_earned else "\u25cb",
 
+        # \u2500\u2500 Context card (rituals + cycle) fill values \u2500\u2500
+        # Cycle status inline: "\ud83d\udd34 Day 3 \u00b7 since Aug 2" style. Uses the
+        # same cycle_icon / cycle_label / period_start_str that used to
+        # feed the removed hero cycle block.
+        "CYCLE_STATUS_INLINE": (
+            f'{cycle_icon} {_esc(cycle_label)}'
+            + (f' &middot; since {_esc(period_start_str)}' if period_start_str else '')
+        ) if cycle_label and cycle_label != "No cycle data yet" else "",
+        "CYCLE_GUIDANCE_INLINE": _esc(coach_line) if coach_line else "",
+
+        # Star count for the "the two that matter \u00b7 stars X/Y" label.
+        # Denominator honours rest-day max (1 vs 2).
+        "STARS_TODAY_NUM":     str(stars_today),
+        "MAX_STARS_TODAY_NUM": str(today_max_stars),
+
         # 5 Effort Star cards. Each star is its own card with one
         # tappable pill. Auto-collapse on earn (matches Morning/Night
         # ritual behaviour from before).
