@@ -3125,44 +3125,11 @@ body.view-year  .month-only { display: none !important; }
     </button>
   </div>
 
-  <!-- ═══ BONUS — Cardio / Massage / Sauna (collapsed by default) ═══
-       Single-row card that expands into the full three-pill row on
-       tap. Header shows an inline summary so at-a-glance status is
-       still available without expanding. -->
-  <div class="bonus-collapsed collapsed" id="bonus-collapsed" onclick="toggleBonus(this)">
-    <div class="bonus-collapsed-head">
-      <span class="bonus-collapsed-label">+ Bonus</span>
-      <span class="bonus-collapsed-summary">
-        <span class="bonus-sum-item {{CARDIO_LOGGED_CLS}}">&#x1F3C3;&#x200D;&#x2640;&#xFE0F; Cardio</span>
-        <span class="bonus-sum-sep">&middot;</span>
-        <span class="bonus-sum-item {{MASSAGE_CLS}}">&#x1F486;&#x200D;&#x2640;&#xFE0F; Massage</span>
-        <span class="bonus-sum-sep">&middot;</span>
-        <span class="bonus-sum-item {{SAUNA_CLS}}">&#x2668;&#xFE0F; Sauna</span>
-      </span>
-      <span class="bonus-collapsed-chevron">&#x25BE;</span>
-    </div>
-    <div class="bonus-collapsed-body">
-      <div class="bonus-pills">
-        <button type="button" class="bonus-pill {{CARDIO_LOGGED_CLS}}" id="bonus-cardio"
-                onclick="event.stopPropagation(); toggleManual('cardio_logged', this)">
-          <span class="bonus-ico">&#x1F3C3;&#x200D;&#x2640;&#xFE0F;</span>
-          <span class="bonus-name">Cardio</span>
-        </button>
-        <span class="bonus-sep">&middot;</span>
-        <button type="button" class="bonus-pill {{MASSAGE_CLS}}" id="bonus-massage"
-                onclick="event.stopPropagation(); toggleManual('massage', this)">
-          <span class="bonus-ico">&#x1F486;&#x200D;&#x2640;&#xFE0F;</span>
-          <span class="bonus-name">Massage</span>
-        </button>
-        <span class="bonus-sep">&middot;</span>
-        <button type="button" class="bonus-pill {{SAUNA_CLS}}" id="bonus-sauna"
-                onclick="event.stopPropagation(); toggleManual('sauna', this)">
-          <span class="bonus-ico">&#x2668;&#xFE0F;</span>
-          <span class="bonus-name">Sauna</span>
-        </button>
-      </div>
-    </div>
-  </div>
+  <!-- Bonus (Cardio / Massage / Sauna) was removed from the Today view
+       per user request — kept the corresponding manual-toggle POSTs
+       working via /api/manual so day-details modal + history still
+       reflect anything logged elsewhere (or via API). -->
+
 
   </div>
   <!-- ════════════ /TODAY VIEW ════════════ -->

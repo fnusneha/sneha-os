@@ -337,6 +337,10 @@ def api_manual():
         db.set_protein_logged(d, value)
     elif field == "rest_day":
         db.set_rest_day(d, value)
+    elif field == "morning_star":
+        db.set_star(d, "morning", value)
+    elif field == "night_star":
+        db.set_star(d, "night", value)
     else:
         return jsonify(ok=False, error=f"unknown field {field!r}"), 400
 

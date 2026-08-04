@@ -2119,7 +2119,11 @@ def generate_html_report(
             f'{cycle_icon} {_esc(cycle_label)}'
             + (f' &middot; since {_esc(period_start_str)}' if period_start_str else '')
         ) if cycle_label and cycle_label != "No cycle data yet" else "",
-        "CYCLE_GUIDANCE_INLINE": _esc(coach_line) if coach_line else "",
+        # coach_line is already HTML (uses <em> for the energy word) so
+        # do NOT re-escape it here — that would render literal <em>...</em>
+        # text. _build_coach_line already escapes any user-controlled
+        # bits internally, so this is safe.
+        "CYCLE_GUIDANCE_INLINE": coach_line or "",
 
         # Star count for the "the two that matter \u00b7 stars X/Y" label.
         # Denominator honours rest-day max (1 vs 2).
