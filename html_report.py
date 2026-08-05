@@ -172,15 +172,13 @@ def _is_rest_day(data: dict, weekday: int) -> bool:
 
 
 def _max_stars_for_day(data: dict, weekday: int) -> int:
-    """2 on a lift day, 1 on a rest day (Strength is dropped).
+    """Always 2 — Protein + Strength both count every day.
 
-    Sleep / Steps / Stretch are tracked as tier-2 optional context and
-    do NOT contribute to the daily star ceiling — the whole point of
-    the 2-star reshape is to reduce decision fatigue by anchoring on
-    two things that matter most (Protein + Strength) and letting the
-    rest be genuinely optional.
+    Rest-day handling was removed: user's goal is to hit both anchors
+    daily. Even light body-weight movement counts as Strength; there's
+    no reason to give days off from the count.
     """
-    return 1 if _is_rest_day(data, weekday) else 2
+    return 2
 
 
 def _protein_star_earned(data: dict, weekday: int) -> bool:
@@ -189,9 +187,7 @@ def _protein_star_earned(data: dict, weekday: int) -> bool:
 
 
 def _strength_star_earned(data: dict, weekday: int) -> bool:
-    """Strength counts unless today is marked a rest day."""
-    if _is_rest_day(data, weekday):
-        return False
+    """Strength counts every day now (rest-day skip was removed)."""
     row = data.get("strength_logged_row", []) or []
     manual = bool(row[weekday]) if weekday < len(row) else False
     # Legacy fallback: historical days populated by the old Garmin
@@ -2138,7 +2134,7 @@ def generate_html_report(
         "PROTEIN_HINT":         f"{DAILY_PROTEIN_TARGET}g+ \u00b7 muscle defense",
         "STRENGTH_STAGE_STATE": "earned" if today_strength_earned else "",
         "STRENGTH_COLLAPSED":   "collapsed" if today_strength_earned else "",
-        "STRENGTH_HINT":        "rest day \u00b7 skipped" if _is_rest_day(data, weekday) else "lift days only",
+        "STRENGTH_HINT":        "muscle first &middot; every day",
         "STRENGTH_REST_CLS":    "rest-day" if _is_rest_day(data, weekday) else "",
         "SLEEP_STAGE_STATE":    "earned" if today_sleep_earned else "",
         "SLEEP_COLLAPSED":      "collapsed" if today_sleep_earned else "",

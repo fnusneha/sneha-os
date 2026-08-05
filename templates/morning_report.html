@@ -3062,32 +3062,18 @@ body.view-year  .month-only { display: none !important; }
     </div>
   </div>
 
-  <!-- 2. Strength (3x/wk · lift days only). On rest days, the pill
-       shows "rest day" instead of the standard pending state. -->
-  <div class="stage star-stage stage-active {{STRENGTH_STAGE_STATE}} {{STRENGTH_COLLAPSED}} stage-strength {{STRENGTH_REST_CLS}}" id="stage-strength">
+  <!-- 2. Strength (every day). Rest-day skip + "3x/wk" badge were
+       removed — the target is Protein + Strength daily, no exceptions. -->
+  <div class="stage star-stage stage-active {{STRENGTH_STAGE_STATE}} {{STRENGTH_COLLAPSED}} stage-strength" id="stage-strength">
     <div class="stage-header" onclick="toggleStage('stage-strength')">
       <span class="stage-icon">&#x1F4AA;</span>
       <div class="stage-info">
-        <div class="stage-name-row">
-          <span class="stage-name">Strength</span>
-          <span class="stage-badge stage-badge-strength" title="3 sessions per week">3x/wk</span>
-        </div>
+        <div class="stage-name">Strength</div>
         <div class="stage-sub" id="sub-strength">{{STRENGTH_HINT}}</div>
       </div>
       <span class="stage-pill" id="pill-strength"
             onclick="event.stopPropagation(); toggleManual('strength_logged', this)">{{STRENGTH_LOGGED_STATE_TEXT}}</span>
       <span class="stage-chevron">&#x25BC;</span>
-    </div>
-    <!-- Rest-day toggle lives in the body — collapsed by default,
-         tapped open from the strength card. Lets the user mark today
-         as a rest day so Strength doesn't count against them. -->
-    <div class="stage-body" style="padding:8px 14px 12px;">
-      <button type="button" class="manual-toggle {{REST_DAY_CLS}}" id="toggle-rest_day"
-              onclick="toggleManual('rest_day', this)">
-        <span class="manual-ico">&#x1F634;</span>
-        <div class="manual-text"><span class="manual-label">Rest day &middot; skip Strength</span></div>
-        <span class="manual-state" id="rest_day-state">{{REST_DAY_STATE_TEXT}}</span>
-      </button>
     </div>
   </div>
 
