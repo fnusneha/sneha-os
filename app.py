@@ -221,9 +221,10 @@ def dashboard():
 
 @app.get("/week")
 def week():
-    html, status = _render_quest_hub("week")
-    resp = app.response_class(html, content_type="text/html; charset=utf-8", status=status)
-    return _no_cache(resp)
+    """Week view was retired — the tab is gone and its slot was
+    reclaimed by the Gallery link. Any lingering bookmark redirects
+    to Today so nothing 404s."""
+    return redirect("/dashboard", code=302)
 
 
 @app.get("/month")
