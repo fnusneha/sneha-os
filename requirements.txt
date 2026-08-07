@@ -1,5 +1,6 @@
 # --- Web service (Flask on Gunicorn) ---
 flask>=3.0
+flask-compress>=1.14      # gzip/br responses → 5–7× less bandwidth
 gunicorn>=22.0
 
 # --- Data layer ---

@@ -33,6 +33,7 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).resolve().parent / ".env")
 
 from flask import Flask, jsonify, redirect, request  # noqa: F401 (Flask used below)
+from flask_compress import Compress
 
 # Rides render pulls from Neon because rides_report.py respects USE_DB_RIDES.
 os.environ.setdefault("USE_DB_RIDES", "1")
@@ -46,6 +47,11 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)-7s %(m
 log = logging.getLogger(__name__)
 
 app = Flask(__name__)
+# gzip / brotli every response. The dashboard HTML is ~184 KB
+# uncompressed but ~25 KB gzipped (7×), so this single line drops
+# monthly bandwidth to a fraction of what it was — the reason we
+# blew through Render's 5 GB Hobby cap.
+Compress(app)
 
 
 # ═══════════════════════════════════════════════════════════════════
